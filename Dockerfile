@@ -12,7 +12,7 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodeuser -u 1001
 
 # התקנת תלויות
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # העתקת קבצי האפליקציה
 COPY --chown=nodeuser:nodejs . .
