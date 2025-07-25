@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # שירות הבוט
+  bot:
+    build: .
+    container_name: android-advisor-bot
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/android-update-advisor
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - WEBHOOK_ENABLED=false
+      - ENABLE_SCHEDULER=true
+    depends_on:
+      - mongodb
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # מסד נתונים MongoDB
+  mongodb:
+    image: mongo:6.0
+    container_name: android-advisor-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+      - MONGO_INITDB_DATABASE=android-update-advisor
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - bot-network
+    command: --auth --bind_ip_all
+
+  # ממשק ניהול MongoDB (אופציונלי)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: android-advisor-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=password123
+      - ME_CONFIG_MONGODB_URL=mongodb://admin:password123@mongodb:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    depends_on:
+      - mongodb
+    networks:
+      - bot-network
+    profiles:
+      - debug
+
+  # Redis לקישינג (אופציונלי)
+  redis:
+    image: redis:7-alpine
+    container_name: android-advisor-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bot-network
+    command: redis-server --appendonly yes
+    profiles:
+      - cache
+
+  # Nginx reverse proxy (לפריסה מתקדמת)
+  nginx:
+    image: nginx:alpine
+    container_name: android-advisor-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - bot
+    networks:
+      - bot-network
+    profiles:
+      - production
+
+  # Prometheus לניטור (אופציונלי)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: android-advisor-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - bot-network
+    profiles:
+      - monitoring
+
+  # Grafana לדשבורדים (אופציונלי)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: android-advisor-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - bot-network
+    profiles:
+      - monitoring
+
+# רשתות
+networks:
+  bot-network:
+    driver: bridge
+
+# כרכים
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Profiles להפעלת שירותים אופציונליים:
+# docker-compose up                    # שירותים בסיסיים בלבד
+# docker-compose --profile debug up    # עם mongo-express
+# docker-compose --profile cache up    # עם Redis
+# docker-compose --profile production up  # עם Nginx
+# docker-compose --profile monitoring up  # עם Prometheus & Grafana
