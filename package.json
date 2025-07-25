@@ -21,7 +21,8 @@
     "node-cron": "^3.0.3",
     "date-fns": "^2.30.0",
     "lodash": "^4.17.21",
-    "puppeteer": "^21.6.0"
+    "puppeteer": "^22.8.2",
+    "playwright": "^1.40.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
