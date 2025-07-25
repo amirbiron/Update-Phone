@@ -1,0 +1,159 @@
+services:
+  # שירות הבוט הראשי
+  - type: web
+    name: android-update-advisor-bot
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false # יש להגדיר ידנית ב-Render dashboard
+      - key: MONGODB_URI
+        sync: false # יש להגדיר ידנית ב-Render dashboard
+      - key: RENDER_EXTERNAL_URL
+        value: https://android-update-advisor-bot.onrender.com
+      - key: WEBHOOK_ENABLED
+        value: true
+      - key: ENABLE_SCHEDULER
+        value: true
+      - key: LOG_LEVEL
+        value: info
+      - key: MAX_CONCURRENT_REQUESTS
+        value: 5
+      - key: REQUEST_TIMEOUT
+        value: 30000
+      - key: CACHE_TTL
+        value: 3600
+      - key: RATE_LIMIT_WINDOW
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 10
+      - key: CLEANUP_INTERVAL_DAYS
+        value: 90
+    
+    # הגדרות scaling אוטומטי
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetCPUPercent: 80
+      targetMemoryPercent: 85
+    
+    # הגדרות בריאות
+    healthChecks:
+      - path: /health
+        intervalSeconds: 30
+        timeoutSeconds: 10
+        unhealthyThresholdCount: 3
+        healthyThresholdCount: 2
+
+  # מסד נתונים (אם אתם רוצים MongoDB מנוהל ב-Render)
+  # אחרת השתמשו ב-MongoDB Atlas
+  # - type: pserv
+  #   name: mongodb
+  #   env: docker
+  #   dockerfilePath: ./Dockerfile.mongo
+  #   plan: starter
+  #   disk:
+  #     name: mongodb-data
+  #     mountPath: /data/db
+  #     sizeGB: 1
+
+# הגדרות databases חיצוניים (MongoDB Atlas)
+databases:
+  - name: android-advisor-db
+    databaseName: android-update-advisor
+    user: bot-user
+    plan: starter
+    region: oregon
+
+# הגדרות static files (אם יש)
+staticSites:
+  - name: bot-docs
+    buildCommand: npm run build:docs
+    publishPath: ./docs/build
+    pullRequestPreviewsEnabled: false
+    
+# הגדרות cron jobs (משימות מתוזמנות)
+cronJobs:
+  - name: daily-cleanup
+    schedule: "0 2 * * *"
+    buildCommand: npm install
+    startCommand: node -e "require('./src/scheduler').runTaskNow('daily')"
+    
+  - name: weekly-maintenance
+    schedule: "0 3 * * 0"
+    buildCommand: npm install
+    startCommand: node -e "require('./src/scheduler').runTaskNow('weekly')"
+
+# הגדרות environment variables גלובליות
+envVarGroups:
+  - name: production-config
+    envVars:
+      - key: DEBUG_MODE
+        value: false
+      - key: ENABLE_VERBOSE_LOGGING
+        value: false
+      - key: ANALYTICS_ENABLED
+        value: true
+
+# הגדרות notification (התראות על deploy)
+notifications:
+  - type: slack
+    name: deploy-notifications
+    settings:
+      url: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+
+# הגדרות auto-deploy
+autoDeploy: true
+
+# הגדרות preview environments
+previewsEnabled: true
+previewsExpireAfterDays: 7
+
+# Build hooks
+buildCommand: |
+  npm ci
+  npm run test:ci
+  npm run build
+
+# הגדרות custom domains (אופציונלי)
+# domains:
+#   - name: bot.yourdomain.com
+#     type: apex
+
+# הגדרות headers אבטחה
+headers:
+  - source: "/*"
+    headers:
+      - key: "X-Frame-Options"
+        value: "DENY"
+      - key: "X-Content-Type-Options"
+        value: "nosniff"
+      - key: "Referrer-Policy"
+        value: "strict-origin-when-cross-origin"
+      - key: "Content-Security-Policy"
+        value: "default-src 'self'"
+
+# הגדרות redirects
+redirects:
+  - source: "/webhook/*"
+    destination: "/bot:splat"
+    type: rewrite
+
+# הגדרות resource limits
+resources:
+  cpu: 0.5
+  memory: 512MB
+
+# הגדרות backup (אם נתמך)
+backup:
+  enabled: true
+  schedule: "0 4 * * *"
+  retentionDays: 30
