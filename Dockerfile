@@ -1,5 +1,5 @@
 # שימוש בNode.js LTS Alpine image (קטן ומהיר)
-FROM node:18-alpine
+FROM node:20-alpine
 
 # הגדרת תיקיית העבודה
 WORKDIR /app
