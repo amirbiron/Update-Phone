@@ -117,17 +117,12 @@ class UpdateChecker {
   // איסוף מידע ממקורות שונים
   async gatherInformation(deviceInfo, parsedQuery) {
     const results = {
-      webSearchResults: [],
       redditPosts: [],
       forumDiscussions: [],
       officialSources: []
     };
 
     try {
-      // חיפוש כללי באינטרנט
-      const webResults = await this.performWebSearch(deviceInfo, parsedQuery);
-      results.webSearchResults = webResults;
-
       // חיפוש ב-Reddit
       const redditResults = await this.searchReddit(deviceInfo, parsedQuery);
       results.redditPosts = redditResults;
@@ -148,50 +143,7 @@ class UpdateChecker {
     return results;
   }
 
-  // חיפוש כללי באינטרנט
-  async performWebSearch(deviceInfo, parsedQuery) {
-    const searchQueries = [
-      `${deviceInfo.device} ${parsedQuery.version} review issues`,
-      `${deviceInfo.device} ${parsedQuery.version} problems bugs`,
-      `${deviceInfo.device} ${parsedQuery.version} battery drain`,
-      `${deviceInfo.device} ${parsedQuery.version} should I update`,
-      `${deviceInfo.device} ${parsedQuery.version} תקלות בעיות` // עברית
-    ];
 
-    const results = [];
-    
-    for (const query of searchQueries.slice(0, 3)) { // מגביל ל-3 חיפושים
-      try {
-        // כאן נוכל להוסיף אינטגרציה עם Google Search API או SerpApi
-        // לבינתיים נדמה חיפוש בסיסי
-        const searchResult = await this.simulateWebSearch(query);
-        results.push(...searchResult);
-        
-        // המתנה קטנה בין חיפושים
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (error) {
-        console.error(`❌ Error at [performWebSearch]:`, error?.message || error);
-      }
-    }
-
-    return results;
-  }
-
-  // סימולציה של חיפוש באינטרנט (להחלפה עם API אמיתי)
-  async simulateWebSearch(query) {
-    // זה דוגמה לתוצאות חיפוש - במימוש אמיתי זה יוחלף ב-API
-    return [
-      {
-        title: `${query} - Latest Issues and Solutions`,
-        url: `https://example.com/search?q=${encodeURIComponent(query)}`,
-        snippet: `Recent discussions about ${query} including user experiences and known issues`,
-        source: 'web_search',
-        relevance: 0.8,
-        date: new Date(),
-        sentiment: 'mixed'
-      }
-    ];
-  }
 
   // חיפוש ב-Reddit
   async searchReddit(deviceInfo, parsedQuery) {
@@ -211,10 +163,13 @@ class UpdateChecker {
         'AndroidTips'
       ];
 
-      const searchQuery = `${deviceInfo.device} ${parsedQuery.version}`;
+      // יצירת שאילתת חיפוש ספציפית יותר
+      const deviceName = deviceInfo.device.toLowerCase();
+      const version = parsedQuery.version || '';
+      const searchQuery = `"${deviceName}" ${version} update experience`;
       const results = [];
 
-      for (const subreddit of subreddits.slice(0, 4)) { // הגדלתי ל-4 subreddits
+      for (const subreddit of subreddits.slice(0, 3)) { // הקטנתי ל-3 subreddits איכותיים
         try {
           const response = await axios.get(
             `https://oauth.reddit.com/r/${subreddit}/search`,
@@ -223,7 +178,7 @@ class UpdateChecker {
                 q: searchQuery,
                 sort: 'relevance',
                 t: 'month',
-                limit: 15, // הגדלתי ל-15 תוצאות
+                limit: 10, // הקטנתי ל-10 תוצאות איכותיות
                 restrict_sr: 1 // חיפוש רק בתוך הסאברדיט הנוכחי
               },
               headers: {
@@ -259,18 +214,28 @@ class UpdateChecker {
         }
       }
 
-      // מיון משופר - העדפה לדיווחי משתמשים
+      // סינון מחמיר יותר לוודא רלוונטיות
       return results
-        .filter(post => post.relevance > 0.3) // סינון לפי relevance
+        .filter(post => {
+          // בדיקה שהפוסט באמת רלוונטי למכשיר הספציפי
+          const titleLower = post.title.toLowerCase();
+          const deviceNameLower = deviceName.toLowerCase();
+          
+          // חייב להכיל את שם המכשיר או להיות דיווח משתמש רלוונטי
+          return post.relevance > 0.5 && 
+                 (titleLower.includes(deviceNameLower) || 
+                  titleLower.includes(deviceInfo.manufacturerKey.toLowerCase()) ||
+                  post.isUserReport);
+        })
         .sort((a, b) => {
-          // העדפה לדיווחי משתמשים
+          // העדפה לדיווחי משתמשים רלוונטיים
           if (a.isUserReport && !b.isUserReport) return -1;
           if (!a.isUserReport && b.isUserReport) return 1;
           
           // אחר כך לפי relevance ו-score
           return (b.relevance * b.score) - (a.relevance * a.score);
         })
-        .slice(0, 10);
+        .slice(0, 8); // הקטנתי ל-8 תוצאות איכותיות
     } catch (error) {
       console.error(`❌ Error at [searchReddit]:`, error?.message || error);
       return [];
@@ -432,13 +397,7 @@ ${resultsText}
   formatSearchResultsForAnalysis(searchResults) {
     let formatted = '';
     
-    if (searchResults.webSearchResults?.length > 0) {
-      formatted += 'תוצאות חיפוש כלליות:\n';
-      searchResults.webSearchResults.slice(0, 5).forEach(result => {
-        formatted += `- ${result.title}: ${result.snippet}\n`;
-      });
-      formatted += '\n';
-    }
+
 
     if (searchResults.redditPosts?.length > 0) {
       formatted += 'דיונים ב-Reddit:\n';
@@ -512,8 +471,8 @@ ${resultsText}
 
   // ניתוח חלופי כשClaude לא זמין
   getFallbackAnalysis(deviceInfo, parsedQuery, searchResults) {
-    const totalResults = (searchResults.webSearchResults?.length || 0) + 
-                        (searchResults.redditPosts?.length || 0);
+    const totalResults = (searchResults.redditPosts?.length || 0) + 
+                        (searchResults.forumDiscussions?.length || 0);
     
     let stabilityRating = 6; // ברירת מחדל
     let recommendation = 'wait';
@@ -543,21 +502,35 @@ ${resultsText}
     };
   }
 
-  // חישוב רלוונטיות
+  // חישוב רלוונטיות משופר
   calculateRelevance(title, searchQuery) {
     if (!title || !searchQuery) return 0;
     
     const titleLower = title.toLowerCase();
-    const queryWords = searchQuery.toLowerCase().split(' ');
+    const queryWords = searchQuery.toLowerCase().split(' ').filter(word => word.length > 2);
     
     let relevance = 0;
+    let exactMatches = 0;
+    
     queryWords.forEach(word => {
-      if (titleLower.includes(word)) {
+      // הסרת מירכאות מהמילה
+      const cleanWord = word.replace(/"/g, '');
+      
+      if (titleLower.includes(cleanWord)) {
         relevance += 1;
+        
+        // בונוס לחיפוש מדויק
+        if (titleLower.includes(`"${cleanWord}"`)) {
+          exactMatches += 1;
+        }
       }
     });
     
-    return relevance / queryWords.length;
+    // בונוס לכותרות עם התאמה מדויקת
+    const baseScore = relevance / Math.max(queryWords.length, 1);
+    const exactBonus = exactMatches * 0.2;
+    
+    return Math.min(baseScore + exactBonus, 1.0);
   }
 
   // קבלת מקורות פעילים
@@ -582,12 +555,27 @@ ${resultsText}
     const userReportKeywords = [
       'updated', 'upgrade', 'installed', 'my experience', 'after update',
       'battery life', 'performance', 'bugs', 'issues', 'problems',
-      'working fine', 'no issues', 'recommend', 'avoid',
+      'working fine', 'no issues', 'recommend', 'avoid', 'just updated',
       'עדכנתי', 'התקנתי', 'החוויה שלי', 'אחרי העדכון',
       'סוללה', 'ביצועים', 'באגים', 'בעיות', 'עובד טוב', 'מומלץ'
     ];
     
+    // מילות מפתח שמצביעות על תוכן לא רלוונטי
+    const excludeKeywords = [
+      'introducing', 'announcement', 'rumor', 'leak', 'could get', 
+      'might', 'expected', 'coming soon', 'features', 'specs',
+      'הכרזה', 'שמועה', 'דליפה', 'צפוי', 'מאפיינים'
+    ];
+    
     const fullText = `${title} ${text}`.toLowerCase();
+    
+    // בדיקה שאין מילות מפתח מחריגות
+    const hasExcludeKeywords = excludeKeywords.some(keyword => fullText.includes(keyword));
+    if (hasExcludeKeywords) {
+      return false;
+    }
+    
+    // בדיקה שיש מילות מפתח של דיווח משתמש
     return userReportKeywords.some(keyword => fullText.includes(keyword));
   }
 

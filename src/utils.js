@@ -441,28 +441,7 @@ function formatUserReports(searchResults) {
     });
   }
   
-  // דיווחים מחיפוש כללי
-  if (searchResults.webSearchResults && searchResults.webSearchResults.length > 0) {
-    const relevantWebResults = searchResults.webSearchResults
-      .filter(result => result.relevance && result.relevance > 0.5)
-      .slice(0, 10);
-    
-    if (relevantWebResults.length > 0) {
-      reports += `🔸 <b>מאתרי טכנולוגיה:</b>\n`;
-      
-      relevantWebResults.forEach(result => {
-        reports += `• <b>${truncateText(result.title, 60)}</b>\n`;
-        if (result.snippet) {
-          // תרגום תוכן לעברית אם הוא באנגלית
-          const translatedSnippet = result.snippet.includes('Android') || result.snippet.includes('update') || result.snippet.includes('device') ? 
-            result.snippet.replace(/Android/g, 'אנדרואיד').replace(/update/gi, 'עדכון').replace(/device/gi, 'מכשיר') : 
-            result.snippet;
-          reports += `  📝 ${truncateText(translatedSnippet, 150)}\n`;
-        }
-        reports += `  🔗 <a href="${result.url}">קרא עוד</a>\n\n`;
-      });
-    }
-  }
+
   
   if (reports.trim() === '') {
     reports = `לא נמצאו דיווחי משתמשים ספציפיים לעדכון זה.\nמומלץ לבדוק בפורומים ידנית או להמתין למידע נוסף.\n`;
@@ -542,18 +521,7 @@ function splitUserReports(searchResults) {
       });
     }
   }
-  
-  // דיווחים מחיפוש כללי
-  if (searchResults.webSearchResults && searchResults.webSearchResults.length > 0) {
-    const webReports = formatWebReports(searchResults.webSearchResults);
-    if (webReports.trim()) {
-      reportSections.push({
-        title: '👥 דיווחי משתמשים - אתרי טכנולוגיה',
-        content: webReports
-      });
-    }
-  }
-  
+
   // הגבלת מספר החלקים למקסימום 4 (כדי למנוע ספאם)
   if (reportSections.length > 4) {
     const truncatedSections = reportSections.slice(0, 4);
@@ -613,25 +581,7 @@ function formatForumReports(forumDiscussions) {
   return reports;
 }
 
-// עיצוב דיווחי אתרים בנפרד
-function formatWebReports(webSearchResults) {
-  let reports = '';
-  
-  const relevantWebResults = webSearchResults
-    .filter(result => result.relevance && result.relevance > 0.5)
-    .slice(0, 8); // מגביל ל-8 דיווחים
-  
-  relevantWebResults.forEach(result => {
-    reports += `• <b>${truncateText(translateToHebrew(result.title), 60)}</b>\n`;
-    if (result.snippet) {
-      const translatedSnippet = translateToHebrew(result.snippet);
-      reports += `  📝 ${truncateText(translatedSnippet, 120)}\n`;
-    }
-    reports += `  🔗 <a href="${result.url}">קרא עוד</a>\n\n`;
-  });
-  
-  return reports;
-}
+
 
 // פונקציה לתרגום תוכן לעברית
 function translateToHebrew(text) {
