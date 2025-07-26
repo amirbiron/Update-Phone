@@ -384,10 +384,27 @@ function formatDebugInfo(data) {
   return JSON.stringify(data, null, 2);
 }
 
-// בדיקה אם יש דיווחי משתמשים
+// בדיקה אם יש דיווחי משתמשים משמעותיים
 function hasUserReports(searchResults) {
-  return (searchResults.redditPosts && searchResults.redditPosts.length > 0) ||
-         (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0);
+  // בדיקת דיווחי Reddit
+  const hasRedditReports = searchResults.redditPosts && 
+    searchResults.redditPosts.length > 0 && 
+    searchResults.redditPosts.some(post => post.score > 0 || post.selftext?.trim().length > 20);
+  
+  // בדיקת דיווחי פורומים - רק אם יש תוכן אמיתי ולא רק קישורי חיפוש
+  const hasForumReports = searchResults.forumDiscussions && 
+    searchResults.forumDiscussions.length > 0 &&
+    searchResults.forumDiscussions.some(discussion => 
+      discussion.userReports && 
+      discussion.userReports.length > 0 &&
+      !discussion.userReports.every(report => 
+        report.content.includes('מאמרים וביקורות') || 
+        report.content.includes('דיונים קהילתיים') ||
+        report.content.length < 30
+      )
+    );
+  
+  return hasRedditReports || hasForumReports;
 }
 
 // עיצוב דיווחי משתמשים
@@ -503,7 +520,8 @@ function splitUserReports(searchResults) {
   // דיווחים מ-Reddit
   if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
     const redditReports = formatRedditReports(searchResults.redditPosts);
-    if (redditReports.trim()) {
+    // בדיקה שהתוכן אינו ריק ולא מכיל רק תוכן כללי
+    if (redditReports.trim() && redditReports.length > 50) {
       reportSections.push({
         title: '👥 דיווחי משתמשים - Reddit',
         content: redditReports
@@ -514,7 +532,8 @@ function splitUserReports(searchResults) {
   // דיווחים מפורומים
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
     const forumReports = formatForumReports(searchResults.forumDiscussions);
-    if (forumReports.trim()) {
+    // בדיקה שהתוכן אינו ריק ולא מכיל רק הודעת ברירת מחדל
+    if (forumReports.trim() && !forumReports.includes('לא נמצאו דיווחי משתמשים ספציפיים')) {
       reportSections.push({
         title: '👥 דיווחי משתמשים - פורומים טכניים',
         content: forumReports
@@ -522,9 +541,15 @@ function splitUserReports(searchResults) {
     }
   }
 
-  // הגבלת מספר החלקים למקסימום 4 (כדי למנוע ספאם)
-  if (reportSections.length > 4) {
-    const truncatedSections = reportSections.slice(0, 4);
+  // אם אין דיווחים משמעותיים, לא נוסיף כלום
+  if (reportSections.length === 0) {
+    console.log('ℹ️  No meaningful user reports found, skipping user reports section');
+    return [];
+  }
+
+  // הגבלת מספר החלקים למקסימום 2 (במקום 4) כדי למנוע ספאם
+  if (reportSections.length > 2) {
+    const truncatedSections = reportSections.slice(0, 2);
     const lastSection = truncatedSections[truncatedSections.length - 1];
     lastSection.content += `\n\n<i>📊 הוגבל מספר הדיווחים כדי למנוע ספאם. סה"כ ${reportSections.length} מקורות נבדקו.</i>`;
     return truncatedSections;
@@ -563,20 +588,41 @@ function formatRedditReports(redditPosts) {
 function formatForumReports(forumDiscussions) {
   let reports = '';
   
-  forumDiscussions.slice(0, 10).forEach(discussion => { // מגביל ל-10 דיווחים
+  // סינון דיווחים דומים כדי למנוע חזרות
+  const uniqueDiscussions = [];
+  const seenTitles = new Set();
+  
+  for (const discussion of forumDiscussions) {
+    // יצירת מפתח ייחודי בהתבסס על כותרת מקוצרת
+    const titleKey = discussion.title.substring(0, 30).toLowerCase();
+    if (!seenTitles.has(titleKey)) {
+      seenTitles.add(titleKey);
+      uniqueDiscussions.push(discussion);
+    }
+  }
+  
+  // הגבלה ל-6 דיווחים ייחודיים (במקום 10) כדי למנוע ספאם
+  uniqueDiscussions.slice(0, 6).forEach(discussion => {
     reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`;
     reports += `  📍 ${discussion.source}\n`;
     
     if (discussion.userReports && discussion.userReports.length > 0) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
-      discussion.userReports.slice(0, 8).forEach(userReport => { // מגביל ל-8 דיווחים פנימיים
+      // הגבלה ל-3 דיווחים פנימיים (במקום 8) כדי למנוע עומס
+      discussion.userReports.slice(0, 3).forEach(userReport => {
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
         reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`;
       });
+    } else {
+      reports += `  📝 <i>אין דיווחי משתמשים ספציפיים</i>\n`;
     }
     
     reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
   });
+  
+  if (uniqueDiscussions.length === 0) {
+    reports = `לא נמצאו דיווחי משתמשים ספציפיים לעדכון זה.\nמומלץ לבדוק בפורומים ידנית או להמתין למידע נוסף.\n`;
+  }
   
   return reports;
 }
@@ -834,5 +880,9 @@ module.exports = {
   generateHash,
   validateDeviceQuery,
   generateQueryId,
-  formatDebugInfo
+  formatDebugInfo,
+  // פונקציות לטיפול בדיווחי משתמשים
+  splitUserReports,
+  formatForumReports,
+  hasUserReports
 };
