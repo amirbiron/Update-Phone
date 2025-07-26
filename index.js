@@ -66,10 +66,15 @@ function setupBotHandlers(bot) {
   // פקודת התחלה
   bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
+  
+  // בדיקת מספר השאילתות הנותרות
+  const limitCheck = await Database.checkUserQueryLimit(chatId);
+  const remainingInfo = `📊 <b>שאילתות נותרות החודש: ${limitCheck.remaining}/${limitCheck.limit}</b>\n\n`;
+  
   const welcomeMessage = `
 🤖 ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!
 
-אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
+${remainingInfo}אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
 
 📱 איך זה עובד:
 1. שלחו לי את פרטי המכשיר שלכם
@@ -82,11 +87,16 @@ function setupBotHandlers(bot) {
 • ציטוטים ישירים מחוות דעת של משתמשים אחרים
 • קישורים למקורות כדי שתוכלו לקרוא עוד
 • ניתוח מקצועי משולב עם חוות דעת אמיתיות
+• 🆕 **חיפוש מידע לכל דגם מכשיר!**
 
 💬 דוגמאות לשאלות:
 • "כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"
 • "יש בעיות בעדכון One UI 6.0 ל-Galaxy A54?"
 • "מה עם עדכון ל-Pixel 8 לאנדרואיד 14?"
+
+🔢 <b>הגבלות שימוש:</b>
+• כל משתמש יכול לשאול עד 30 שאלות בחודש
+• המגבלה מתאפסת בתחילת כל חודש
 
 📞 פקודות נוספות:
 /help - עזרה מפורטת
@@ -96,16 +106,21 @@ function setupBotHandlers(bot) {
 בואו נתחיל! שאלו אותי על העדכון שלכם 🚀
   `;
   
-    bot.sendMessage(chatId, welcomeMessage);
+    bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'HTML' });
   });
 
   // פקודת עזרה
   bot.onText(/\/help/, async (msg) => {
   const chatId = msg.chat.id;
+  
+  // בדיקת מספר השאילתות הנותרות
+  const limitCheck = await Database.checkUserQueryLimit(chatId);
+  const remainingInfo = `📊 <b>שאילתות נותרות: ${limitCheck.remaining}/${limitCheck.limit}</b>\n\n`;
+  
   const helpMessage = `
 🆘 איך להשתמש בבוט:
 
-📝 פורמטים נתמכים לשאלות:
+${remainingInfo}📝 פורמטים נתמכים לשאלות:
 • "כדאי לעדכן [יצרן] [דגם] ל[גרסה]?"
 • "[דגם] [גרסה] יציב?"
 • "בעיות ב[דגם] עדכון [גרסה]?"
@@ -119,7 +134,7 @@ function setupBotHandlers(bot) {
 • Honor
 • Oppo
 • Realme
-• וכו'...
+• 🆕 **וכל יצרן אחר!** (הבוט כעת מחפש מידע לכל דגם)
 
 📊 המידע שאני בודק:
 • 👥 דיווחי משתמשים מפורומים
@@ -142,10 +157,15 @@ function setupBotHandlers(bot) {
 • דפוסים היסטוריים של היצרן
 • ניתוח סנטימנט של דיווחי משתמשים
 
+🔢 <b>הגבלות שימוש:</b>
+• כל משתמש: 30 שאילתות בחודש
+• המגבלה מתאפסת בתחילת כל חודש
+• זה מבטיח שירות הוגן לכל המשתמשים
+
 ❓ שאלות נוספות? פשוט כתבו לי!
   `;
   
-    bot.sendMessage(chatId, helpMessage);
+    bot.sendMessage(chatId, helpMessage, { parse_mode: 'HTML' });
   });
 
   // פקודת סטטוס
@@ -189,19 +209,40 @@ ${await updateChecker.getServicesStatus()}
     }
   
     try {
+      // בדיקת הגבלת שאילתות חודשית
+      const limitCheck = await Database.checkUserQueryLimit(chatId);
+      
+      if (!limitCheck.allowed) {
+        const resetDate = limitCheck.resetDate.toLocaleDateString('he-IL');
+        bot.sendMessage(chatId, 
+          `⚠️ <b>הגעתם למגבלת השאילתות החודשית</b>\n\n` +
+          `🔢 השתמשתם ב-${limitCheck.used} מתוך ${limitCheck.limit} שאילתות אפשריות החודש.\n` +
+          `📅 המגבלה תתאפס ב-${resetDate}\n\n` +
+          `💡 מגבלה זו קיימת כדי להבטיח שירות הוגן לכל המשתמשים.`,
+          { parse_mode: 'HTML' }
+        );
+        return;
+      }
+      
+      // הצגת מספר השאילתות הנותרות
+      const remainingMessage = `📊 נותרו לכם <b>${limitCheck.remaining}</b> שאילתות החודש\n\n`;
+      
       // הצגת אינדיקטור "כותב"
       bot.sendChatAction(chatId, 'typing');
       
-      // הודעת המתנה
-      const waitingMsg = await bot.sendMessage(chatId, '🔍 בודק מידע על העדכון... זה יכול לקחת מספר שניות');
+      // הודעת המתנה עם מידע על שאילתות נותרות
+      const waitingMsg = await bot.sendMessage(chatId, 
+        remainingMessage + '🔍 בודק מידע על העדכון... זה יכול לקחת מספר שניות',
+        { parse_mode: 'HTML' }
+      );
     
       // ניתוח ההודעה
       const parsedQuery = parseUserMessage(messageText);
       
       if (!parsedQuery.device || !parsedQuery.manufacturer) {
         bot.editMessageText(
-          '❌ לא הצלחתי לזהות את פרטי המכשיר. \n\nאנא כתבו בפורמט:\n"כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"',
-          { chat_id: chatId, message_id: waitingMsg.message_id }
+          remainingMessage + '❌ לא הצלחתי לזהות את פרטי המכשיר. \n\nאנא כתבו בפורמט:\n"כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"',
+          { chat_id: chatId, message_id: waitingMsg.message_id, parse_mode: 'HTML' }
         );
         return;
       }
@@ -211,8 +252,8 @@ ${await updateChecker.getServicesStatus()}
       
       if (!deviceInfo.isValid) {
         bot.editMessageText(
-          `❌ לא מצאתי מידע על המכשיר "${parsedQuery.manufacturer} ${parsedQuery.device}".\n\nוודאו שכתבתם את שם המכשיר נכון.`,
-          { chat_id: chatId, message_id: waitingMsg.message_id }
+          remainingMessage + `❌ לא מצאתי מידע על המכשיר "${parsedQuery.manufacturer} ${parsedQuery.device}".\n\nוודאו שכתבתם את שם המכשיר נכון.`,
+          { chat_id: chatId, message_id: waitingMsg.message_id, parse_mode: 'HTML' }
         );
         return;
       }

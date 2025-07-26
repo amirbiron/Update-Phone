@@ -84,15 +84,19 @@ class DeviceAnalyzer {
       const { manufacturer, device, version } = parsedQuery;
       
       // זיהוי היצרן
-      const manufacturerInfo = this.identifyManufacturer(manufacturer);
+      let manufacturerInfo = this.identifyManufacturer(manufacturer);
+      
+      // אם לא נמצא היצרן במסד הנתונים, ניצור אחד כללי
       if (!manufacturerInfo) {
-        return { isValid: false, error: 'Unknown manufacturer' };
+        manufacturerInfo = this.createGenericManufacturer(manufacturer);
       }
 
       // זיהוי המכשיר
-      const deviceInfo = this.identifyDevice(manufacturerInfo, device);
+      let deviceInfo = this.identifyDevice(manufacturerInfo, device);
+      
+      // אם לא נמצא המכשיר במסד הנתונים, ניצור אחד כללי
       if (!deviceInfo) {
-        return { isValid: false, error: 'Unknown device' };
+        deviceInfo = this.createGenericDevice(device);
       }
 
       // אימות גרסת אנדרואיד
@@ -142,6 +146,12 @@ class DeviceAnalyzer {
   // זיהוי המכשיר
   identifyDevice(manufacturerInfo, deviceText) {
     const text = deviceText.toLowerCase().trim();
+    
+    // אם אין מסד נתונים (יצרן כללי), נחזיר null
+    if (!manufacturerInfo.data || !manufacturerInfo.data.devices) {
+      return null;
+    }
+    
     const devices = manufacturerInfo.data.devices;
     
     // חיפוש מדויק
@@ -168,6 +178,33 @@ class DeviceAnalyzer {
     }
     
     return null;
+  }
+
+  // יצירת יצרן כללי למכשירים לא מוכרים
+  createGenericManufacturer(manufacturerText) {
+    const cleanName = this.capitalizeManufacturer(manufacturerText.trim());
+    return {
+      key: manufacturerText.toLowerCase().trim(),
+      name: cleanName,
+      data: {
+        aliases: [manufacturerText.toLowerCase().trim()],
+        devices: {}
+      }
+    };
+  }
+
+  // יצירת מכשיר כללי למכשירים לא מוכרים
+  createGenericDevice(deviceText) {
+    const cleanName = deviceText.trim();
+    const currentYear = new Date().getFullYear();
+    
+    return {
+      key: deviceText.toLowerCase().trim(),
+      fullName: cleanName,
+      series: 'Unknown',
+      year: currentYear,
+      codename: 'generic'
+    };
   }
 
   // ניתוח גרסת אנדרואיד
