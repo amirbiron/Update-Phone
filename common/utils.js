@@ -935,7 +935,7 @@ function formatMainResponse(deviceInfo, updateInfo, recommendation) {
   response += `🎯 <b>רמת ביטחון:</b> ${getConfidenceText(recommendation.confidence)}\n\n`;
   
   // המלצה עיקרית
-  response += `💡 <b>המלצה:</b> ${getRecommendationText(recommendation.recommendation)}\n\n`;
+  response += `💡 <b>המלצה:</b> ${getRecommendationText(recommendation.recommendation)} ${emoji}\n\n`;
   
   // יתרונות
   if (recommendation.benefits && recommendation.benefits.length > 0) {
