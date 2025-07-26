@@ -151,9 +151,22 @@ class DeviceAnalyzer {
   }
 
   // ניתוח והזהה המכשיר מההודעה
-  async analyzeDevice(parsedQuery) {
+  async analyzeDevice(deviceOrQuery, version = null) {
     try {
-      const { manufacturer, device, version } = parsedQuery;
+      // תמיכה בשני פורמטים: אובייקט או שני פרמטרים נפרדים
+      let manufacturer, device, parsedVersion;
+      
+      if (typeof deviceOrQuery === 'string' && version) {
+        // פורמט ישן: שני פרמטרים נפרדים
+        device = deviceOrQuery;
+        manufacturer = deviceOrQuery.split(' ')[0]; // נוציא את היצרן מהמכשיר
+        parsedVersion = version;
+      } else if (typeof deviceOrQuery === 'object' && deviceOrQuery !== null) {
+        // פורמט חדש: אובייקט
+        ({ manufacturer, device, version: parsedVersion } = deviceOrQuery);
+      } else {
+        throw new Error('Invalid parameters for analyzeDevice');
+      }
       
       // זיהוי היצרן
       let manufacturerInfo = this.identifyManufacturer(manufacturer);
@@ -172,7 +185,7 @@ class DeviceAnalyzer {
       }
 
       // אימות גרסת אנדרואיד
-      const androidVersion = this.parseAndroidVersion(version);
+      const androidVersion = this.parseAndroidVersion(parsedVersion);
       
       const result = {
         isValid: true,

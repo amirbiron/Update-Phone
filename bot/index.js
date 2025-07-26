@@ -489,11 +489,7 @@ ${usageEmoji} **שאילתות החודש:**
           console.log(`🔍 Analyzing device: ${parsedMessage.device} with Android ${parsedMessage.version}`);
 
           // ניתוח המכשיר
-          const deviceInfo = await deviceAnalyzer.analyzeDevice({
-            manufacturer: parsedMessage.device.split(' ')[0], // נוציא את היצרן מהמכשיר
-            device: parsedMessage.device,
-            version: parsedMessage.version
-          });
+          const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.device, parsedMessage.version);
           console.log('📱 Device analysis result:', deviceInfo);
 
           // בדיקת עדכונים עם לוגים מפורטים
