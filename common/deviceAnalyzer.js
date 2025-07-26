@@ -98,6 +98,54 @@ class DeviceAnalyzer {
           'nord 3': { fullName: 'OnePlus Nord 3', series: 'Nord', year: 2023, codename: 'larry' },
           'nord 2': { fullName: 'OnePlus Nord 2', series: 'Nord', year: 2021, codename: 'denniz' }
         }
+      },
+      oppo: {
+        aliases: ['oppo', 'find', 'reno'],
+        devices: {
+          'find x5': { fullName: 'Oppo Find X5', series: 'Find', year: 2022, codename: 'generic' },
+          'find x6': { fullName: 'Oppo Find X6', series: 'Find', year: 2023, codename: 'generic' },
+          'reno 10': { fullName: 'Oppo Reno 10', series: 'Reno', year: 2023, codename: 'generic' },
+          'reno 11': { fullName: 'Oppo Reno 11', series: 'Reno', year: 2024, codename: 'generic' }
+        }
+      },
+      vivo: {
+        aliases: ['vivo'],
+        devices: {
+          'v29 pro': { fullName: 'Vivo V29 Pro', series: 'V', year: 2023, codename: 'generic' },
+          'v30 pro': { fullName: 'Vivo V30 Pro', series: 'V', year: 2024, codename: 'generic' },
+          'x90 pro': { fullName: 'Vivo X90 Pro', series: 'X', year: 2023, codename: 'generic' }
+        }
+      },
+      realme: {
+        aliases: ['realme', 'gt'],
+        devices: {
+          'gt neo 5': { fullName: 'Realme GT Neo 5', series: 'GT', year: 2023, codename: 'generic' },
+          'gt 3': { fullName: 'Realme GT 3', series: 'GT', year: 2023, codename: 'generic' },
+          'gt 2': { fullName: 'Realme GT 2', series: 'GT', year: 2022, codename: 'generic' }
+        }
+      },
+      honor: {
+        aliases: ['honor'],
+        devices: {
+          '90 pro': { fullName: 'Honor 90 Pro', series: 'Honor', year: 2023, codename: 'generic' },
+          '80 pro': { fullName: 'Honor 80 Pro', series: 'Honor', year: 2022, codename: 'generic' },
+          '70 pro': { fullName: 'Honor 70 Pro', series: 'Honor', year: 2022, codename: 'generic' }
+        }
+      },
+      nothing: {
+        aliases: ['nothing', 'phone'],
+        devices: {
+          'phone 1': { fullName: 'Nothing Phone 1', series: 'Phone', year: 2022, codename: 'generic' },
+          'phone 2': { fullName: 'Nothing Phone 2', series: 'Phone', year: 2023, codename: 'generic' }
+        }
+      },
+      sony: {
+        aliases: ['sony', 'xperia'],
+        devices: {
+          '1 v': { fullName: 'Sony Xperia 1 V', series: 'Xperia', year: 2023, codename: 'generic' },
+          '5 v': { fullName: 'Sony Xperia 5 V', series: 'Xperia', year: 2023, codename: 'generic' },
+          '10 v': { fullName: 'Sony Xperia 10 V', series: 'Xperia', year: 2023, codename: 'generic' }
+        }
       }
     };
   }
@@ -152,6 +200,8 @@ class DeviceAnalyzer {
 
   // זיהוי היצרן
   identifyManufacturer(manufacturerText) {
+    if (!manufacturerText) return null;
+    
     const text = manufacturerText.toLowerCase().trim();
     
     for (const [key, data] of Object.entries(this.deviceDatabase)) {
@@ -240,6 +290,17 @@ class DeviceAnalyzer {
 
   // יצירת יצרן כללי למכשירים לא מוכרים
   createGenericManufacturer(manufacturerText) {
+    if (!manufacturerText) {
+      return {
+        key: 'unknown',
+        name: 'Unknown',
+        data: {
+          aliases: ['unknown'],
+          devices: {}
+        }
+      };
+    }
+    
     const cleanName = this.capitalizeManufacturer(manufacturerText.trim());
     return {
       key: manufacturerText.toLowerCase().trim(),
@@ -253,6 +314,16 @@ class DeviceAnalyzer {
 
   // יצירת מכשיר כללי למכשירים לא מוכרים
   createGenericDevice(deviceText) {
+    if (!deviceText) {
+      return {
+        key: 'unknown',
+        fullName: 'Unknown Device',
+        series: 'Unknown',
+        year: new Date().getFullYear(),
+        codename: 'generic'
+      };
+    }
+    
     const cleanName = deviceText.trim();
     const currentYear = new Date().getFullYear();
     
@@ -443,7 +514,13 @@ class DeviceAnalyzer {
       samsung: 'Samsung',
       google: 'Google',
       xiaomi: 'Xiaomi',
-      oneplus: 'OnePlus'
+      oneplus: 'OnePlus',
+      oppo: 'Oppo',
+      vivo: 'Vivo',
+      realme: 'Realme',
+      honor: 'Honor',
+      nothing: 'Nothing',
+      sony: 'Sony'
     };
     
     return names[manufacturer] || manufacturer.charAt(0).toUpperCase() + manufacturer.slice(1);
