@@ -21,6 +21,10 @@ app.get('/', (req, res) => {
   res.send('Telegram Bot is running and healthy.');
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 async function main() {
   try {
     await database.connect();
