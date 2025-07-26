@@ -489,6 +489,12 @@ function getSentimentEmoji(sentiment) {
 const TELEGRAM_MESSAGE_LIMIT = 4096; // מגבלת טלגרם
 
 function splitLongMessage(message) {
+  // וידוא שההודעה היא מחרוזת
+  if (typeof message !== 'string') {
+    console.error('splitLongMessage received non-string message:', typeof message, message);
+    message = String(message || 'שגיאה בפיצול ההודעה');
+  }
+  
   if (message.length <= TELEGRAM_MESSAGE_LIMIT) {
     return [message];
   }
@@ -761,6 +767,12 @@ function formatResponseWithUserReports(deviceInfo, updateInfo, recommendation) {
 // פונקציה לפיצול הודעות רגילות (עבור תאימות לאחור)
 function formatResponseWithSplit(response) {
   const TELEGRAM_LIMIT = 4096;
+  
+  // וידוא שהתגובה היא מחרוזת
+  if (typeof response !== 'string') {
+    console.error('formatResponseWithSplit received non-string response:', typeof response, response);
+    response = String(response || 'שגיאה בעיצוב התגובה');
+  }
   
   if (response.length <= TELEGRAM_LIMIT) {
     return {

@@ -535,7 +535,13 @@ ${usageEmoji} **שאילתות החודש:**
           console.log('❓ Processing general question');
           
           const generalInfo = await updateChecker.searchGeneralInfo(messageText);
-          response = generalInfo || 'מצטער, לא מצאתי מידע רלוונטי לשאלה שלכם. אנא נסו לנסח אחרת או שלחו פרטי מכשיר ספציפיים.';
+          
+          // בדיקה אם החיפוש הצליח וחילוץ התוכן המתאים
+          if (generalInfo && generalInfo.success && generalInfo.data) {
+            response = generalInfo.data.summary || generalInfo.message || 'מצאתי מידע כללי על השאילתה שלכם.';
+          } else {
+            response = generalInfo?.message || 'מצטער, לא מצאתי מידע רלוונטי לשאלה שלכם. אנא נסו לנסח אחרת או שלחו פרטי מכשיר ספציפיים.';
+          }
           
           // רישום האינטראקציה
           await Database.logUserInteraction(chatId, 'question', {
