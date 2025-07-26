@@ -1015,11 +1015,8 @@ function checkMessageLength(message) {
 }
 
 // לוג פרטי הודעות מפוצלות
-function logMessageSplit(messages) {
-  console.log(`📨 Split message into ${messages.length} parts:`);
-  messages.forEach((msg, index) => {
-    console.log(`  Part ${index + 1}: ${msg.length} characters`);
-  });
+function logMessageSplit(chatId, originalMessage, partNumber, totalParts, partLength) {
+  console.log(`📨 [Chat ${chatId}] Split message part ${partNumber}/${totalParts}: ${partLength} characters`);
 }
 
 module.exports = {

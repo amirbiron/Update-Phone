@@ -489,7 +489,11 @@ ${usageEmoji} **שאילתות החודש:**
           console.log(`🔍 Analyzing device: ${parsedMessage.device} with Android ${parsedMessage.version}`);
 
           // ניתוח המכשיר
-          const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.device, parsedMessage.version);
+          const deviceInfo = await deviceAnalyzer.analyzeDevice({
+            manufacturer: parsedMessage.device.split(' ')[0], // נוציא את היצרן מהמכשיר
+            device: parsedMessage.device,
+            version: parsedMessage.version
+          });
           console.log('📱 Device analysis result:', deviceInfo);
 
           // בדיקת עדכונים עם לוגים מפורטים
@@ -591,11 +595,16 @@ ${usageEmoji} **שאילתות החודש:**
               }
             } else {
               // תגובה רגילה - עריכת הודעת ההמתנה
-              await bot.editMessageText(response, {
-                chat_id: chatId,
-                message_id: waitingMsg.message_id,
-                parse_mode: 'HTML'
-              });
+              try {
+                await bot.editMessageText(response, {
+                  chat_id: chatId,
+                  message_id: waitingMsg.message_id,
+                  parse_mode: 'HTML'
+                });
+              } catch (error) {
+                console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+                await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
+              }
             }
             
             // הודעת מידע על שאילתות נותרות
@@ -659,11 +668,16 @@ ${usageEmoji} **שאילתות החודש:**
           }
                             } else {
             // תגובה רגילה - עריכת הודעת ההמתנה
-            await bot.editMessageText(response, {
-              chat_id: chatId,
-              message_id: waitingMsg.message_id,
-              parse_mode: 'HTML'
-            });
+            try {
+              await bot.editMessageText(response, {
+                chat_id: chatId,
+                message_id: waitingMsg.message_id,
+                parse_mode: 'HTML'
+              });
+            } catch (error) {
+              console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+              await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
+            }
           }
           
           // הודעת מידע על שאילתות נותרות (גם לשאלות כלליות)

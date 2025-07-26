@@ -200,7 +200,7 @@ class DeviceAnalyzer {
 
   // זיהוי היצרן
   identifyManufacturer(manufacturerText) {
-    if (!manufacturerText) return null;
+    if (!manufacturerText || typeof manufacturerText !== 'string') return null;
     
     const text = manufacturerText.toLowerCase().trim();
     
@@ -219,6 +219,8 @@ class DeviceAnalyzer {
 
   // זיהוי המכשיר
   identifyDevice(manufacturerInfo, deviceText) {
+    if (!deviceText || typeof deviceText !== 'string') return null;
+    
     const text = deviceText.toLowerCase().trim();
     
     // אם אין מסד נתונים (יצרן כללי), נחזיר null
