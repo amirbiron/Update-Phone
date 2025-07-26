@@ -351,22 +351,27 @@ class Scheduler {
 // יצירת מופע יחיד ולהפעילו
 const scheduler = new Scheduler();
 
-// הפעלה אוטומטית כשהמודול נטען
-if (process.env.NODE_ENV !== 'test') {
+// הפעלה אוטומטית רק אם לא קוראים ישירות ל-runTaskNow ע"י פקודת cron
+if (
+  process.env.NODE_ENV !== 'test' &&
+  process.env.RUN_TASK_NOW !== 'true'
+) {
   scheduler.start();
 }
 
-// טיפול בסגירה נאותה
-process.on('SIGINT', () => {
-  console.log('\n🛑 Received SIGINT, stopping scheduler...');
-  scheduler.stop();
-  process.exit(0);
-});
+// טיפול בסגירה נאותה - רק אם הסקדג'ולר פועל
+if (process.env.RUN_TASK_NOW !== 'true') {
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Received SIGINT, stopping scheduler...');
+    scheduler.stop();
+    process.exit(0);
+  });
 
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Received SIGTERM, stopping scheduler...');
-  scheduler.stop();
-  process.exit(0);
-});
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Received SIGTERM, stopping scheduler...');
+    scheduler.stop();
+    process.exit(0);
+  });
+}
 
 module.exports = scheduler;
