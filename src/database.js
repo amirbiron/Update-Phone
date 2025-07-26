@@ -122,7 +122,7 @@ class Database {
       await this.createIndexes();
       
     } catch (error) {
-      console.error('❌ MongoDB connection error:', error);
+      console.error('❌ MongoDB connection error:', error?.message || error);
       this.isConnected = false;
     }
   }
@@ -138,7 +138,7 @@ class Database {
       await UserLimit.createIndex({ chatId: 1 });
       await UserLimit.createIndex({ lastResetDate: 1 });
     } catch (error) {
-      console.error('Error creating indexes:', error);
+      console.error('Error creating indexes:', error?.message || error);
     }
   }
 
@@ -176,7 +176,7 @@ class Database {
       
       return savedQuery._id;
     } catch (error) {
-      console.error('Error saving query:', error);
+      console.error('Error saving query:', error?.message || error);
       return null;
     }
   }
@@ -208,7 +208,7 @@ class Database {
       
       return await UpdateTracking.findOneAndUpdate(filter, update, options);
     } catch (error) {
-      console.error('Error updating update tracking:', error);
+      console.error('Error updating update tracking:', error?.message || error);
       return null;
     }
   }
@@ -223,7 +223,7 @@ class Database {
         deviceKey
       }).sort({ lastChecked: -1 }).limit(10);
     } catch (error) {
-      console.error('Error getting update history:', error);
+      console.error('Error getting update history:', error?.message || error);
       return [];
     }
   }
@@ -298,7 +298,7 @@ class Database {
       );
       
     } catch (error) {
-      console.error('Error updating daily stats:', error);
+      console.error('Error updating daily stats:', error?.message || error);
     }
   }
 
@@ -335,7 +335,7 @@ class Database {
         avgResponseTime: Math.round(avgResponseTime[0]?.avgTime || 0)
       };
     } catch (error) {
-      console.error('Error getting system stats:', error);
+      console.error('Error getting system stats:', error?.message || error);
       return {
         totalQueries: 0,
         trackedDevices: 0,
@@ -353,7 +353,7 @@ class Database {
       const feedback = new Feedback(feedbackData);
       return await feedback.save();
     } catch (error) {
-      console.error('Error saving feedback:', error);
+      console.error('Error saving feedback:', error?.message || error);
       return null;
     }
   }
@@ -367,7 +367,7 @@ class Database {
         .sort({ timestamp: -1 })
         .limit(limit);
     } catch (error) {
-      console.error('Error getting user feedback:', error);
+      console.error('Error getting user feedback:', error?.message || error);
       return [];
     }
   }
@@ -385,7 +385,7 @@ class Database {
       .limit(limit)
       .select('recommendation timestamp updateInfo');
     } catch (error) {
-      console.error('Error finding similar queries:', error);
+      console.error('Error finding similar queries:', error?.message || error);
       return [];
     }
   }
@@ -415,7 +415,7 @@ class Database {
         }}
       ]);
     } catch (error) {
-      console.error('Error getting popular devices:', error);
+      console.error('Error getting popular devices:', error?.message || error);
       return [];
     }
   }
@@ -438,7 +438,7 @@ class Database {
       
       console.log(`Cleanup completed: ${deletedQueries.deletedCount} queries, ${deletedStats.deletedCount} stats`);
     } catch (error) {
-      console.error('Error during cleanup:', error);
+      console.error('Error during cleanup:', error?.message || error);
     }
   }
 
@@ -498,7 +498,7 @@ class Database {
       };
       
     } catch (error) {
-      console.error('Error checking user query limit:', error);
+      console.error('Error checking user query limit:', error?.message || error);
       return { allowed: true, remaining: 30 }; // ברירת מחדל בשגיאה
     }
   }
@@ -519,7 +519,7 @@ class Database {
         { upsert: true }
       );
     } catch (error) {
-      console.error('Error incrementing user query count:', error);
+      console.error('Error incrementing user query count:', error?.message || error);
     }
   }
 
@@ -530,7 +530,7 @@ class Database {
       this.isConnected = false;
       console.log('Disconnected from MongoDB');
     } catch (error) {
-      console.error('Error disconnecting from MongoDB:', error);
+      console.error('Error disconnecting from MongoDB:', error?.message || error);
     }
   }
 }

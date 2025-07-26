@@ -42,14 +42,14 @@ class Scheduler {
         // בדיקת בריאות מסד הנתונים
         const healthCheck = await Database.healthCheck();
         if (healthCheck.status !== 'healthy') {
-          console.error('⚠️ Database health check failed:', healthCheck.error);
+          console.error('⚠️ Database health check failed:', healthCheck.error?.message || healthCheck.error);
         }
         
         // רישום פעילות יומית
         await this.logDailyActivity();
         
       } catch (error) {
-        console.error('❌ Daily task failed:', error);
+        console.error('❌ Daily task failed:', error?.message || error);
       }
     }, {
       scheduled: true,
@@ -76,7 +76,7 @@ class Scheduler {
         await this.checkPopularDevicesUpdates();
         
       } catch (error) {
-        console.error('❌ Weekly task failed:', error);
+        console.error('❌ Weekly task failed:', error?.message || error);
       }
     }, {
       scheduled: true,
@@ -104,7 +104,7 @@ class Scheduler {
         console.log('✅ Popular updates checked');
         
       } catch (error) {
-        console.error('❌ Popular updates check failed:', error);
+        console.error('❌ Popular updates check failed:', error?.message || error);
       }
     }, {
       scheduled: true,
@@ -132,7 +132,7 @@ class Scheduler {
         console.log('✅ Monthly tasks completed');
         
       } catch (error) {
-        console.error('❌ Monthly task failed:', error);
+        console.error('❌ Monthly task failed:', error?.message || error);
       }
     }, {
       scheduled: true,
@@ -170,7 +170,7 @@ class Scheduler {
       }
       
     } catch (error) {
-      console.error(`Error in proactive check for ${deviceData.device}:`, error);
+      console.error(`Error in proactive check for ${deviceData.device}:`, error?.message || error);
     }
   }
 
@@ -186,7 +186,7 @@ class Scheduler {
       console.log(`- Average response time: ${stats.avgResponseTime}ms`);
       
     } catch (error) {
-      console.error('Error logging daily activity:', error);
+      console.error('Error logging daily activity:', error?.message || error);
     }
   }
 
@@ -210,7 +210,7 @@ class Scheduler {
       // כאן ניתן להוסיף שליחת הדוח למנהלי המערכת
       
     } catch (error) {
-      console.error('Error generating weekly report:', error);
+      console.error('Error generating weekly report:', error?.message || error);
     }
   }
 
@@ -238,7 +238,7 @@ class Scheduler {
       console.log(JSON.stringify(monthlyReport, null, 2));
       
     } catch (error) {
-      console.error('Error generating monthly report:', error);
+      console.error('Error generating monthly report:', error?.message || error);
     }
   }
 
@@ -257,7 +257,7 @@ class Scheduler {
       }
       
     } catch (error) {
-      console.error('Error checking popular devices updates:', error);
+      console.error('Error checking popular devices updates:', error?.message || error);
     }
   }
 
@@ -280,7 +280,7 @@ class Scheduler {
       // כאן ניתן להוסיף לוגיקה לשיפור המערכת בהתבסס על המגמות
       
     } catch (error) {
-      console.error('Error analyzing trends:', error);
+      console.error('Error analyzing trends:', error?.message || error);
     }
   }
 
@@ -302,7 +302,7 @@ class Scheduler {
       }
       
     } catch (error) {
-      console.error('Error checking critical security updates:', error);
+      console.error('Error checking critical security updates:', error?.message || error);
     }
   }
 

@@ -7,6 +7,14 @@ const RecommendationEngine = require('./src/recommendationEngine');
 const Database = require('./src/database');
 const { formatResponse, formatResponseWithSplit, parseUserMessage, logMessageSplit } = require('./src/utils');
 
+// טיפול גלובלי בחריגות בלתי מטופלות
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error?.message || error);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -37,7 +45,7 @@ initializeBot().then(botInstance => {
   setupBotHandlers(bot);
   console.log(`🤖 Bot initialized in ${process.env.NODE_ENV === 'production' ? 'webhook' : 'polling'} mode`);
 }).catch(error => {
-  console.error('❌ Failed to initialize bot:', error);
+  console.error('❌ Failed to initialize bot:', error?.message || error);
   process.exit(1);
 });
 
@@ -304,7 +312,7 @@ ${await updateChecker.getServicesStatus()}
           });
           console.log(`✅ Sent message chunk ${i}/${messageChunks.length - 1}`);
         } catch (messageError) {
-          console.error(`❌ Error sending message chunk ${i}:`, messageError);
+          console.error(`❌ Error sending message chunk ${i}:`, messageError?.message || messageError);
           // המשך לשלוח את שאר ההודעות גם אם אחת נכשלה
         }
       }
@@ -320,7 +328,7 @@ ${await updateChecker.getServicesStatus()}
       });
     
     } catch (error) {
-      console.error('Error processing message:', error);
+      console.error('Error processing message:', error?.message || error);
       
       try {
         bot.editMessageText(
@@ -335,11 +343,15 @@ ${await updateChecker.getServicesStatus()}
 
   // טיפול בשגיאות
   bot.on('error', (error) => {
-    console.error('Bot error:', error);
+    console.error('Bot error:', error?.message || error);
   });
 
   bot.on('polling_error', (error) => {
-    console.error('Polling error:', error);
+    if (error.code === 'ETELEGRAM' && error.response?.body?.error_code === 409) {
+      console.warn('⚠️ Conflict – ייתכן ויש מופע נוסף של הבוט. מתעלמים זמנית.');
+    } else {
+      console.error('Polling error:', error?.message || error);
+    }
   });
 }
 

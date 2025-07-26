@@ -121,7 +121,7 @@ class DeviceAnalyzer {
       return result;
 
     } catch (error) {
-      console.error('Error analyzing device:', error);
+      console.error('Error analyzing device:', error?.message || error);
       return { isValid: false, error: 'Analysis failed' };
     }
   }
