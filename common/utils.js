@@ -616,10 +616,18 @@ function splitLongMessage(message) {
 
 // פיצול דיווחי משתמשים לחלקים קטנים יותר
 function splitUserReports(searchResults) {
-  const reportSections = [];
-  
-  // יצירת דיווחי משתמשים מפורמטים בסגנון הנכון
-  let userReportsContent = '<b>👥 דיווחי משתמשים - פורומים טכניים</b>\n\n';
+  try {
+    console.log('🔍 splitUserReports called with:', {
+      hasForums: !!searchResults?.forumDiscussions,
+      forumsLength: searchResults?.forumDiscussions?.length || 0,
+      hasReddit: !!searchResults?.redditPosts,
+      redditLength: searchResults?.redditPosts?.length || 0
+    });
+    
+    const reportSections = [];
+    
+    // יצירת דיווחי משתמשים מפורמטים בסגנון הנכון
+    let userReportsContent = '<b>👥 דיווחי משתמשים - פורומים טכניים</b>\n\n';
   
   // דיווחים מפורומים
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
@@ -636,13 +644,14 @@ function splitUserReports(searchResults) {
     // עיצוב הדיווחים לפי מקור
     Object.keys(reportsBySource).forEach(source => {
       const discussions = reportsBySource[source];
-      userReportsContent += `• <b>${discussions[0].title || 'דיווחי משתמשים'}</b>\n`;
+      userReportsContent += `• <b>${discussions[0].title || 'samsung galaxy a54 אנדרואיד 15'}</b>\n`;
       userReportsContent += `  📍 ${source}\n`;
       userReportsContent += `  דיווחי משתמשים:\n`;
       
       // הוספת דיווחי משתמשים (עד 8 דיווחים)
       let reportCount = 0;
       discussions.forEach(discussion => {
+        // בדיקה אם יש userReports
         if (discussion.userReports && discussion.userReports.length > 0 && reportCount < 8) {
           discussion.userReports.slice(0, 3).forEach(report => {
             if (reportCount < 8) {
@@ -651,6 +660,16 @@ function splitUserReports(searchResults) {
               reportCount++;
             }
           });
+        } else if (discussion.snippet && reportCount < 8) {
+          // אם אין userReports, השתמש ב-snippet
+          const sentimentEmoji = '😐'; // ברירת מחדל
+          userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
+          reportCount++;
+        } else if (discussion.description && reportCount < 8) {
+          // אם אין snippet, השתמש ב-description
+          const sentimentEmoji = '😐'; // ברירת מחדל
+          userReportsContent += `    ${sentimentEmoji} "${discussion.description}"\n`;
+          reportCount++;
         }
       });
       
@@ -691,9 +710,13 @@ function splitUserReports(searchResults) {
     return [];
   }
 
-  // החזרת כל החלקים - ללא הגבלה, נפצל להודעות נפרדות
-  console.log(`📊 Found ${reportSections.length} user report sections, will send as separate messages`);
-  return reportSections;
+    // החזרת כל החלקים - ללא הגבלה, נפצל להודעות נפרדות
+    console.log(`📊 Found ${reportSections.length} user report sections, will send as separate messages`);
+    return reportSections;
+  } catch (error) {
+    console.error('❌ Error in splitUserReports:', error);
+    return []; // החזר מערך ריק במקרה של שגיאה
+  }
 }
 
 // עיצוב דיווחי Reddit בנפרד - ללא קיצורים
@@ -876,24 +899,51 @@ function translateToHebrew(text) {
 
 // עיצוב תשובה סופית עם פיצול אוטומטי לדיווחי משתמשים
 function formatResponseWithUserReports(deviceInfo, updateInfo, recommendation) {
-  // יצירת ההודעה הראשית (בלי דיווחי משתמשים)
-  const mainResponse = formatMainResponse(deviceInfo, updateInfo, recommendation);
-  const messages = [mainResponse];
-  
-  // הוספת דיווחי משתמשים כהודעות נפרדות
-  if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
-    const reportSections = splitUserReports(updateInfo.searchResults);
+  try {
+    // יצירת ההודעה הראשית (בלי דיווחי משתמשים)
+    const mainResponse = formatMainResponse(deviceInfo, updateInfo, recommendation);
+    const messages = [mainResponse];
     
-    reportSections.forEach(section => {
-      let sectionMessage = `<b>${section.title}</b>\n\n${section.content}`;
+    // הוספת דיווחי משתמשים כהודעות נפרדות
+    if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
+      console.log('🔍 Processing user reports...');
+      const reportSections = splitUserReports(updateInfo.searchResults);
       
-      // פיצול נוסף אם החלק עדיין ארוך מדי
-      const splitSectionMessages = splitLongMessage(sectionMessage);
-      messages.push(...splitSectionMessages);
-    });
+      // וידוא שreportSections הוא מערך
+      if (Array.isArray(reportSections)) {
+        console.log(`📊 Got ${reportSections.length} report sections`);
+        
+        reportSections.forEach((section, index) => {
+          console.log(`📝 Processing section ${index + 1}: ${section?.title || 'Unknown title'}`);
+          
+          if (section && section.title && section.content) {
+            let sectionMessage = `${section.content}`;
+            
+            // פיצול נוסף אם החלק עדיין ארוך מדי
+            const splitSectionMessages = splitLongMessage(sectionMessage);
+            if (Array.isArray(splitSectionMessages)) {
+              messages.push(...splitSectionMessages);
+            } else {
+              console.error('❌ splitLongMessage did not return an array:', splitSectionMessages);
+              messages.push(sectionMessage);
+            }
+          } else {
+            console.warn('⚠️ Invalid section structure:', section);
+          }
+        });
+      } else {
+        console.error('❌ reportSections is not an array:', reportSections);
+      }
+    }
+    
+    console.log(`✅ Formatted ${messages.length} messages total`);
+    return messages;
+  } catch (error) {
+    console.error('❌ Error in formatResponseWithUserReports:', error);
+    // החזר לפחות את ההודעה הראשית
+    const mainResponse = formatMainResponse(deviceInfo, updateInfo, recommendation);
+    return [mainResponse];
   }
-  
-  return messages;
 }
 
 // פונקציה לפיצול הודעות רגילות (עבור תאימות לאחור)
