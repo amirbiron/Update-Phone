@@ -432,7 +432,7 @@ function formatUserReports(searchResults) {
         reports += `  <b>דיווחי משתמשים:</b>\n`;
         discussion.userReports.slice(0, 10).forEach(userReport => {
           const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
-          reports += `    ${sentimentEmoji} <i>"${truncateText(userReport.content, 100)}"</i>\n`;
+          reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`;
           reports += `    👤 ${userReport.author} | ${timeAgo(userReport.date)}\n`;
         });
       }
@@ -603,7 +603,7 @@ function formatForumReports(forumDiscussions) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
       discussion.userReports.slice(0, 8).forEach(userReport => { // מגביל ל-8 דיווחים פנימיים
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
-        reports += `    ${sentimentEmoji} <i>"${truncateText(userReport.content, 80)}"</i>\n`;
+        reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`;
       });
     }
     
