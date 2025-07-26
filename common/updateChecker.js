@@ -440,22 +440,29 @@ class UpdateChecker {
           );
 
           if (response.data && response.data.data && response.data.data.children) {
-            const posts = response.data.data.children.map(child => ({
-              title: child.data.title,
-              url: `https://reddit.com${child.data.permalink}`,
-              score: child.data.score,
-              numComments: child.data.num_comments,
-              created: new Date(child.data.created_utc * 1000),
-              subreddit: child.data.subreddit,
-              author: child.data.author,
-              selftext: child.data.selftext || '',
-              source: 'reddit',
-              relevance: this.calculateRelevance(child.data.title, searchQuery),
-              // הוספת מידע נוסף לדיווחי משתמשים
-              userExperience: this.extractUserExperience(child.data.title, child.data.selftext),
-              sentiment: this.analyzeSentiment(child.data.title, child.data.selftext),
-              isUserReport: this.isUserReport(child.data.title, child.data.selftext)
-            }));
+            const posts = response.data.data.children.map(child => {
+              // חילוץ דיווחי משתמשים אמיתיים מהפוסט
+              const postText = `${child.data.title} ${child.data.selftext || ''}`;
+              const userReports = this.extractUserReportsFromText(postText);
+              
+              return {
+                title: child.data.title,
+                url: `https://reddit.com${child.data.permalink}`,
+                score: child.data.score,
+                numComments: child.data.num_comments,
+                created: new Date(child.data.created_utc * 1000),
+                subreddit: child.data.subreddit,
+                author: child.data.author,
+                selftext: child.data.selftext || '',
+                source: 'reddit',
+                relevance: this.calculateRelevance(child.data.title, searchQuery),
+                // הוספת מידע נוסף לדיווחי משתמשים
+                userExperience: this.extractUserExperience(child.data.title, child.data.selftext),
+                sentiment: this.analyzeSentiment(child.data.title, child.data.selftext),
+                isUserReport: this.isUserReport(child.data.title, child.data.selftext),
+                userReports: userReports // דיווחי משתמשים אמיתיים שחולצו
+              };
+            });
 
             results.push(...posts);
           }
@@ -556,9 +563,39 @@ class UpdateChecker {
       
       console.log(`🔍 Searching XDA for: ${searchQuery}`);
       
-      // נסיון לחיפוש באמצעות Google site search (יותר אמין)
+      // ניסיון לחיפוש באמצעות Google site search (יותר אמין)
       const googleSearchUrl = `https://www.google.com/search?q=site:xda-developers.com+${encodeURIComponent(searchQuery)}`;
       
+      try {
+        // ניסיון חיפוש עם Google Search API תחילה
+        const googleResults = await this.googleCustomSearch(`site:xda-developers.com "${deviceInfo.device}" "${parsedQuery.version}" update experience problems battery performance`);
+        
+        if (googleResults && googleResults.length > 0) {
+          console.log(`✅ Google Search API found ${googleResults.length} XDA results`);
+          
+          googleResults.forEach(result => {
+            // חילוץ דיווחי משתמשים אמיתיים מה-snippet
+            const userReports = this.extractUserReportsFromText(result.snippet, result.title);
+            
+            results.push({
+              title: result.title,
+              url: result.link,
+              source: 'XDA Developers',
+              weight: 0.9,
+              summary: result.snippet || `דיונים ב-XDA על ${deviceInfo.device} ${parsedQuery.version}`,
+              date: new Date(),
+              sentiment: this.analyzeSentiment(result.title, result.snippet),
+              userReports: userReports // דיווחי משתמשים אמיתיים!
+            });
+          });
+          
+          return results;
+        }
+      } catch (googleError) {
+        console.log(`⚠️ Google Search API failed for XDA: ${googleError.message}, using fallback`);
+      }
+      
+      // Fallback - אם Google Search API נכשל
       try {
         const response = await axios.get(googleSearchUrl, {
           headers: {
@@ -569,6 +606,17 @@ class UpdateChecker {
 
         // ניתוח בסיסי של תוצאות החיפוש
         if (response.data && response.data.includes('xda-developers.com')) {
+          // במקום דיווח גנרי, ננסה לחלץ מידע אמיתי
+          const realUserReports = [
+            {
+              author: 'XDA Member',
+              content: `דיווח על עדכון ${parsedQuery.version} עבור ${deviceInfo.device} - יש לבדוק בפורום לפרטים מלאים`,
+              sentiment: 'neutral',
+              date: new Date(),
+              isPlaceholder: true // מסמן שזה לא דיווח אמיתי
+            }
+          ];
+          
           results.push({
             title: `${deviceInfo.device} ${parsedQuery.version} - XDA Discussion`,
             url: searchUrl,
@@ -577,27 +625,22 @@ class UpdateChecker {
             summary: `נמצאו דיונים ב-XDA על ${deviceInfo.device} ${parsedQuery.version}`,
             date: new Date(),
             sentiment: 'mixed',
-            userReports: [{
-              author: 'XDA Community',
-              content: `דיונים קהילתיים על עדכון ${parsedQuery.version} עבור ${deviceInfo.device}`,
-              sentiment: 'mixed',
-              date: new Date()
-            }]
+            userReports: realUserReports
           });
         }
       } catch (searchError) {
-        console.log(`ℹ️  XDA search failed, providing fallback result`);
+        console.log(`ℹ️  XDA search failed, providing search link instead`);
         
-        // אם החיפוש נכשל, נספק קישור ישיר לחיפוש
+        // אם החיפוש נכשל לחלוטין, נספק קישור ישיר לחיפוש ללא דיווחים גנריים
         results.push({
           title: `${deviceInfo.device} ${parsedQuery.version} - XDA Search`,
           url: searchUrl,
           source: 'XDA Developers',
           weight: 0.7,
-          summary: `חיפוש ב-XDA Developers`,
+          summary: `חיפוש ב-XDA Developers - לא נמצאו דיווחי משתמשים ספציפיים`,
           date: new Date(),
           sentiment: 'neutral',
-          userReports: []
+          userReports: [] // ריק במקום תוכן גנרי!
         });
       }
     } catch (error) {
@@ -642,22 +685,56 @@ class UpdateChecker {
         try {
           const siteSearchUrl = `https://www.google.com/search?q=site:${site.domain}+${encodeURIComponent(searchQuery)}`;
           
-          // הוספת תוצאה עם קישור לחיפוש באתר
-          results.push({
-            title: `${deviceInfo.device} ${parsedQuery.version} - ${site.name}`,
-            url: `https://${site.domain}/search?q=${encodeURIComponent(searchQuery)}`,
-            source: site.name,
-            weight: site.weight,
-            summary: `${site.description} - חיפוש עבור ${deviceInfo.device}`,
-            date: new Date(),
-            sentiment: 'neutral',
-            userReports: [{
-              author: `${site.name} Editorial`,
-              content: `${site.description} על עדכון ${parsedQuery.version}`,
+          // ניסיון חיפוש אמיתי עם Google Search API
+          try {
+            const googleResults = await this.googleCustomSearch(`site:${site.domain} "${deviceInfo.device}" "${parsedQuery.version}" update review user experience`);
+            
+            if (googleResults && googleResults.length > 0) {
+              console.log(`✅ Found ${googleResults.length} results from ${site.name}`);
+              
+              googleResults.slice(0, 2).forEach(result => {
+                // חילוץ דיווחי משתמשים אמיתיים מהתוכן
+                const userReports = this.extractUserReportsFromText(result.snippet, result.title);
+                
+                results.push({
+                  title: result.title,
+                  url: result.link,
+                  source: site.name,
+                  weight: site.weight,
+                  summary: result.snippet || `${site.description} - ${deviceInfo.device}`,
+                  date: new Date(),
+                  sentiment: this.analyzeSentiment(result.title, result.snippet),
+                  userReports: userReports // דיווחי משתמשים אמיתיים או ריק
+                });
+              });
+            } else {
+              // אם לא נמצאו תוצאות ב-Google, נוסיף קישור חיפוש ללא דיווחים גנריים
+              results.push({
+                title: `${deviceInfo.device} ${parsedQuery.version} - ${site.name}`,
+                url: `https://${site.domain}/search?q=${encodeURIComponent(searchQuery)}`,
+                source: site.name,
+                weight: site.weight * 0.7,
+                summary: `חיפוש ב-${site.name} - לא נמצאו דיווחי משתמשים ספציפיים`,
+                date: new Date(),
+                sentiment: 'neutral',
+                userReports: [] // ריק במקום תוכן גנרי
+              });
+            }
+          } catch (googleError) {
+            console.log(`⚠️ Google Search failed for ${site.name}: ${googleError.message}`);
+            
+            // Fallback - קישור חיפוש ללא דיווחים גנריים
+            results.push({
+              title: `${deviceInfo.device} ${parsedQuery.version} - ${site.name}`,
+              url: `https://${site.domain}/search?q=${encodeURIComponent(searchQuery)}`,
+              source: site.name,
+              weight: site.weight * 0.5,
+              summary: `חיפוש ב-${site.name} - יש לבדוק ידנית`,
+              date: new Date(),
               sentiment: 'neutral',
-              date: new Date()
-            }]
-          });
+              userReports: [] // ריק במקום תוכן גנרי
+            });
+          }
 
           // הגבלה למניעת יותר מדי בקשות
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -1783,6 +1860,127 @@ ${resultsText}
     }
   }
 
+  // חילוץ דיווחי משתמשים אמיתיים מטקסט
+  extractUserReportsFromText(text, title = '') {
+    if (!text) return [];
+    
+    console.log(`🔍 [extractUserReports] Analyzing text: "${text.substring(0, 100)}..."`);
+    
+    const userReports = [];
+    const fullText = `${title} ${text}`.toLowerCase();
+    
+    // דפוסים שמזהים דיווחי משתמשים אמיתיים
+    const userReportPatterns = [
+      /after.*updat.*to.*android.*\d+.*(.{20,100})/gi,
+      /i.*updat.*my.*(.{20,100})/gi,
+      /battery.*life.*(.{15,80})/gi,
+      /performance.*(.{15,80})/gi,
+      /experience.*with.*(.{15,80})/gi,
+      /problem.*with.*(.{15,80})/gi,
+      /issue.*with.*(.{15,80})/gi,
+      /working.*fine.*(.{10,60})/gi,
+      /recommend.*(.{10,60})/gi,
+      /avoid.*(.{10,60})/gi
+    ];
+    
+    // דפוסים בעברית - משופרים
+    const hebrewPatterns = [
+      /אחרי.*עדכון.*ל.*אנדרואיד.*\d+.*(.{15,100})/gi,
+      /עדכנתי.*את.*המכשיר.*(.{15,100})/gi,
+      /עדכנתי.*ל.*אנדרואיד.*\d+.*(.{15,100})/gi,
+      /הסוללה.*(.{15,80})/gi,
+      /ביצועים.*(.{15,80})/gi,
+      /בעיות.*עם.*העדכון.*(.{15,100})/gi,
+      /בעיות.*אחרי.*עדכון.*(.{15,100})/gi,
+      /עובד.*טוב.*אחרי.*עדכון.*(.{10,80})/gi,
+      /מומלץ.*לעדכן.*(.{10,80})/gi,
+      /להימנע.*מעדכון.*(.{10,80})/gi,
+      /החוויה.*שלי.*עם.*(.{15,100})/gi,
+      /התקנתי.*את.*העדכון.*(.{15,100})/gi
+    ];
+    
+    const allPatterns = [...userReportPatterns, ...hebrewPatterns];
+    
+    // חיפוש דפוסים בטקסט
+    allPatterns.forEach(pattern => {
+      const matches = text.match(pattern);
+      if (matches) {
+        matches.forEach(match => {
+          // ניקוי הטקסט שנמצא
+          let cleanedReport = match.replace(/^\W+|\W+$/g, '').trim();
+          
+          // וידוא שהדיווח לא קצר מדי או ארוך מדי
+          if (cleanedReport.length >= 20 && cleanedReport.length <= 200) {
+            // בדיקה שזה לא טקסט גנרי
+            if (!this.isGenericText(cleanedReport)) {
+              userReports.push({
+                author: 'Forum User',
+                content: cleanedReport,
+                sentiment: this.analyzeSentiment('', cleanedReport),
+                date: new Date(),
+                isExtracted: true
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    // אם לא נמצאו דפוסים ספציפיים, ננסה לזהות דיווחי משתמשים בצורה פשוטה יותר
+    if (userReports.length === 0) {
+      // בדיקה פשוטה לטקסט בעברית שמכיל מילות מפתח
+      const hebrewKeywords = ['עדכון', 'אנדרואיד', 'סוללה', 'ביצועים', 'בעיות', 'עובד', 'מומלץ'];
+      const englishKeywords = ['update', 'android', 'battery', 'performance', 'experience', 'after'];
+      
+      const hasHebrewKeywords = hebrewKeywords.some(keyword => text.includes(keyword));
+      const hasEnglishKeywords = englishKeywords.some(keyword => fullText.includes(keyword));
+      
+      if ((hasHebrewKeywords || hasEnglishKeywords) && text.length >= 30 && text.length <= 200) {
+        if (!this.isGenericText(text)) {
+          userReports.push({
+            author: 'Forum User',
+            content: text.trim(),
+            sentiment: this.analyzeSentiment('', text),
+            date: new Date(),
+            isExtracted: true
+          });
+        }
+      }
+    }
+    
+    // אם לא נמצאו דיווחים ספציפיים, נחזיר ריק במקום תוכן גנרי
+    if (userReports.length === 0) {
+      console.log(`ℹ️  [extractUserReports] No specific user reports found in text: "${text.substring(0, 100)}..."`);
+      return [];
+    }
+    
+    console.log(`✅ [extractUserReports] Found ${userReports.length} user reports`);
+    userReports.forEach((report, index) => {
+      console.log(`   Report ${index + 1}: "${report.content.substring(0, 50)}..."`);
+    });
+    
+    // הגבלה למקסימום 3 דיווחים איכותיים
+    return userReports.slice(0, 3);
+  }
+
+  // בדיקה אם הטקסט גנרי ולא דיווח אמיתי
+  isGenericText(text) {
+    const genericPhrases = [
+      'דיונים קהילתיים',
+      'מאמרים וביקורות',
+      'חיפוש ב',
+      'מידע על עדכון',
+      'נמצאו דיונים',
+      'discussions about',
+      'articles and reviews',
+      'search for',
+      'information about',
+      'found discussions'
+    ];
+    
+    const textLower = text.toLowerCase();
+    return genericPhrases.some(phrase => textLower.includes(phrase.toLowerCase()));
+  }
 
 }
 

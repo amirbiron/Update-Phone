@@ -467,11 +467,17 @@ function hasUserReports(searchResults) {
     searchResults.forumDiscussions.some(discussion => 
       discussion.userReports && 
       discussion.userReports.length > 0 &&
-      !discussion.userReports.every(report => 
-        report.content.includes('מאמרים וביקורות') || 
-        report.content.includes('דיונים קהילתיים') ||
-        report.content.length < 30
-      )
+      discussion.userReports.some(report => {
+        // בדיקה מחמירה יותר לדיווחים אמיתיים
+        const isGeneric = report.content.includes('מאמרים וביקורות') || 
+                         report.content.includes('דיונים קהילתיים') ||
+                         report.content.includes('discussions about') ||
+                         report.content.includes('articles and reviews') ||
+                         report.content.length < 30 ||
+                         report.isPlaceholder === true;
+        
+        return !isGeneric;
+      })
     );
   
   return hasRedditReports || hasForumReports;
@@ -479,6 +485,11 @@ function hasUserReports(searchResults) {
 
 // עיצוב דיווחי משתמשים - ללא קיצורים
 function formatUserReports(searchResults) {
+  console.log('🔍 [formatUserReports] ===== STARTING USER REPORTS FORMATTING =====');
+  console.log('📊 [formatUserReports] Input data:');
+  console.log(`   - Reddit posts: ${searchResults.redditPosts?.length || 0}`);
+  console.log(`   - Forum discussions: ${searchResults.forumDiscussions?.length || 0}`);
+  
   let reports = '';
   
   // דיווחים מ-Reddit
@@ -495,7 +506,25 @@ function formatUserReports(searchResults) {
       const sentimentEmoji = getSentimentEmoji(post.sentiment);
       reports += `• ${sentimentEmoji} <b>"${post.title}"</b>\n`; // ללא קיצור כותרת
       
-      if (post.selftext && post.selftext.trim().length > 0) {
+      // הצגת דיווחי משתמשים אמיתיים אם יש
+      if (post.userReports && post.userReports.length > 0) {
+        const realUserReports = post.userReports.filter(report => {
+          const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                           report.content.includes('discussions about') ||
+                           report.content.length < 30 ||
+                           report.isPlaceholder === true;
+          return !isGeneric;
+        });
+        
+        if (realUserReports.length > 0) {
+          reports += `  <b>דיווחי משתמשים:</b>\n`;
+          realUserReports.slice(0, 2).forEach(userReport => {
+            const userSentimentEmoji = getSentimentEmoji(userReport.sentiment);
+            reports += `    ${userSentimentEmoji} <i>"${userReport.content}"</i>\n`;
+          });
+        }
+      } else if (post.selftext && post.selftext.trim().length > 0) {
+        // אם אין userReports, השתמש ב-selftext המקורי
         const cleanedText = cleanText(post.selftext);
         if (cleanedText.length > 0) {
           reports += `  📝 ${cleanedText}\n`; // ללא קיצור תוכן
@@ -514,20 +543,40 @@ function formatUserReports(searchResults) {
       reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
       reports += `  📍 ${discussion.source}\n`;
       
-      // הוספת דיווחי המשתמשים הספציפיים
+      // הוספת דיווחי המשתמשים הספציפיים - רק אם הם אמיתיים
       if (discussion.userReports && discussion.userReports.length > 0) {
-        reports += `  <b>דיווחי משתמשים:</b>\n`;
-        discussion.userReports.slice(0, 1).forEach(userReport => { // 1 דיווח פנימי
-          const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
-          reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
-          if (userReport.author) {
-            reports += `    👤 ${userReport.author}`;
-            if (userReport.date) {
-              reports += ` | ${timeAgo(userReport.date)}`;
-            }
-            reports += `\n`;
-          }
+        // סינון דיווחים אמיתיים (לא גנריים)
+        const realUserReports = discussion.userReports.filter(report => {
+          // בדיקה שהדיווח לא גנרי
+          const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                           report.content.includes('מאמרים וביקורות') ||
+                           report.content.includes('discussions about') ||
+                           report.content.length < 30 ||
+                           report.isPlaceholder === true;
+          
+          return !isGeneric;
         });
+        
+        if (realUserReports.length > 0) {
+          reports += `  <b>דיווחי משתמשים:</b>\n`;
+          realUserReports.slice(0, 2).forEach(userReport => { // עד 2 דיווחים אמיתיים
+            const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
+            reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
+            if (userReport.author && !userReport.author.includes('Editorial')) {
+              reports += `    👤 ${userReport.author}`;
+              if (userReport.date && !userReport.isExtracted) {
+                reports += ` | ${timeAgo(userReport.date)}`;
+              }
+              reports += `\n`;
+            }
+          });
+        } else {
+          // אם אין דיווחים אמיתיים, נציין זאת
+          reports += `  <i>לא נמצאו דיווחי משתמשים ספציפיים</i>\n`;
+        }
+      } else {
+        // אם אין userReports בכלל
+        reports += `  <i>לא נמצאו דיווחי משתמשים ספציפיים</i>\n`;
       }
       
       reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
@@ -651,24 +700,36 @@ function splitUserReports(searchResults) {
       // הוספת דיווחי משתמשים (עד 8 דיווחים)
       let reportCount = 0;
       discussions.forEach(discussion => {
-        // בדיקה אם יש userReports
+        // בדיקה אם יש userReports אמיתיים
         if (discussion.userReports && discussion.userReports.length > 0 && reportCount < 8) {
-          discussion.userReports.slice(0, 3).forEach(report => {
-            if (reportCount < 8) {
-              const sentimentEmoji = getSentimentEmoji(report.sentiment);
-              userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
-              reportCount++;
-            }
+          // סינון דיווחים אמיתיים בלבד
+          const realReports = discussion.userReports.filter(report => {
+            const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                             report.content.includes('מאמרים וביקורות') ||
+                             report.content.includes('discussions about') ||
+                             report.content.length < 30 ||
+                             report.isPlaceholder === true;
+            return !isGeneric;
           });
-        } else if (discussion.snippet && reportCount < 8) {
-          // אם אין userReports, השתמש ב-snippet
-          const sentimentEmoji = '😐'; // ברירת מחדל
+          
+          if (realReports.length > 0) {
+            realReports.slice(0, 3).forEach(report => {
+              if (reportCount < 8) {
+                const sentimentEmoji = getSentimentEmoji(report.sentiment);
+                userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
+                reportCount++;
+              }
+            });
+          } else if (discussion.snippet && reportCount < 8 && discussion.snippet.length > 30) {
+            // אם אין userReports אמיתיים, השתמש ב-snippet רק אם הוא משמעותי
+            const sentimentEmoji = '😐';
+            userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
+            reportCount++;
+          }
+        } else if (discussion.snippet && reportCount < 8 && discussion.snippet.length > 30) {
+          // אם אין userReports, השתמש ב-snippet רק אם הוא משמעותי
+          const sentimentEmoji = '😐';
           userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
-          reportCount++;
-        } else if (discussion.description && reportCount < 8) {
-          // אם אין snippet, השתמש ב-description
-          const sentimentEmoji = '😐'; // ברירת מחדל
-          userReportsContent += `    ${sentimentEmoji} "${discussion.description}"\n`;
           reportCount++;
         }
       });
@@ -1089,6 +1150,7 @@ module.exports = {
   formatDebugInfo,
   // פונקציות לטיפול בדיווחי משתמשים
   splitUserReports,
+  formatUserReports,
   formatForumReports,
   hasUserReports
 };
