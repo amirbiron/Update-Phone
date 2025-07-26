@@ -520,7 +520,14 @@ function formatUserReports(searchResults) {
           reports += `  <b>דיווחי משתמשים:</b>\n`;
           realUserReports.slice(0, 2).forEach(userReport => {
             const userSentimentEmoji = getSentimentEmoji(userReport.sentiment);
-            reports += `    ${userSentimentEmoji} <i>"${userReport.content}"</i>\n`;
+            let reportText = `    ${userSentimentEmoji} <i>"${userReport.content}"</i>`;
+            
+            // הוספת סימון תרגום אם רלוונטי
+            if (userReport.originalContent && userReport.originalContent !== userReport.content) {
+              reportText += ` <i>(מתורגם)</i>`;
+            }
+            
+            reports += reportText + `\n`;
           });
         }
       } else if (post.selftext && post.selftext.trim().length > 0) {
@@ -566,6 +573,10 @@ function formatUserReports(searchResults) {
               reports += `    👤 ${userReport.author}`;
               if (userReport.date && !userReport.isExtracted) {
                 reports += ` | ${timeAgo(userReport.date)}`;
+              }
+              // הוספת סימון אם הדיווח תורגם
+              if (userReport.originalContent && userReport.originalContent !== userReport.content) {
+                reports += ` | מתורגם`;
               }
               reports += `\n`;
             }
@@ -716,7 +727,14 @@ function splitUserReports(searchResults) {
             realReports.slice(0, 3).forEach(report => {
               if (reportCount < 8) {
                 const sentimentEmoji = getSentimentEmoji(report.sentiment);
-                userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
+                let reportText = `    ${sentimentEmoji} "${report.content}"`;
+                
+                // הוספת סימון תרגום אם רלוונטי
+                if (report.originalContent && report.originalContent !== report.content) {
+                  reportText += ` (מתורגם)`;
+                }
+                
+                userReportsContent += reportText + `\n`;
                 reportCount++;
               }
             });

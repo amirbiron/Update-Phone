@@ -440,12 +440,18 @@ class UpdateChecker {
           );
 
           if (response.data && response.data.data && response.data.data.children) {
-            const posts = response.data.data.children.map(child => {
+            const posts = [];
+            for (const child of response.data.data.children) {
               // חילוץ דיווחי משתמשים אמיתיים מהפוסט
               const postText = `${child.data.title} ${child.data.selftext || ''}`;
-              const userReports = this.extractUserReportsFromText(postText);
+              let userReports = this.extractUserReportsFromText(postText);
               
-              return {
+              // תרגום דיווחי משתמשים לעברית
+              if (userReports.length > 0) {
+                userReports = await this.translateUserReportsToHebrew(userReports);
+              }
+              
+              posts.push({
                 title: child.data.title,
                 url: `https://reddit.com${child.data.permalink}`,
                 score: child.data.score,
@@ -460,9 +466,9 @@ class UpdateChecker {
                 userExperience: this.extractUserExperience(child.data.title, child.data.selftext),
                 sentiment: this.analyzeSentiment(child.data.title, child.data.selftext),
                 isUserReport: this.isUserReport(child.data.title, child.data.selftext),
-                userReports: userReports // דיווחי משתמשים אמיתיים שחולצו
-              };
-            });
+                userReports: userReports // דיווחי משתמשים מתורגמים לעברית!
+              });
+            }
 
             results.push(...posts);
           }
@@ -573,9 +579,14 @@ class UpdateChecker {
         if (googleResults && googleResults.length > 0) {
           console.log(`✅ Google Search API found ${googleResults.length} XDA results`);
           
-          googleResults.forEach(result => {
+          for (const result of googleResults) {
             // חילוץ דיווחי משתמשים אמיתיים מה-snippet
-            const userReports = this.extractUserReportsFromText(result.snippet, result.title);
+            let userReports = this.extractUserReportsFromText(result.snippet, result.title);
+            
+            // תרגום דיווחי משתמשים לעברית
+            if (userReports.length > 0) {
+              userReports = await this.translateUserReportsToHebrew(userReports);
+            }
             
             results.push({
               title: result.title,
@@ -585,9 +596,9 @@ class UpdateChecker {
               summary: result.snippet || `דיונים ב-XDA על ${deviceInfo.device} ${parsedQuery.version}`,
               date: new Date(),
               sentiment: this.analyzeSentiment(result.title, result.snippet),
-              userReports: userReports // דיווחי משתמשים אמיתיים!
+              userReports: userReports // דיווחי משתמשים מתורגמים לעברית!
             });
-          });
+          }
           
           return results;
         }
@@ -692,9 +703,14 @@ class UpdateChecker {
             if (googleResults && googleResults.length > 0) {
               console.log(`✅ Found ${googleResults.length} results from ${site.name}`);
               
-              googleResults.slice(0, 2).forEach(result => {
+              for (const result of googleResults.slice(0, 2)) {
                 // חילוץ דיווחי משתמשים אמיתיים מהתוכן
-                const userReports = this.extractUserReportsFromText(result.snippet, result.title);
+                let userReports = this.extractUserReportsFromText(result.snippet, result.title);
+                
+                // תרגום דיווחי משתמשים לעברית
+                if (userReports.length > 0) {
+                  userReports = await this.translateUserReportsToHebrew(userReports);
+                }
                 
                 results.push({
                   title: result.title,
@@ -704,9 +720,9 @@ class UpdateChecker {
                   summary: result.snippet || `${site.description} - ${deviceInfo.device}`,
                   date: new Date(),
                   sentiment: this.analyzeSentiment(result.title, result.snippet),
-                  userReports: userReports // דיווחי משתמשים אמיתיים או ריק
+                  userReports: userReports // דיווחי משתמשים מתורגמים לעברית!
                 });
-              });
+              }
             } else {
               // אם לא נמצאו תוצאות ב-Google, נוסיף קישור חיפוש ללא דיווחים גנריים
               results.push({
@@ -1982,80 +1998,110 @@ ${resultsText}
     return genericPhrases.some(phrase => textLower.includes(phrase.toLowerCase()));
   }
 
-  // תרגום דיווחי משתמשים לעברית
-  translateUserReportToHebrew(text) {
-    if (!text) return text;
+  // תרגום דיווחי משתמשים לעברית באמצעות Claude
+  async translateUserReportsToHebrew(userReports) {
+    if (!userReports || userReports.length === 0) return userReports;
     
-    // מילון תרגומים מפורט לדיווחי משתמשים
-    const translations = {
-      // ביטויים שלמים
-      'After updating to Android': 'אחרי עדכון לאנדרואיד',
-      'I updated my': 'עדכנתי את ה',
-      'battery drains much faster': 'הסוללה נגמרת הרבה יותר מהר',
-      'battery life improved': 'חיי הסוללה השתפרו',
-      'performance is great': 'הביצועים מצוינים',
-      'working fine': 'עובד טוב',
-      'no issues': 'אין בעיות',
-      'some bugs': 'כמה באגים',
-      'overall stable': 'יציב באופן כללי',
-      'experience has been': 'החוויה הייתה',
-      'recommend': 'מומלץ',
-      'avoid': 'להימנע',
-      'much better': 'הרבה יותר טוב',
-      'worse than before': 'יותר גרוע מבעבר',
-      'significantly improved': 'השתפר משמעותיות',
+    // בדיקה אם יש Claude API key
+    if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_')) {
+      console.log('⚠️ [Translation] Claude API not available, keeping original text');
+      return userReports;
+    }
+    
+    try {
+      // איסוף כל הטקסטים לתרגום
+      const textsToTranslate = userReports
+        .filter(report => report.content && !this.isHebrewText(report.content))
+        .map(report => report.content);
       
-      // מילים בודדות
-      'battery': 'סוללה',
-      'performance': 'ביצועים',
-      'update': 'עדכון',
-      'updated': 'עדכנתי',
-      'experience': 'חוויה',
-      'stable': 'יציב',
-      'faster': 'מהר יותר',
-      'slower': 'איטי יותר',
-      'better': 'טוב יותר',
-      'worse': 'גרוע יותר',
-      'great': 'מצוין',
-      'good': 'טוב',
-      'bad': 'רע',
-      'terrible': 'נורא',
-      'excellent': 'מעולה',
-      'issues': 'בעיות',
-      'problems': 'בעיות',
-      'bugs': 'באגים',
-      'crashes': 'קריסות',
-      'smooth': 'חלק',
-      'laggy': 'תקוע',
-      'fast': 'מהיר',
-      'slow': 'איטי',
-      'improved': 'השתפר',
-      'fixed': 'תוקן',
-      'broken': 'שבור',
-      'working': 'עובד',
-      'device': 'מכשיר',
-      'phone': 'טלפון'
-    };
-    
-    let translatedText = text;
-    
-    // תרגום ביטויים שלמים תחילה (חשוב יותר)
-    Object.entries(translations).forEach(([english, hebrew]) => {
-      if (english.includes(' ')) { // ביטויים שלמים
-        const regex = new RegExp(english, 'gi');
-        translatedText = translatedText.replace(regex, hebrew);
+      if (textsToTranslate.length === 0) {
+        console.log('ℹ️ [Translation] No English texts to translate');
+        return userReports;
       }
-    });
-    
-    // תרגום מילים בודדות
-    Object.entries(translations).forEach(([english, hebrew]) => {
-      if (!english.includes(' ')) { // מילים בודדות
-        const regex = new RegExp(`\\b${english}\\b`, 'gi');
-        translatedText = translatedText.replace(regex, hebrew);
+      
+      console.log(`🌐 [Translation] Translating ${textsToTranslate.length} user reports to Hebrew...`);
+      
+      const prompt = `תרגם את דיווחי המשתמשים הבאים לעברית טבעית וזורמת. 
+שמור על המשמעות המדויקת והטון של הדיווח המקורי.
+החזר רק את התרגומים, כל אחד בשורה נפרדת, ללא מספור או הסברים.
+
+דיווחי משתמשים לתרגום:
+${textsToTranslate.map((text, index) => `${index + 1}. ${text}`).join('\n')}`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
+          max_tokens: 800,
+          messages: [
+            { role: 'user', content: prompt }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        console.log(`❌ [Translation] Claude API error: ${response.status}`);
+        return userReports;
       }
-    });
+
+      const data = await response.json();
+      const translatedText = data?.content?.[0]?.text || '';
+      
+      if (!translatedText) {
+        console.log('❌ [Translation] No translation received from Claude');
+        return userReports;
+      }
+      
+      // פיצול התרגומים לשורות
+      const translations = translatedText.trim().split('\n')
+        .map(line => line.replace(/^\d+\.\s*/, '').trim())
+        .filter(line => line.length > 0);
+      
+      console.log(`✅ [Translation] Successfully translated ${translations.length} reports`);
+      
+      // החלפת הטקסטים המתורגמים
+      let translationIndex = 0;
+      const translatedReports = userReports.map(report => {
+        if (report.content && !this.isHebrewText(report.content)) {
+          if (translationIndex < translations.length) {
+            const originalContent = report.content;
+            const translatedContent = translations[translationIndex];
+            translationIndex++;
+            
+            console.log(`🔄 [Translation] "${originalContent.substring(0, 50)}..." → "${translatedContent.substring(0, 50)}..."`);
+            
+            return {
+              ...report,
+              content: translatedContent,
+              originalContent: originalContent // שמירת הטקסט המקורי
+            };
+          }
+        }
+        return report;
+      });
+      
+      return translatedReports;
+      
+    } catch (error) {
+      console.error('❌ [Translation] Error translating user reports:', error?.message);
+      return userReports; // החזרת הדיווחים המקוריים במקרה של שגיאה
+    }
+  }
+  
+  // בדיקה אם הטקסט כבר בעברית
+  isHebrewText(text) {
+    if (!text) return false;
     
-    return translatedText;
+    // בדיקה פשוטה - אם יש יותר מ-30% תווים עבריים
+    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
+    const totalChars = text.replace(/\s/g, '').length;
+    
+    return totalChars > 0 && (hebrewChars.length / totalChars) > 0.3;
   }
 }
 
