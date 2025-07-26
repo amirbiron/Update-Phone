@@ -489,7 +489,7 @@ function formatUserReports(searchResults) {
     const topRedditPosts = searchResults.redditPosts
       .filter(post => post.score > 0) // רק פוסטים עם ציון חיובי
       .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-      .slice(0, 10); // 10 דיווחים מ-Reddit
+      .slice(0, 20); // 20 דיווחים מ-Reddit
     
     topRedditPosts.forEach(post => {
       const sentimentEmoji = getSentimentEmoji(post.sentiment);
@@ -510,14 +510,14 @@ function formatUserReports(searchResults) {
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
     reports += `🔸 <b>מפורומים טכניים:</b>\n`;
     
-    searchResults.forumDiscussions.slice(0, 10).forEach(discussion => { // 10 דיווחים מפורומים
+    searchResults.forumDiscussions.slice(0, 20).forEach(discussion => { // 20 דיווחים מפורומים
       reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
       reports += `  📍 ${discussion.source}\n`;
       
       // הוספת דיווחי המשתמשים הספציפיים
       if (discussion.userReports && discussion.userReports.length > 0) {
         reports += `  <b>דיווחי משתמשים:</b>\n`;
-        discussion.userReports.slice(0, 10).forEach(userReport => { // 10 דיווחים פנימיים
+        discussion.userReports.slice(0, 1).forEach(userReport => { // 1 דיווח פנימי
           const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
           reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
           if (userReport.author) {
@@ -641,7 +641,7 @@ function formatRedditReports(redditPosts) {
   const topRedditPosts = redditPosts
     .filter(post => post.score > 0)
     .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-    .slice(0, 10); // 10 דיווחים מ-Reddit
+    .slice(0, 20); // 20 דיווחים מ-Reddit
   
   topRedditPosts.forEach(post => {
     const sentimentEmoji = getSentimentEmoji(post.sentiment);
@@ -677,15 +677,15 @@ function formatForumReports(forumDiscussions) {
     }
   }
   
-  // 10 דיווחים ייחודיים מפורומים
-  uniqueDiscussions.slice(0, 10).forEach(discussion => {
+  // 20 דיווחים ייחודיים מפורומים
+  uniqueDiscussions.slice(0, 20).forEach(discussion => {
     reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
     reports += `  📍 ${discussion.source}\n`;
     
     if (discussion.userReports && discussion.userReports.length > 0) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
-      // 10 דיווחים פנימיים - המידע הכי חשוב
-      discussion.userReports.slice(0, 10).forEach(userReport => {
+      // 1 דיווח פנימי - המידע הכי חשוב
+      discussion.userReports.slice(0, 1).forEach(userReport => {
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
         reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
         if (userReport.author) {
