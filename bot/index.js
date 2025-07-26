@@ -557,10 +557,13 @@ ${usageEmoji} **שאילתות החודש:**
           });
           
           // בדיקה אם התגובה ארוכה מדי לטלגרם
-          const responseWithSplit = formatResponseWithSplit(response);
+          // אם החיפוש החזיר דגל needsSplit, נכפה פיצול גם אם התגובה לא ארוכה מדי
+          const forceSplit = generalInfo && generalInfo.needsSplit;
+          const responseWithSplit = formatResponseWithSplit(response, forceSplit);
           
           if (responseWithSplit.needsSplit) {
-          console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
+          const splitReason = forceSplit ? 'forced split for better readability' : 'length exceeded limit';
+          console.log(`📄 Response splitting (${response.length} chars, ${splitReason}), splitting into ${responseWithSplit.parts.length} parts`);
           
           // מחיקת הודעת ההמתנה לפני שליחת החלקים
           await bot.deleteMessage(chatId, waitingMsg.message_id);

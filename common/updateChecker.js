@@ -1071,33 +1071,11 @@ ${resultsText}
              summary += `🎯 **לקבלת המלצה מדויקת יותר, שלחו:**\n`;
              summary += `"${deviceModel}, Android [גרסה נוכחית], רוצה לעדכן ל-${androidVersion}"`;
              
-             // בדיקה אם התשובה ארוכה מדי
-             if (summary.length > 3500) {
-               console.log(`⚠️ Summary too long (${summary.length} chars), creating shorter version`);
-               
-               const shortSummary = `🔍 **מידע על עדכון ${deviceModel} ל-${androidVersion}:**\n\n` +
-                 `✅ **נמצא מידע רלוונטי במקורות הבאים:**\n` +
-                 `• Reddit - דיווחי משתמשים\n` +
-                 `• אתרי חדשות טכניים\n` +
-                 `• מקורות רשמיים\n` +
-                 `• קהילות Samsung\n\n` +
-                 `🔗 **קישורים מהירים:**\n` +
-                 `• [Reddit](https://www.reddit.com/search/?q=${encodeURIComponent(deviceModel + ' ' + androidVersion)})\n` +
-                 `• [Samsung Community](https://us.community.samsung.com/t5/forums/searchpage/tab/message?filter=location&q=${encodeURIComponent(deviceModel + ' ' + androidVersion)})\n` +
-                 `• [חיפוש Google](https://www.google.com/search?q=${encodeURIComponent(deviceModel + ' ' + androidVersion + ' update review')})\n\n` +
-                 `💡 **המלצה:** בדקו את הקישורים לפני העדכון וגבו את המכשיר`;
-               
-               return {
-                 success: true,
-                 data: { summary: shortSummary },
-                 message: 'נמצא מידע רלוונטי (גרסה מקוצרת)'
-               };
-             }
-             
              return {
                success: true,
                data: { summary },
-               message: 'נמצא מידע רלוונטי'
+               message: 'נמצא מידע רלוונטי',
+               needsSplit: summary.length > 3000 // מסמן שהתשובה צריכה פיצול
              };
            }
         } catch (searchError) {
