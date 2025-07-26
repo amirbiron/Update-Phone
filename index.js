@@ -129,8 +129,7 @@ function setupBotHandlers(bot) {
   const limitCheck = await Database.checkUserQueryLimit(chatId);
   const remainingInfo = `📊 <b>שאילתות נותרות החודש: ${limitCheck.remaining}/${limitCheck.limit}</b>\n\n`;
   
-  const welcomeMessage = `
-🤖 ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!
+  const welcomeMessage = `🤖 ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!
 
 ${remainingInfo}אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
 
@@ -175,8 +174,7 @@ ${remainingInfo}אני כאן כדי לעזור לכם להחליט אם כדא�
   const limitCheck = await Database.checkUserQueryLimit(chatId);
   const remainingInfo = `📊 <b>שאילתות נותרות: ${limitCheck.remaining}/${limitCheck.limit}</b>\n\n`;
   
-  const helpMessage = `
-🆘 איך להשתמש בבוט:
+  const helpMessage = `🆘 איך להשתמש בבוט:
 
 ${remainingInfo}📝 פורמטים נתמכים לשאלות:
 • "כדאי לעדכן [יצרן] [דגם] ל[גרסה]?"
@@ -343,12 +341,29 @@ ${await updateChecker.getServicesStatus()}
       // לוג פרטי הפיצול
       logMessageSplit(messageChunks);
       
+      // לוג נוסף לבדיקה
+      console.log(`📝 Main message length: ${messageChunks[0].length} characters`);
+      console.log(`📝 Main message preview: ${messageChunks[0].substring(0, 200)}...`);
+      
+      // בדיקת אורך ההודעה
+      const messageCheck = require('./src/utils').checkMessageLength(messageChunks[0]);
+      if (!messageCheck.isValid) {
+        console.warn(`⚠️ Main message exceeds Telegram limit! Length: ${messageCheck.length}`);
+      }
+      
       // שליחת ההודעה הראשונה (עריכת הודעת ההמתנה)
-      await bot.editMessageText(messageChunks[0], {
-        chat_id: chatId,
-        message_id: waitingMsg.message_id,
-        parse_mode: 'HTML'
-      });
+      try {
+        await bot.editMessageText(messageChunks[0], {
+          chat_id: chatId,
+          message_id: waitingMsg.message_id,
+          parse_mode: 'HTML'
+        });
+        console.log('✅ Main message edited successfully');
+      } catch (editError) {
+        console.error('❌ Error editing main message:', editError?.message || editError);
+        // אם עריכת ההודעה נכשלה, נשלח הודעה חדשה
+        await bot.sendMessage(chatId, messageChunks[0], { parse_mode: 'HTML' });
+      }
       
       // שליחת שאר ההודעות (דיווחי משתמשים)
       if (messageChunks.length > 1) {
@@ -378,13 +393,19 @@ ${await updateChecker.getServicesStatus()}
         timestamp: new Date()
       });
       
-      // שליחת הודעת מונה השאילתות הנותרות
-      const updatedLimitCheck = await Database.checkUserQueryLimit(chatId);
-      const counterMessage = `📊 <b>נשארו לך עוד ${updatedLimitCheck.remaining} שאלות לבוט החודש</b>`;
-      
-      // המתנה קצרה לפני שליחת הודעת המונה
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      await bot.sendMessage(chatId, counterMessage, { parse_mode: 'HTML' });
+      // שליחת הודעת מונה השאילתות הנותרות - רק אחרי שכל ההודעות נשלחו
+      try {
+        const updatedLimitCheck = await Database.checkUserQueryLimit(chatId);
+        const counterMessage = `📊 <b>נשארו לך עוד ${updatedLimitCheck.remaining} שאלות לבוט החודש</b>`;
+        
+        // המתנה ארוכה יותר לפני שליחת הודעת המונה כדי לא להפריע לתצוגה
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        await bot.sendMessage(chatId, counterMessage, { parse_mode: 'HTML' });
+        console.log('✅ Counter message sent successfully');
+      } catch (counterError) {
+        console.error('❌ Error sending counter message:', counterError?.message || counterError);
+        // אל תעצור את התהליך אם הודעת המונה נכשלה
+      }
     
     } catch (error) {
       console.error('Error processing message:', error?.message || error);
