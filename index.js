@@ -5,7 +5,7 @@ const DeviceAnalyzer = require('./src/deviceAnalyzer');
 const UpdateChecker = require('./src/updateChecker');
 const RecommendationEngine = require('./src/recommendationEngine');
 const Database = require('./src/database');
-const { formatResponse, parseUserMessage } = require('./src/utils');
+const { formatResponse, formatResponseWithSplit, parseUserMessage, logMessageSplit } = require('./src/utils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -216,15 +216,36 @@ bot.on('message', async (msg) => {
       parsedQuery
     );
     
-    // עיצוב התשובה הסופית
-    const formattedResponse = formatResponse(deviceInfo, updateInfo, recommendation);
+    // עיצוב התשובה הסופית עם פיצול אוטומטי
+    const messageChunks = formatResponseWithSplit(deviceInfo, updateInfo, recommendation);
     
-    // שליחת התשובה
-    bot.editMessageText(formattedResponse, {
+    // לוג פרטי הפיצול
+    logMessageSplit(messageChunks);
+    
+    // שליחת ההודעה הראשונה (עריכת הודעת ההמתנה)
+    await bot.editMessageText(messageChunks[0], {
       chat_id: chatId,
       message_id: waitingMsg.message_id,
       parse_mode: 'HTML'
     });
+    
+    // שליחת שאר ההודעות (דיווחי משתמשים)
+    if (messageChunks.length > 1) {
+      console.log(`📤 Sending ${messageChunks.length - 1} additional user report messages...`);
+    }
+    
+    for (let i = 1; i < messageChunks.length; i++) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // המתנה של שנייה בין הודעות
+        await bot.sendMessage(chatId, messageChunks[i], {
+          parse_mode: 'HTML'
+        });
+        console.log(`✅ Sent message chunk ${i}/${messageChunks.length - 1}`);
+      } catch (messageError) {
+        console.error(`❌ Error sending message chunk ${i}:`, messageError);
+        // המשך לשלוח את שאר ההודעות גם אם אחת נכשלה
+      }
+    }
     
     // שמירת השאילתה במסד הנתונים
     await Database.saveQuery({

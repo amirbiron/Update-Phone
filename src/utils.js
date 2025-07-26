@@ -484,9 +484,302 @@ function getSentimentEmoji(sentiment) {
   return emojis[sentiment] || '😐';
 }
 
+// פיצול הודעה ארוכה לכמה הודעות
+const TELEGRAM_MESSAGE_LIMIT = 4096; // מגבלת טלגרם
+
+function splitLongMessage(message) {
+  if (message.length <= TELEGRAM_MESSAGE_LIMIT) {
+    return [message];
+  }
+  
+  const messages = [];
+  let currentMessage = '';
+  const lines = message.split('\n');
+  
+  for (const line of lines) {
+    // אם הוספת השורה הנוכחית תחרוג מהמגבלה
+    if ((currentMessage + '\n' + line).length > TELEGRAM_MESSAGE_LIMIT) {
+      // שמור את ההודעה הנוכחית ותתחיל חדשה
+      if (currentMessage.trim()) {
+        messages.push(currentMessage.trim());
+      }
+      currentMessage = line;
+    } else {
+      // הוסף את השורה להודעה הנוכחית
+      currentMessage += (currentMessage ? '\n' : '') + line;
+    }
+  }
+  
+  // הוסף את ההודעה האחרונה
+  if (currentMessage.trim()) {
+    messages.push(currentMessage.trim());
+  }
+  
+  return messages;
+}
+
+// פיצול דיווחי משתמשים לחלקים קטנים יותר
+function splitUserReports(searchResults) {
+  const reportSections = [];
+  
+  // דיווחים מ-Reddit
+  if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
+    const redditReports = formatRedditReports(searchResults.redditPosts);
+    if (redditReports.trim()) {
+      reportSections.push({
+        title: '👥 דיווחי משתמשים - Reddit',
+        content: redditReports
+      });
+    }
+  }
+  
+  // דיווחים מפורומים
+  if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
+    const forumReports = formatForumReports(searchResults.forumDiscussions);
+    if (forumReports.trim()) {
+      reportSections.push({
+        title: '👥 דיווחי משתמשים - פורומים טכניים',
+        content: forumReports
+      });
+    }
+  }
+  
+  // דיווחים מחיפוש כללי
+  if (searchResults.webSearchResults && searchResults.webSearchResults.length > 0) {
+    const webReports = formatWebReports(searchResults.webSearchResults);
+    if (webReports.trim()) {
+      reportSections.push({
+        title: '👥 דיווחי משתמשים - אתרי טכנולוגיה',
+        content: webReports
+      });
+    }
+  }
+  
+  // הגבלת מספר החלקים למקסימום 4 (כדי למנוע ספאם)
+  if (reportSections.length > 4) {
+    const truncatedSections = reportSections.slice(0, 4);
+    const lastSection = truncatedSections[truncatedSections.length - 1];
+    lastSection.content += `\n\n<i>📊 הוגבל מספר הדיווחים כדי למנוע ספאם. סה"כ ${reportSections.length} מקורות נבדקו.</i>`;
+    return truncatedSections;
+  }
+  
+  return reportSections;
+}
+
+// עיצוב דיווחי Reddit בנפרד
+function formatRedditReports(redditPosts) {
+  let reports = '';
+  
+  const topRedditPosts = redditPosts
+    .filter(post => post.score > 0)
+    .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
+    .slice(0, 10); // מגביל ל-10 דיווחים
+  
+  topRedditPosts.forEach(post => {
+    const sentimentEmoji = getSentimentEmoji(post.sentiment);
+    reports += `• ${sentimentEmoji} <b>"${truncateText(post.title, 60)}"</b>\n`;
+    
+    if (post.selftext && post.selftext.trim().length > 0) {
+      const cleanedText = cleanText(post.selftext);
+      if (cleanedText.length > 0) {
+        reports += `  📝 ${truncateText(cleanedText, 120)}\n`;
+      }
+    }
+    
+    reports += `  👤 ${post.author} | 👍 ${post.score} | 💬 ${post.numComments} | ${timeAgo(post.created)}\n`;
+    reports += `  🔗 <a href="${post.url}">קרא עוד</a>\n\n`;
+  });
+  
+  return reports;
+}
+
+// עיצוב דיווחי פורומים בנפרד
+function formatForumReports(forumDiscussions) {
+  let reports = '';
+  
+  forumDiscussions.slice(0, 10).forEach(discussion => { // מגביל ל-10 דיווחים
+    reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`;
+    reports += `  📍 ${discussion.source}\n`;
+    
+    if (discussion.userReports && discussion.userReports.length > 0) {
+      reports += `  <b>דיווחי משתמשים:</b>\n`;
+      discussion.userReports.slice(0, 8).forEach(userReport => { // מגביל ל-8 דיווחים פנימיים
+        const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
+        reports += `    ${sentimentEmoji} <i>"${truncateText(userReport.content, 80)}"</i>\n`;
+        reports += `    👤 ${userReport.author} | ${timeAgo(userReport.date)}\n`;
+      });
+    }
+    
+    reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
+  });
+  
+  return reports;
+}
+
+// עיצוב דיווחי אתרים בנפרד
+function formatWebReports(webSearchResults) {
+  let reports = '';
+  
+  const relevantWebResults = webSearchResults
+    .filter(result => result.relevance && result.relevance > 0.5)
+    .slice(0, 8); // מגביל ל-8 דיווחים
+  
+  relevantWebResults.forEach(result => {
+    reports += `• <b>${truncateText(result.title, 60)}</b>\n`;
+    if (result.snippet) {
+      const translatedSnippet = result.snippet.includes('Android') || result.snippet.includes('update') || result.snippet.includes('device') ? 
+        result.snippet.replace(/Android/g, 'אנדרואיד').replace(/update/gi, 'עדכון').replace(/device/gi, 'מכשיר') : 
+        result.snippet;
+      reports += `  📝 ${truncateText(translatedSnippet, 120)}\n`;
+    }
+    reports += `  🔗 <a href="${result.url}">קרא עוד</a>\n\n`;
+  });
+  
+  return reports;
+}
+
+// עיצוב תשובה סופית עם פיצול אוטומטי
+function formatResponseWithSplit(deviceInfo, updateInfo, recommendation) {
+  // יצירת ההודעה הראשית (בלי דיווחי משתמשים)
+  const mainResponse = formatMainResponse(deviceInfo, updateInfo, recommendation);
+  const messages = [mainResponse];
+  
+  // הוספת דיווחי משתמשים כהודעות נפרדות
+  if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
+    const reportSections = splitUserReports(updateInfo.searchResults);
+    
+    reportSections.forEach(section => {
+      let sectionMessage = `<b>${section.title}</b>\n\n${section.content}`;
+      
+      // פיצול נוסף אם החלק עדיין ארוך מדי
+      const splitSectionMessages = splitLongMessage(sectionMessage);
+      messages.push(...splitSectionMessages);
+    });
+  }
+  
+  return messages;
+}
+
+// עיצוב התשובה הראשית (בלי דיווחי משתמשים)
+function formatMainResponse(deviceInfo, updateInfo, recommendation) {
+  const emoji = getRecommendationEmoji(recommendation.recommendation);
+  const stabilityStars = getStabilityStars(recommendation.stabilityRating);
+  
+  let response = `${emoji} <b>ניתוח עדכון: ${deviceInfo.device}</b>\n\n`;
+  
+  // דירוג יציבות
+  response += `📊 <b>דירוג יציבות:</b> ${recommendation.stabilityRating}/10 ${stabilityStars}\n`;
+  response += `🎯 <b>רמת ביטחון:</b> ${getConfidenceText(recommendation.confidence)}\n\n`;
+  
+  // המלצה עיקרית
+  response += `💡 <b>המלצה:</b> ${getRecommendationText(recommendation.recommendation)}\n\n`;
+  
+  // יתרונות
+  if (recommendation.benefits && recommendation.benefits.length > 0) {
+    response += `✅ <b>יתרונות העדכון:</b>\n`;
+    recommendation.benefits.slice(0, 4).forEach(benefit => {
+      response += `• ${benefit}\n`;
+    });
+    response += '\n';
+  }
+  
+  // סיכונים/בעיות
+  if (recommendation.risks && recommendation.risks.length > 0 && 
+      !recommendation.risks.includes('לא נמצאו בעיות משמעותיות')) {
+    response += `⚠️ <b>בעיות מדווחות:</b>\n`;
+    recommendation.risks.slice(0, 4).forEach(risk => {
+      response += `• ${risk}\n`;
+    });
+    response += '\n';
+  }
+  
+  // הסבר
+  if (recommendation.reasoning) {
+    response += `📋 <b>הסבר:</b>\n${recommendation.reasoning}\n\n`;
+  }
+  
+  // לוח זמנים
+  if (recommendation.timeline) {
+    response += `⏰ <b>לוח זמנים:</b>\n`;
+    response += `• ${recommendation.timeline.action}`;
+    if (recommendation.timeline.timeframe) {
+      response += ` (${recommendation.timeline.timeframe})`;
+    }
+    response += '\n';
+    
+    if (recommendation.timeline.nextCheck) {
+      response += `• בדיקה חוזרת: ${recommendation.timeline.nextCheck}\n`;
+    }
+    response += '\n';
+  }
+  
+  // הערות מיוחדות
+  if (recommendation.specialNotes && recommendation.specialNotes.length > 0) {
+    response += `📝 <b>הערות חשובות:</b>\n`;
+    recommendation.specialNotes.slice(0, 2).forEach(note => {
+      response += `• ${note}\n`;
+    });
+    response += '\n';
+  }
+  
+  // המלצות לפי סוג משתמש
+  if (recommendation.userTypeRecommendations) {
+    response += `👥 <b>המלצות מותאמות:</b>\n`;
+    response += `• <b>משתמש רגיל:</b> ${getRecommendationText(recommendation.userTypeRecommendations.regularUser.recommendation)}\n`;
+    response += `• <b>משתמש טכני:</b> ${getRecommendationText(recommendation.userTypeRecommendations.technicalUser.recommendation)}\n`;
+    response += `• <b>שימוש עסקי:</b> ${getRecommendationText(recommendation.userTypeRecommendations.businessUser.recommendation)}\n\n`;
+  }
+  
+  // מידע נוסף
+  response += `🔍 <b>מקורות נבדקו:</b> ${updateInfo.sources?.length || 0} מקורות\n`;
+  response += `🕒 <b>עודכן:</b> ${format(new Date(), 'dd/MM/yyyy HH:mm')}\n\n`;
+  
+  // הודעה על דיווחי משתמשים
+  if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
+    const reportSections = splitUserReports(updateInfo.searchResults);
+    const numReports = reportSections.length;
+    
+    if (numReports > 0) {
+      response += `📢 <b>דיווחי משתמשים יישלחו ב-${numReports} הודעות נפרדות...</b>\n\n`;
+    }
+  }
+  
+  response += `❓ <b>שאלות נוספות?</b> שלחו /help לעזרה מפורטת`;
+  
+  return response;
+}
+
+// בדיקת אורך הודעה
+function checkMessageLength(message) {
+  const length = message.length;
+  const isValid = length <= TELEGRAM_MESSAGE_LIMIT;
+  
+  if (!isValid) {
+    console.warn(`⚠️ Message too long: ${length} characters (limit: ${TELEGRAM_MESSAGE_LIMIT})`);
+  }
+  
+  return {
+    length,
+    isValid,
+    remaining: TELEGRAM_MESSAGE_LIMIT - length
+  };
+}
+
+// לוג פרטי הודעות מפוצלות
+function logMessageSplit(messages) {
+  console.log(`📨 Split message into ${messages.length} parts:`);
+  messages.forEach((msg, index) => {
+    console.log(`  Part ${index + 1}: ${msg.length} characters`);
+  });
+}
+
 module.exports = {
   parseUserMessage,
   formatResponse,
+  formatResponseWithSplit, // הפונקציה החדשה
+  splitLongMessage,        // פונקציות עזר חדשות
+  checkMessageLength,      // פונקציות דיבאג חדשות
+  logMessageSplit,
   stripHtml,
   truncateText,
   cleanText,
