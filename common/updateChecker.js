@@ -575,13 +575,14 @@ class UpdateChecker {
     try {
       // בדיקה אם יש Claude API key
       if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
-        console.log('⚠️  Claude API key not configured, using fallback analysis');
+        console.log('⚠️ [Claude AI] API key not configured, using basic analysis');
         return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
 
-      console.log(`🤖 Sending prompt to Claude...`);
+      console.log(`🧠 [Claude AI] Sending analysis request to Claude Sonnet 4...`);
+      console.log(`📝 [Claude AI] Analyzing device: ${deviceInfo.device} for ${parsedQuery.version}`);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: 'POST',
@@ -602,17 +603,19 @@ class UpdateChecker {
       const data = await response.json();
 
       if (!response.ok) {
-        console.log(`⚠️  Claude API error: ${response.status}, falling back to basic analysis`);
+        console.log(`❌ [Claude AI] API error: ${response.status} - ${data?.error?.message || 'Unknown error'}`);
+        console.log(`🔄 [Claude AI] Falling back to basic analysis...`);
         return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
       const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
-      console.log(`✅ Received response from Claude`);
+      console.log(`✅ [Claude AI] SUCCESS: Analysis completed (${result.length} chars)`);
+      console.log(`💰 [Claude AI] Token usage: Input ~${prompt.length/4} | Output ~${result.length/4} tokens`);
       return result;
 
     } catch (error) {
-      console.error(`❌ Error at [analyzeWithClaude]:`, error?.message || error);
-      console.log('🔄 Falling back to basic analysis...');
+      console.error(`❌ [Claude AI] ERROR: ${error?.message || error}`);
+      console.log('🔄 [Claude AI] Falling back to basic analysis...');
       return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
     }
   }
@@ -620,9 +623,14 @@ class UpdateChecker {
   // ניתוח fallback כאשר Claude לא זמין
   fallbackAnalysis(deviceInfo, parsedQuery, searchResults) {
     try {
+      console.log(`🔧 [Basic Analysis] Using fallback analysis engine`);
+      console.log(`📊 [Basic Analysis] Processing device: ${deviceInfo.device} for ${parsedQuery.version}`);
+      
       const totalSources = (searchResults.redditPosts?.length || 0) + 
                           (searchResults.forumDiscussions?.length || 0) + 
                           (searchResults.officialSources?.length || 0);
+
+      console.log(`📝 [Basic Analysis] Analyzing ${totalSources} sources found`);
 
       const analysis = {
         stabilityRating: 7, // ברירת מחדל זהירה
@@ -653,6 +661,8 @@ class UpdateChecker {
       }
 
       // פורמט JSON
+      console.log(`✅ [Basic Analysis] SUCCESS: Analysis completed with rating ${analysis.stabilityRating}/10`);
+      console.log(`📋 [Basic Analysis] Recommendation: ${analysis.recommendation}`);
       return JSON.stringify(analysis, null, 2);
 
     } catch (error) {
@@ -1277,41 +1287,43 @@ ${resultsText}
       } catch (googleError) {
         console.log(`⚠️ Google Search API failed for ${site}: ${googleError.message}, falling back to DuckDuckGo`);
         
-        // Fallback ל-DuckDuckGo API
-        try {
-          const searchQuery = `site:${site} "${deviceModel}" "${androidVersion}" update`;
-          const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&no_html=1&skip_disambig=1`;
-          
-          const response = await axios.get(duckDuckGoUrl, {
-            timeout: 5000,
-            headers: {
-              'User-Agent': 'AndroidUpdateBot/1.0'
-            }
-          });
-          
-          if (response.data && response.data.RelatedTopics && response.data.RelatedTopics.length > 0) {
-            const results = [];
-            
-            response.data.RelatedTopics.slice(0, 2).forEach(topic => {
-              if (topic.Text && topic.FirstURL) {
-                results.push({
-                  title: topic.Text.substring(0, 100) + (topic.Text.length > 100 ? '...' : ''),
-                  url: topic.FirstURL,
-                  summary: topic.Text.substring(0, 200) + (topic.Text.length > 200 ? '...' : ''),
-                  source: site,
-                  weight: 0.7
-                });
-              }
-            });
-            
-            if (results.length > 0) {
-              console.log(`✅ DuckDuckGo fallback success for ${site}`);
-              return results;
-            }
-          }
-        } catch (duckDuckGoError) {
-          console.log(`❌ DuckDuckGo fallback also failed for ${site}`);
-        }
+                 // Fallback ל-DuckDuckGo API
+         try {
+           const searchQuery = `site:${site} "${deviceModel}" "${androidVersion}" update`;
+           console.log(`🔄 [DuckDuckGo API] FALLBACK: Searching "${searchQuery}"`);
+           const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&no_html=1&skip_disambig=1`;
+           
+           const response = await axios.get(duckDuckGoUrl, {
+             timeout: 5000,
+             headers: {
+               'User-Agent': 'AndroidUpdateBot/1.0'
+             }
+           });
+           
+           if (response.data && response.data.RelatedTopics && response.data.RelatedTopics.length > 0) {
+             const results = [];
+             
+             response.data.RelatedTopics.slice(0, 2).forEach(topic => {
+               if (topic.Text && topic.FirstURL) {
+                 results.push({
+                   title: topic.Text.substring(0, 100) + (topic.Text.length > 100 ? '...' : ''),
+                   url: topic.FirstURL,
+                   summary: topic.Text.substring(0, 200) + (topic.Text.length > 200 ? '...' : ''),
+                   source: site,
+                   weight: 0.7
+                 });
+               }
+             });
+             
+             if (results.length > 0) {
+               console.log(`✅ [DuckDuckGo API] FALLBACK SUCCESS: ${results.length} results for ${site}`);
+               return results;
+             }
+           }
+           console.log(`⚠️ [DuckDuckGo API] No results found for ${site}`);
+         } catch (duckDuckGoError) {
+           console.log(`❌ [DuckDuckGo API] FALLBACK FAILED for ${site}: ${duckDuckGoError.message}`);
+         }
       }
       
       // מחזיר תוצאות fallback עם קישורים מועילים
@@ -1332,10 +1344,13 @@ ${resultsText}
   // חיפוש עם Google Custom Search API
   async googleCustomSearch(query) {
     try {
+      console.log(`🔍 [Google Search API] Searching: "${query}"`);
+      
       const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
       const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
       
       if (!apiKey || !searchEngineId) {
+        console.log(`❌ [Google Search API] Credentials not configured`);
         throw new Error('Google Search API credentials not configured');
       }
       
@@ -1349,7 +1364,8 @@ ${resultsText}
       });
       
       if (response.data && response.data.items) {
-        console.log(`✅ Google Search API returned ${response.data.items.length} results`);
+        console.log(`✅ [Google Search API] SUCCESS: ${response.data.items.length} results found`);
+        console.log(`📊 [Google Search API] Quota info: ${response.data.searchInformation?.totalResults || 'N/A'} total results available`);
         return response.data.items.map(item => ({
           title: item.title,
           link: item.link,
@@ -1358,15 +1374,19 @@ ${resultsText}
         }));
       }
       
+      console.log(`⚠️ [Google Search API] No results found`);
       return [];
       
     } catch (error) {
       // בדיקה אם זו שגיאת מגבלת quota
       if (error.response && error.response.status === 429) {
+        console.log(`🚫 [Google Search API] QUOTA EXCEEDED - Daily limit reached`);
         throw new Error('Google Search API quota exceeded');
       } else if (error.response && error.response.data && error.response.data.error) {
+        console.log(`❌ [Google Search API] ERROR: ${error.response.data.error.message}`);
         throw new Error(`Google Search API error: ${error.response.data.error.message}`);
       } else {
+        console.log(`❌ [Google Search API] ERROR: ${error.message}`);
         throw new Error(`Google Search API error: ${error.message}`);
       }
     }
