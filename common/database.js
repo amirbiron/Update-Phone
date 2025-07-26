@@ -520,6 +520,34 @@ class Database {
     }
   }
 
+  // Alias for checkUserQueryLimit for backward compatibility
+  async checkQueryLimit(chatId) {
+    return await this.checkUserQueryLimit(chatId);
+  }
+
+  // רישום אינטראקציות משתמש
+  async logUserInteraction(chatId, interactionType, data = {}) {
+    if (!this.isConnected) return;
+    
+    try {
+      // Create a simple interaction log entry
+      const interactionData = {
+        chatId,
+        interactionType,
+        data,
+        timestamp: new Date()
+      };
+      
+      console.log(`📝 User interaction logged: ${chatId} - ${interactionType}`, data);
+      
+      // For now, we'll just log to console. In the future, we could create a separate collection
+      // or extend an existing schema to store these interactions
+      
+    } catch (error) {
+      console.error('Error logging user interaction:', error?.message || error);
+    }
+  }
+
   // סגירת חיבור
   async disconnect() {
     try {

@@ -866,6 +866,63 @@ ${resultsText}
     return 'neutral';
   }
 
+  // חיפוש מידע כללי על מכשיר או עדכון
+  async searchGeneralInfo(queryText) {
+    try {
+      console.log(`🔍 Searching general info for: ${queryText}`);
+      
+      // Extract device info from query text
+      const deviceKeywords = queryText.toLowerCase().match(/samsung|galaxy|s\d+|note|a\d+|huawei|xiaomi|oneplus|pixel|iphone/gi);
+      const versionKeywords = queryText.toLowerCase().match(/android\s*\d+|ios\s*\d+|\d+\.\d+/gi);
+      
+      if (!deviceKeywords && !versionKeywords) {
+        return {
+          success: false,
+          message: 'לא זוהו פרטי מכשיר או גרסה בשאילתה',
+          data: null
+        };
+      }
+      
+      // Create a basic search result
+      const searchResults = {
+        sources: [],
+        userReports: [],
+        summary: `חיפוש מידע כללי עבור: ${queryText}`
+      };
+      
+      // Try to search for general information
+      if (deviceKeywords) {
+        const deviceInfo = deviceKeywords.join(' ');
+        searchResults.summary += `\n📱 מכשיר מזוהה: ${deviceInfo}`;
+      }
+      
+      if (versionKeywords) {
+        const versionInfo = versionKeywords.join(' ');
+        searchResults.summary += `\n🔄 גרסה מזוהה: ${versionInfo}`;
+      }
+      
+      // Add some general advice
+      searchResults.summary += `\n\n💡 לקבלת מידע מדויק יותר, אנא ציינו:
+• דגם מכשיר מדויק (לדוגמה: Samsung Galaxy S10)
+• גרסת אנדרואיד הנוכחית
+• גרסת האנדרואיד שאליה תרצו לעדכן`;
+      
+      return {
+        success: true,
+        data: searchResults,
+        message: 'חיפוש כללי הושלם'
+      };
+      
+    } catch (error) {
+      console.error('Error in searchGeneralInfo:', error?.message || error);
+      return {
+        success: false,
+        message: 'שגיאה בחיפוש מידע כללי',
+        error: error?.message || error
+      };
+    }
+  }
+
 
 }
 
