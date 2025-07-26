@@ -110,7 +110,7 @@ function extractDeviceInfo(deviceText) {
 // ניתוח הודעה חופשית
 function parseFreetextMessage(text) {
   // חיפוש של מילות מפתח
-  const deviceKeywords = ['galaxy', 'pixel', 'redmi', 'poco', 'oneplus'];
+  const deviceKeywords = ['galaxy', 'pixel', 'redmi', 'poco', 'oneplus', 'tab', 'tablet', 'pad', 'טאבלט'];
   const versionKeywords = ['android', 'one ui', 'miui', 'oxygen'];
   
   let device = null;

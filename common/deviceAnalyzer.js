@@ -23,6 +23,26 @@ class DeviceAnalyzer {
           's21': { fullName: 'Galaxy S21', series: 'S', year: 2021, codename: 'o1s' },
           's21+': { fullName: 'Galaxy S21+', series: 'S', year: 2021, codename: 'o1s' },
           's21 ultra': { fullName: 'Galaxy S21 Ultra', series: 'S', year: 2021, codename: 'o1s' },
+          's20': { fullName: 'Galaxy S20', series: 'S', year: 2020, codename: 'x1s' },
+          's20+': { fullName: 'Galaxy S20+', series: 'S', year: 2020, codename: 'y2s' },
+          's20 ultra': { fullName: 'Galaxy S20 Ultra', series: 'S', year: 2020, codename: 'z3s' },
+          's10': { fullName: 'Galaxy S10', series: 'S', year: 2019, codename: 'beyond1' },
+          's10+': { fullName: 'Galaxy S10+', series: 'S', year: 2019, codename: 'beyond2' },
+          's10e': { fullName: 'Galaxy S10e', series: 'S', year: 2019, codename: 'beyond0' },
+          's10 ultra': { fullName: 'Galaxy S10 Ultra (Tablet)', series: 'Tab', year: 2019, codename: 'gts4lv', isTablet: true },
+          'tab s10 ultra': { fullName: 'Galaxy Tab S10 Ultra', series: 'Tab', year: 2024, codename: 'gts10u', isTablet: true },
+          'tab s10+': { fullName: 'Galaxy Tab S10+', series: 'Tab', year: 2024, codename: 'gts10p', isTablet: true },
+          'tab s10': { fullName: 'Galaxy Tab S10', series: 'Tab', year: 2024, codename: 'gts10', isTablet: true },
+          'tab s9 ultra': { fullName: 'Galaxy Tab S9 Ultra', series: 'Tab', year: 2023, codename: 'gts9u', isTablet: true },
+          'tab s9+': { fullName: 'Galaxy Tab S9+', series: 'Tab', year: 2023, codename: 'gts9p', isTablet: true },
+          'tab s9': { fullName: 'Galaxy Tab S9', series: 'Tab', year: 2023, codename: 'gts9', isTablet: true },
+          'tab s8 ultra': { fullName: 'Galaxy Tab S8 Ultra', series: 'Tab', year: 2022, codename: 'gts8u', isTablet: true },
+          'tab s8+': { fullName: 'Galaxy Tab S8+', series: 'Tab', year: 2022, codename: 'gts8p', isTablet: true },
+          'tab s8': { fullName: 'Galaxy Tab S8', series: 'Tab', year: 2022, codename: 'gts8', isTablet: true },
+          'tab s7+': { fullName: 'Galaxy Tab S7+', series: 'Tab', year: 2020, codename: 'gts7l', isTablet: true },
+          'tab s7': { fullName: 'Galaxy Tab S7', series: 'Tab', year: 2020, codename: 'gts7', isTablet: true },
+          'tab a9+': { fullName: 'Galaxy Tab A9+', series: 'Tab A', year: 2023, codename: 'gta9p', isTablet: true },
+          'tab a8': { fullName: 'Galaxy Tab A8', series: 'Tab A', year: 2021, codename: 'gta8', isTablet: true },
           'a54': { fullName: 'Galaxy A54', series: 'A', year: 2023, codename: 'a54x' },
           'a53': { fullName: 'Galaxy A53', series: 'A', year: 2022, codename: 'a53x' },
           'a52': { fullName: 'Galaxy A52', series: 'A', year: 2021, codename: 'a52q' },
@@ -44,7 +64,8 @@ class DeviceAnalyzer {
           'pixel 6 pro': { fullName: 'Pixel 6 Pro', series: 'Pixel', year: 2021, codename: 'raven' },
           'pixel 6a': { fullName: 'Pixel 6a', series: 'Pixel', year: 2022, codename: 'bluejay' },
           'pixel 5': { fullName: 'Pixel 5', series: 'Pixel', year: 2020, codename: 'redfin' },
-          'pixel 5a': { fullName: 'Pixel 5a', series: 'Pixel', year: 2021, codename: 'barbet' }
+          'pixel 5a': { fullName: 'Pixel 5a', series: 'Pixel', year: 2021, codename: 'barbet' },
+          'pixel tablet': { fullName: 'Pixel Tablet', series: 'Pixel', year: 2023, codename: 'tangorpro', isTablet: true }
         }
       },
       xiaomi: {
@@ -57,6 +78,9 @@ class DeviceAnalyzer {
           '12 pro': { fullName: 'Xiaomi 12 Pro', series: 'Mi', year: 2022, codename: 'zeus' },
           'redmi note 13': { fullName: 'Redmi Note 13', series: 'Redmi', year: 2024, codename: 'sapphire' },
           'redmi note 12': { fullName: 'Redmi Note 12', series: 'Redmi', year: 2023, codename: 'tapas' },
+          'pad 6': { fullName: 'Xiaomi Pad 6', series: 'Pad', year: 2023, codename: 'pipa', isTablet: true },
+          'pad 5': { fullName: 'Xiaomi Pad 5', series: 'Pad', year: 2021, codename: 'nabu', isTablet: true },
+          'redmi pad': { fullName: 'Redmi Pad', series: 'Redmi', year: 2022, codename: 'dagu', isTablet: true },
           'redmi note 11': { fullName: 'Redmi Note 11', series: 'Redmi', year: 2022, codename: 'spes' },
           'poco f5': { fullName: 'POCO F5', series: 'POCO', year: 2023, codename: 'marble' },
           'poco f4': { fullName: 'POCO F4', series: 'POCO', year: 2022, codename: 'munch' },
@@ -154,13 +178,32 @@ class DeviceAnalyzer {
     
     const devices = manufacturerInfo.data.devices;
     
-    // חיפוש מדויק
+    // חיפוש מדויק - עדיפות לטאבלטים אם מוזכר "tab"
+    const isTabletQuery = text.includes('tab') || text.includes('tablet') || text.includes('טאבלט');
+    
     for (const [key, deviceData] of Object.entries(devices)) {
       if (text.includes(key.toLowerCase())) {
-        return {
-          key: key,
-          ...deviceData
-        };
+        // אם זה שאילתת טאבלט, נעדיף התאמה לטאבלט
+        if (isTabletQuery && deviceData.isTablet) {
+          return {
+            key: key,
+            ...deviceData
+          };
+        }
+        // אם זה לא שאילתת טאבלט ולא מכשיר טאבלט, נחזיר
+        if (!isTabletQuery && !deviceData.isTablet) {
+          return {
+            key: key,
+            ...deviceData
+          };
+        }
+        // אם זה ההתאמה הראשונה ואין התנגשות, נחזיר
+        if (!deviceData.isTablet || isTabletQuery) {
+          return {
+            key: key,
+            ...deviceData
+          };
+        }
       }
     }
     
@@ -170,10 +213,25 @@ class DeviceAnalyzer {
       const textParts = text.split(/[\s\-_]/);
       
       if (deviceParts.every(part => textParts.some(textPart => textPart.includes(part)))) {
-        return {
-          key: key,
-          ...deviceData
-        };
+        // אותה לוגיקה כמו בחיפוש המדויק
+        if (isTabletQuery && deviceData.isTablet) {
+          return {
+            key: key,
+            ...deviceData
+          };
+        }
+        if (!isTabletQuery && !deviceData.isTablet) {
+          return {
+            key: key,
+            ...deviceData
+          };
+        }
+        if (!deviceData.isTablet || isTabletQuery) {
+          return {
+            key: key,
+            ...deviceData
+          };
+        }
       }
     }
     
@@ -277,14 +335,35 @@ class DeviceAnalyzer {
     terms.push(`${deviceInfo.fullName}`);
     terms.push(`${manufacturerInfo.name} ${deviceInfo.fullName}`);
     
+    // אם זה טאבלט, נוסיף גם מונחי חיפוש ספציפיים לטאבלט
+    if (deviceInfo.isTablet) {
+      terms.push(`${deviceInfo.fullName} tablet`);
+      terms.push(`${deviceInfo.fullName} טאבלט`);
+      // אם זה S10 Ultra, נוסיף גם ללא המילה "tablet"
+      if (deviceInfo.fullName.includes('S10 Ultra')) {
+        terms.push('Samsung Galaxy S10 Ultra');
+        terms.push('Galaxy S10 Ultra');
+      }
+    }
+    
     // עם גרסת אנדרואיד
     if (androidVersion) {
       terms.push(`${deviceInfo.fullName} ${androidVersion.fullText}`);
       terms.push(`${deviceInfo.fullName} Android ${androidVersion.version || androidVersion.androidEquivalent}`);
+      
+      // מונחים ספציפיים לטאבלט עם אנדרואיד
+      if (deviceInfo.isTablet) {
+        terms.push(`${deviceInfo.fullName} tablet Android ${androidVersion.version || androidVersion.androidEquivalent}`);
+      }
     }
     
     // מונחי בעיות נפוצות
     const problemTerms = ['issues', 'problems', 'bugs', 'battery drain', 'heating', 'lag'];
+    if (deviceInfo.isTablet) {
+      // בעיות ספציפיות לטאבלטים
+      problemTerms.push('touch issues', 'screen rotation', 'keyboard problems', 'stylus issues');
+    }
+    
     problemTerms.forEach(term => {
       terms.push(`${deviceInfo.fullName} ${androidVersion?.fullText || ''} ${term}`);
     });
@@ -292,6 +371,11 @@ class DeviceAnalyzer {
     // מונחים בעברית
     terms.push(`${deviceInfo.fullName} בעיות`);
     terms.push(`${deviceInfo.fullName} תקלות`);
+    
+    if (deviceInfo.isTablet) {
+      terms.push(`${deviceInfo.fullName} טאבלט בעיות`);
+      terms.push(`${deviceInfo.fullName} בעיות מגע`);
+    }
     
     return terms;
   }
