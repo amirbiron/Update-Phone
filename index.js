@@ -10,40 +10,61 @@ const { formatResponse, formatResponseWithSplit, parseUserMessage, logMessageSpl
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// יצירת הבוט
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
-  webHook: process.env.NODE_ENV === 'production' ? {
-    port: PORT,
-    host: '0.0.0.0'
-  } : false,
-  polling: process.env.NODE_ENV !== 'production'
-});
+// מוסיפים את זה רק בסביבת פיתוח (development) לפני יצירת אובייקט הבוט
+async function initializeBot() {
+  if (process.env.NODE_ENV !== 'production') {
+    const tempBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+    await tempBot.deleteWebHook();
+    console.log('🧹 Webhook deleted for development environment');
+  }
 
-// התחברות למסד נתונים
-Database.connect();
-
-// יצירת מופעי השירותים
-const deviceAnalyzer = new DeviceAnalyzer();
-const updateChecker = new UpdateChecker();
-const recommendationEngine = new RecommendationEngine();
-
-// הגדרת webhook לסביבת production
-if (process.env.NODE_ENV === 'production') {
-  const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`;
-  bot.setWebHook(webhookUrl);
-  
-  app.use(express.json());
-  app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
-    bot.processUpdate(req.body);
-    res.sendStatus(200);
+  // יצירת הבוט - רק לאחר מחיקת webhook ב-development
+  const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+    webHook: process.env.NODE_ENV === 'production' ? {
+      port: PORT,
+      host: '0.0.0.0'
+    } : false,
+    polling: process.env.NODE_ENV !== 'production'
   });
+
+  return bot;
 }
 
-// middleware להגנה
-app.use(express.static('public'));
+// אתחול הבוט
+let bot;
+initializeBot().then(botInstance => {
+  bot = botInstance;
+  setupBotHandlers(bot);
+  console.log(`🤖 Bot initialized in ${process.env.NODE_ENV === 'production' ? 'webhook' : 'polling'} mode`);
+}).catch(error => {
+  console.error('❌ Failed to initialize bot:', error);
+  process.exit(1);
+});
 
-// פקודת התחלה
-bot.onText(/\/start/, async (msg) => {
+// פונקציה להגדרת handlers של הבוט
+function setupBotHandlers(bot) {
+  // התחברות למסד נתונים
+  Database.connect();
+
+  // יצירת מופעי השירותים
+  const deviceAnalyzer = new DeviceAnalyzer();
+  const updateChecker = new UpdateChecker();
+  const recommendationEngine = new RecommendationEngine();
+
+  // הגדרת webhook לסביבת production
+  if (process.env.NODE_ENV === 'production') {
+    const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+    bot.setWebHook(webhookUrl);
+    
+    app.use(express.json());
+    app.post(`/bot${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
+      bot.processUpdate(req.body);
+      res.sendStatus(200);
+    });
+  }
+
+  // פקודת התחלה
+  bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const welcomeMessage = `
 🤖 ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!
@@ -75,11 +96,11 @@ bot.onText(/\/start/, async (msg) => {
 בואו נתחיל! שאלו אותי על העדכון שלכם 🚀
   `;
   
-  bot.sendMessage(chatId, welcomeMessage);
-});
+    bot.sendMessage(chatId, welcomeMessage);
+  });
 
-// פקודת עזרה
-bot.onText(/\/help/, async (msg) => {
+  // פקודת עזרה
+  bot.onText(/\/help/, async (msg) => {
   const chatId = msg.chat.id;
   const helpMessage = `
 🆘 איך להשתמש בבוט:
@@ -124,11 +145,11 @@ bot.onText(/\/help/, async (msg) => {
 ❓ שאלות נוספות? פשוט כתבו לי!
   `;
   
-  bot.sendMessage(chatId, helpMessage);
-});
+    bot.sendMessage(chatId, helpMessage);
+  });
 
-// פקודת סטטוס
-bot.onText(/\/status/, async (msg) => {
+  // פקודת סטטוס
+  bot.onText(/\/status/, async (msg) => {
   const chatId = msg.chat.id;
   try {
     const stats = await Database.getSystemStats();
@@ -146,139 +167,143 @@ ${await updateChecker.getServicesStatus()}
 ✅ המערכת פועלת כרגיל
     `;
     
-    bot.sendMessage(chatId, statusMessage);
-  } catch (error) {
-    bot.sendMessage(chatId, '❌ שגיאה בקבלת סטטוס המערכת. נסו שוב מאוחר יותר.');
-  }
-});
+      bot.sendMessage(chatId, statusMessage);
+    } catch (error) {
+      bot.sendMessage(chatId, '❌ שגיאה בקבלת סטטוס המערכת. נסו שוב מאוחר יותר.');
+    }
+  });
 
-// טיפול בהודעות כלליות
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const messageText = msg.text;
-  
-  // התעלמות מפקודות
-  if (messageText && messageText.startsWith('/')) {
-    return;
-  }
-  
-  if (!messageText) {
-    bot.sendMessage(chatId, '🤔 לא הבנתי. אנא שלחו הודעת טקסט עם השאלה שלכם.');
-    return;
-  }
-  
-  try {
-    // הצגת אינדיקטור "כותב"
-    bot.sendChatAction(chatId, 'typing');
+  // טיפול בהודעות כלליות
+  bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const messageText = msg.text;
     
-    // הודעת המתנה
-    const waitingMsg = await bot.sendMessage(chatId, '🔍 בודק מידע על העדכון... זה יכול לקחת מספר שניות');
-    
-    // ניתוח ההודעה
-    const parsedQuery = parseUserMessage(messageText);
-    
-    if (!parsedQuery.device || !parsedQuery.manufacturer) {
-      bot.editMessageText(
-        '❌ לא הצלחתי לזהות את פרטי המכשיר. \n\nאנא כתבו בפורמט:\n"כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"',
-        { chat_id: chatId, message_id: waitingMsg.message_id }
-      );
+    // התעלמות מפקודות
+    if (messageText && messageText.startsWith('/')) {
       return;
     }
     
-    // בדיקת פרטי המכשיר
-    const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedQuery);
-    
-    if (!deviceInfo.isValid) {
-      bot.editMessageText(
-        `❌ לא מצאתי מידע על המכשיר "${parsedQuery.manufacturer} ${parsedQuery.device}".\n\nוודאו שכתבתם את שם המכשיר נכון.`,
-        { chat_id: chatId, message_id: waitingMsg.message_id }
-      );
+    if (!messageText) {
+      bot.sendMessage(chatId, '🤔 לא הבנתי. אנא שלחו הודעת טקסט עם השאלה שלכם.');
       return;
     }
+  
+    try {
+      // הצגת אינדיקטור "כותב"
+      bot.sendChatAction(chatId, 'typing');
+      
+      // הודעת המתנה
+      const waitingMsg = await bot.sendMessage(chatId, '🔍 בודק מידע על העדכון... זה יכול לקחת מספר שניות');
     
-    // בדיקת מידע על העדכון
-    bot.editMessageText('🔍 אוסף מידע מפורומים ואתרי טכנולוגיה...', {
-      chat_id: chatId,
-      message_id: waitingMsg.message_id
-    });
+      // ניתוח ההודעה
+      const parsedQuery = parseUserMessage(messageText);
+      
+      if (!parsedQuery.device || !parsedQuery.manufacturer) {
+        bot.editMessageText(
+          '❌ לא הצלחתי לזהות את פרטי המכשיר. \n\nאנא כתבו בפורמט:\n"כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"',
+          { chat_id: chatId, message_id: waitingMsg.message_id }
+        );
+        return;
+      }
     
-    const updateInfo = await updateChecker.checkUpdate(deviceInfo, parsedQuery);
+      // בדיקת פרטי המכשיר
+      const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedQuery);
+      
+      if (!deviceInfo.isValid) {
+        bot.editMessageText(
+          `❌ לא מצאתי מידע על המכשיר "${parsedQuery.manufacturer} ${parsedQuery.device}".\n\nוודאו שכתבתם את שם המכשיר נכון.`,
+          { chat_id: chatId, message_id: waitingMsg.message_id }
+        );
+        return;
+      }
+      
+      // בדיקת מידע על העדכון
+      bot.editMessageText('🔍 אוסף מידע מפורומים ואתרי טכנולוגיה...', {
+        chat_id: chatId,
+        message_id: waitingMsg.message_id
+      });
+      
+      const updateInfo = await updateChecker.checkUpdate(deviceInfo, parsedQuery);
+      
+      // יצירת המלצה
+      bot.editMessageText('🧠 מנתח נתונים ויוצר המלצה...', {
+        chat_id: chatId,
+        message_id: waitingMsg.message_id
+      });
+      
+      const recommendation = await recommendationEngine.generateRecommendation(
+        deviceInfo,
+        updateInfo,
+        parsedQuery
+      );
     
-    // יצירת המלצה
-    bot.editMessageText('🧠 מנתח נתונים ויוצר המלצה...', {
-      chat_id: chatId,
-      message_id: waitingMsg.message_id
-    });
+      // עיצוב התשובה הסופית עם פיצול אוטומטי
+      const messageChunks = formatResponseWithSplit(deviceInfo, updateInfo, recommendation);
+      
+      // לוג פרטי הפיצול
+      logMessageSplit(messageChunks);
+      
+      // שליחת ההודעה הראשונה (עריכת הודעת ההמתנה)
+      await bot.editMessageText(messageChunks[0], {
+        chat_id: chatId,
+        message_id: waitingMsg.message_id,
+        parse_mode: 'HTML'
+      });
+      
+      // שליחת שאר ההודעות (דיווחי משתמשים)
+      if (messageChunks.length > 1) {
+        console.log(`📤 Sending ${messageChunks.length - 1} additional user report messages...`);
+      }
+      
+      for (let i = 1; i < messageChunks.length; i++) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // המתנה של שנייה בין הודעות
+          await bot.sendMessage(chatId, messageChunks[i], {
+            parse_mode: 'HTML'
+          });
+          console.log(`✅ Sent message chunk ${i}/${messageChunks.length - 1}`);
+        } catch (messageError) {
+          console.error(`❌ Error sending message chunk ${i}:`, messageError);
+          // המשך לשלוח את שאר ההודעות גם אם אחת נכשלה
+        }
+      }
+      
+      // שמירת השאילתה במסד הנתונים
+      await Database.saveQuery({
+        chatId,
+        query: messageText,
+        deviceInfo,
+        updateInfo,
+        recommendation,
+        timestamp: new Date()
+      });
     
-    const recommendation = await recommendationEngine.generateRecommendation(
-      deviceInfo,
-      updateInfo,
-      parsedQuery
-    );
-    
-    // עיצוב התשובה הסופית עם פיצול אוטומטי
-    const messageChunks = formatResponseWithSplit(deviceInfo, updateInfo, recommendation);
-    
-    // לוג פרטי הפיצול
-    logMessageSplit(messageChunks);
-    
-    // שליחת ההודעה הראשונה (עריכת הודעת ההמתנה)
-    await bot.editMessageText(messageChunks[0], {
-      chat_id: chatId,
-      message_id: waitingMsg.message_id,
-      parse_mode: 'HTML'
-    });
-    
-    // שליחת שאר ההודעות (דיווחי משתמשים)
-    if (messageChunks.length > 1) {
-      console.log(`📤 Sending ${messageChunks.length - 1} additional user report messages...`);
-    }
-    
-    for (let i = 1; i < messageChunks.length; i++) {
+    } catch (error) {
+      console.error('Error processing message:', error);
+      
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // המתנה של שנייה בין הודעות
-        await bot.sendMessage(chatId, messageChunks[i], {
-          parse_mode: 'HTML'
-        });
-        console.log(`✅ Sent message chunk ${i}/${messageChunks.length - 1}`);
-      } catch (messageError) {
-        console.error(`❌ Error sending message chunk ${i}:`, messageError);
-        // המשך לשלוח את שאר ההודעות גם אם אחת נכשלה
+        bot.editMessageText(
+          '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.\n\nאם הבעיה נמשכת, אנא צרו קשר עם התמיכה.',
+          { chat_id: chatId, message_id: waitingMsg?.message_id }
+        );
+      } catch (editError) {
+        bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.');
       }
     }
-    
-    // שמירת השאילתה במסד הנתונים
-    await Database.saveQuery({
-      chatId,
-      query: messageText,
-      deviceInfo,
-      updateInfo,
-      recommendation,
-      timestamp: new Date()
-    });
-    
-  } catch (error) {
-    console.error('Error processing message:', error);
-    
-    try {
-      bot.editMessageText(
-        '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.\n\nאם הבעיה נמשכת, אנא צרו קשר עם התמיכה.',
-        { chat_id: chatId, message_id: waitingMsg?.message_id }
-      );
-    } catch (editError) {
-      bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.');
-    }
-  }
-});
+  });
 
-// טיפול בשגיאות
-bot.on('error', (error) => {
-  console.error('Bot error:', error);
-});
+  // טיפול בשגיאות
+  bot.on('error', (error) => {
+    console.error('Bot error:', error);
+  });
 
-bot.on('polling_error', (error) => {
-  console.error('Polling error:', error);
-});
+  bot.on('polling_error', (error) => {
+    console.error('Polling error:', error);
+  });
+}
+
+// middleware להגנה
+app.use(express.static('public'));
 
 // הפעלת שרת ה-Express
 app.get('/', (req, res) => {
