@@ -22,10 +22,14 @@ const [redditResults, webSearchResults, officialResults, samsungCommunityResults
 ]);
 ```
 
-### 2. חיפוש אמיתי באינטרנט
-**הוספה:** אינטגרציה עם DuckDuckGo API לחיפוש אמיתי במקום תוצאות מדומות
+### 2. חיפוש אמיתי באינטרנט עם Google Search API
+**הוספה:** אינטגרציה עם Google Custom Search API כ-primary עם DuckDuckGo כ-fallback
 
 ```javascript
+// Primary - Google Search API
+const googleResults = await this.googleCustomSearch(`site:${site} "${deviceModel}" "${androidVersion}" update`);
+
+// Fallback - DuckDuckGo API
 const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&no_html=1&skip_disambig=1`;
 ```
 
@@ -118,15 +122,22 @@ if (deviceModel.toLowerCase().includes('samsung')) {
 ```
 
 ## קבצים שהשתנו
-- `common/updateChecker.js` - שיפור מנגנון החיפוש
+- `common/updateChecker.js` - שיפור מנגנון החיפוש + Google Search API
 - `common/utils.js` - שיפור פיצול הודעות
 - `bot/index.js` - תמיכה בפיצול כפוי
+- `env.example` - הוספת משתני Google Search API
+- `GOOGLE_SEARCH_SETUP.md` - מדריך הגדרת Google Search API
 
 ## יתרונות השיפור
 1. **מידע רלוונטי**: הבוט עכשיו מוצא ומציג מידע אמיתי
-2. **מקורות מגוונים**: חיפוש במקורות מרובים מגדיל את הסיכויים למצוא מידע
-3. **קישורים שימושיים**: גם אם לא נמצא מידע, המשתמש מקבל קישורים לחיפוש עצמי
-4. **קריאות טובה יותר**: פיצול חכם של הודעות ארוכות לפי נושאים
-5. **המלצות מותאמות**: המלצות ספציפיות לפי יצרן המכשיר
+2. **איכות תוצאות מעולה**: Google Search API מספק תוצאות מדויקות יותר
+3. **מקורות מגוונים**: חיפוש במקורות מרובים מגדיל את הסיכויים למצוא מידע
+4. **גיבוי אמין**: DuckDuckGo כ-fallback מבטיח שהבוט ימשיך לעבוד גם כשנגמרים טוקני Google
+5. **קישורים שימושיים**: גם אם לא נמצא מידע, המשתמש מקבל קישורים לחיפוש עצמי
+6. **קריאות טובה יותר**: פיצול חכם של הודעות ארוכות לפי נושאים
+7. **המלצות מותאמות**: המלצות ספציפיות לפי יצרן המכשיר
 
-השיפור פותר את הבעיה המקורית ומספק חוויית משתמש משופרת משמעותית.
+## הגדרת Google Search API
+ראו קובץ `GOOGLE_SEARCH_SETUP.md` להוראות מפורטות על הגדרת ה-API.
+
+השיפור פותר את הבעיה המקורית ומספק חוויית משתמש משופרת משמעותית עם איכות תוצאות מקצועית.
