@@ -84,11 +84,21 @@ const FeedbackSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+// Schema למעקב אחר הגבלות משתמשים
+const UserLimitSchema = new mongoose.Schema({
+  chatId: { type: String, required: true, unique: true },
+  monthlyQueries: { type: Number, default: 0 },
+  lastResetDate: { type: Date, default: Date.now },
+  totalQueries: { type: Number, default: 0 },
+  joinDate: { type: Date, default: Date.now }
+});
+
 // יצירת המודלים
 const Query = mongoose.model('Query', QuerySchema);
 const UpdateTracking = mongoose.model('UpdateTracking', UpdateTrackingSchema);
 const SystemStats = mongoose.model('SystemStats', SystemStatsSchema);
 const Feedback = mongoose.model('Feedback', FeedbackSchema);
+const UserLimit = mongoose.model('UserLimit', UserLimitSchema);
 
 class Database {
   constructor() {
@@ -125,6 +135,8 @@ class Database {
       await UpdateTracking.createIndex({ manufacturerKey: 1, deviceKey: 1, version: 1 });
       await SystemStats.createIndex({ date: -1 });
       await Feedback.createIndex({ chatId: 1, timestamp: -1 });
+      await UserLimit.createIndex({ chatId: 1 });
+      await UserLimit.createIndex({ lastResetDate: 1 });
     } catch (error) {
       console.error('Error creating indexes:', error);
     }
@@ -155,6 +167,9 @@ class Database {
       });
       
       const savedQuery = await query.save();
+      
+      // עדכון מונה השאילתות החודשי של המשתמש
+      await this.incrementUserQueryCount(queryData.chatId);
       
       // עדכון סטטיסטיקות
       await this.updateDailyStats();
@@ -438,6 +453,73 @@ class Database {
       return { status: 'healthy' };
     } catch (error) {
       return { status: 'unhealthy', error: error.message };
+    }
+  }
+
+  // בדיקת הגבלת שאילתות חודשית
+  async checkUserQueryLimit(chatId) {
+    if (!this.isConnected) return { allowed: true, remaining: 30 };
+    
+    try {
+      const MONTHLY_LIMIT = 30;
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      let userLimit = await UserLimit.findOne({ chatId });
+      
+      if (!userLimit) {
+        // משתמש חדש - יצירת רשומה
+        userLimit = new UserLimit({
+          chatId,
+          monthlyQueries: 0,
+          lastResetDate: startOfMonth,
+          totalQueries: 0,
+          joinDate: now
+        });
+        await userLimit.save();
+      }
+      
+      // בדיקה אם צריך לאפס את המונה החודשי
+      if (userLimit.lastResetDate < startOfMonth) {
+        userLimit.monthlyQueries = 0;
+        userLimit.lastResetDate = startOfMonth;
+        await userLimit.save();
+      }
+      
+      const remaining = Math.max(0, MONTHLY_LIMIT - userLimit.monthlyQueries);
+      const allowed = userLimit.monthlyQueries < MONTHLY_LIMIT;
+      
+      return {
+        allowed,
+        remaining,
+        used: userLimit.monthlyQueries,
+        limit: MONTHLY_LIMIT,
+        resetDate: new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      };
+      
+    } catch (error) {
+      console.error('Error checking user query limit:', error);
+      return { allowed: true, remaining: 30 }; // ברירת מחדל בשגיאה
+    }
+  }
+
+  // עדכון מונה השאילתות של המשתמש
+  async incrementUserQueryCount(chatId) {
+    if (!this.isConnected) return;
+    
+    try {
+      await UserLimit.findOneAndUpdate(
+        { chatId },
+        { 
+          $inc: { 
+            monthlyQueries: 1,
+            totalQueries: 1 
+          }
+        },
+        { upsert: true }
+      );
+    } catch (error) {
+      console.error('Error incrementing user query count:', error);
     }
   }
 

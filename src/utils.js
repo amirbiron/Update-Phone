@@ -415,7 +415,6 @@ function formatUserReports(searchResults) {
         }
       }
       
-      reports += `  👤 ${post.author} | 👍 ${post.score} | 💬 ${post.numComments} | ${timeAgo(post.created)}\n`;
       reports += `  🔗 <a href="${post.url}">קרא עוד</a>\n\n`;
     });
   }
@@ -586,7 +585,6 @@ function formatRedditReports(redditPosts) {
       }
     }
     
-    reports += `  👤 ${post.author} | 👍 ${post.score} | 💬 ${post.numComments} | ${timeAgo(post.created)}\n`;
     reports += `  🔗 <a href="${post.url}">קרא עוד</a>\n\n`;
   });
   
@@ -606,7 +604,6 @@ function formatForumReports(forumDiscussions) {
       discussion.userReports.slice(0, 8).forEach(userReport => { // מגביל ל-8 דיווחים פנימיים
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
         reports += `    ${sentimentEmoji} <i>"${truncateText(userReport.content, 80)}"</i>\n`;
-        reports += `    👤 ${userReport.author} | ${timeAgo(userReport.date)}\n`;
       });
     }
     
@@ -625,17 +622,115 @@ function formatWebReports(webSearchResults) {
     .slice(0, 8); // מגביל ל-8 דיווחים
   
   relevantWebResults.forEach(result => {
-    reports += `• <b>${truncateText(result.title, 60)}</b>\n`;
+    reports += `• <b>${truncateText(translateToHebrew(result.title), 60)}</b>\n`;
     if (result.snippet) {
-      const translatedSnippet = result.snippet.includes('Android') || result.snippet.includes('update') || result.snippet.includes('device') ? 
-        result.snippet.replace(/Android/g, 'אנדרואיד').replace(/update/gi, 'עדכון').replace(/device/gi, 'מכשיר') : 
-        result.snippet;
+      const translatedSnippet = translateToHebrew(result.snippet);
       reports += `  📝 ${truncateText(translatedSnippet, 120)}\n`;
     }
     reports += `  🔗 <a href="${result.url}">קרא עוד</a>\n\n`;
   });
   
   return reports;
+}
+
+// פונקציה לתרגום תוכן לעברית
+function translateToHebrew(text) {
+  if (!text) return text;
+  
+  // מילון תרגומים בסיסי
+  const translations = {
+    'Android': 'אנדרואיד',
+    'android': 'אנדרואיד',
+    'Update': 'עדכון',
+    'update': 'עדכון',
+    'updates': 'עדכונים',
+    'Device': 'מכשיר',
+    'device': 'מכשיר',
+    'devices': 'מכשירים',
+    'Phone': 'טלפון',
+    'phone': 'טלפון',
+    'Smartphone': 'סמארטפון',
+    'smartphone': 'סמארטפון',
+    'Battery': 'סוללה',
+    'battery': 'סוללה',
+    'Performance': 'ביצועים',
+    'performance': 'ביצועים',
+    'Camera': 'מצלמה',
+    'camera': 'מצלמה',
+    'Screen': 'מסך',
+    'screen': 'מסך',
+    'Display': 'תצוגה',
+    'display': 'תצוגה',
+    'Bug': 'באג',
+    'bug': 'באג',
+    'bugs': 'באגים',
+    'Issue': 'בעיה',
+    'issue': 'בעיה',
+    'issues': 'בעיות',
+    'Problem': 'בעיה',
+    'problem': 'בעיה',
+    'problems': 'בעיות',
+    'Fix': 'תיקון',
+    'fix': 'תיקון',
+    'fixes': 'תיקונים',
+    'Feature': 'תכונה',
+    'feature': 'תכונה',
+    'features': 'תכונות',
+    'Security': 'אבטחה',
+    'security': 'אבטחה',
+    'Stable': 'יציב',
+    'stable': 'יציב',
+    'Beta': 'בטא',
+    'beta': 'בטא',
+    'Release': 'שחרור',
+    'release': 'שחרור',
+    'Version': 'גרסה',
+    'version': 'גרסה',
+    'Software': 'תוכנה',
+    'software': 'תוכנה',
+    'System': 'מערכת',
+    'system': 'מערכת',
+    'User': 'משתמש',
+    'user': 'משתמש',
+    'users': 'משתמשים',
+    'Experience': 'חוויה',
+    'experience': 'חוויה',
+    'Review': 'ביקורת',
+    'review': 'ביקורת',
+    'reviews': 'ביקורות',
+    'Rating': 'דירוג',
+    'rating': 'דירוג',
+    'Good': 'טוב',
+    'good': 'טוב',
+    'Bad': 'רע',
+    'bad': 'רע',
+    'Better': 'יותר טוב',
+    'better': 'יותר טוב',
+    'Worse': 'יותר גרוע',
+    'worse': 'יותר גרוע',
+    'Fast': 'מהיר',
+    'fast': 'מהיר',
+    'Slow': 'איטי',
+    'slow': 'איטי',
+    'New': 'חדש',
+    'new': 'חדש',
+    'Old': 'ישן',
+    'old': 'ישן',
+    'Latest': 'אחרון',
+    'latest': 'אחרון',
+    'Recent': 'אחרון',
+    'recent': 'אחרון'
+  };
+  
+  let translatedText = text;
+  
+  // החלפת מילים לפי המילון
+  for (const [english, hebrew] of Object.entries(translations)) {
+    const regex = new RegExp(`\\b${english}\\b`, 'gi');
+    translatedText = translatedText.replace(regex, hebrew);
+  }
+  
+  return translatedText;
 }
 
 // עיצוב תשובה סופית עם פיצול אוטומטי
@@ -780,6 +875,7 @@ module.exports = {
   splitLongMessage,        // פונקציות עזר חדשות
   checkMessageLength,      // פונקציות דיבאג חדשות
   logMessageSplit,
+  translateToHebrew,       // פונקציה חדשה לתרגום
   stripHtml,
   truncateText,
   cleanText,
