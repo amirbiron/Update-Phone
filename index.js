@@ -133,7 +133,6 @@ ${await updateChecker.getServicesStatus()}
     
     bot.sendMessage(chatId, statusMessage);
   } catch (error) {
-    console.error(`❌ Error at [status command]:`, error.message);
     bot.sendMessage(chatId, '❌ שגיאה בקבלת סטטוס המערכת. נסו שוב מאוחר יותר.');
   }
 });
@@ -205,8 +204,6 @@ bot.on('message', async (msg) => {
     // עיצוב התשובה הסופית
     const formattedResponse = formatResponse(deviceInfo, updateInfo, recommendation);
     
-    console.log(`📤 Sending update analysis to Telegram`);
-    
     // שליחת התשובה
     bot.editMessageText(formattedResponse, {
       chat_id: chatId,
@@ -225,7 +222,7 @@ bot.on('message', async (msg) => {
     });
     
   } catch (error) {
-    console.error(`❌ Error at [message processing]:`, error.message);
+    console.error('Error processing message:', error);
     
     try {
       bot.editMessageText(
@@ -233,7 +230,6 @@ bot.on('message', async (msg) => {
         { chat_id: chatId, message_id: waitingMsg?.message_id }
       );
     } catch (editError) {
-      console.error(`❌ Error at [editMessageText]:`, editError.message);
       bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.');
     }
   }
@@ -241,11 +237,11 @@ bot.on('message', async (msg) => {
 
 // טיפול בשגיאות
 bot.on('error', (error) => {
-  console.error(`❌ Error at [bot error]:`, error.message);
+  console.error('Bot error:', error);
 });
 
 bot.on('polling_error', (error) => {
-  console.error(`❌ Error at [polling error]:`, error.message);
+  console.error('Polling error:', error);
 });
 
 // הפעלת שרת ה-Express
