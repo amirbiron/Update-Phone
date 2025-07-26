@@ -203,15 +203,41 @@ class UpdateChecker {
       console.log(`🔑 [Google Search API] Checking credentials...`);
       
       // בדיקת מפתחות Google Search API
-      const hasGoogleAPI = process.env.GOOGLE_SEARCH_API_KEY && 
-                          process.env.GOOGLE_SEARCH_ENGINE_ID && 
-                          !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') && 
-                          !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_');
+          // בדיקה גמישה יותר של Google API credentials
+    const googleApiKey = process.env.GOOGLE_SEARCH_API_KEY || 
+                         process.env.google_search_api_key || 
+                         process.env.GOOGLE_API_KEY ||
+                         process.env.google_api_key;
+    
+    const googleEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || 
+                          process.env.google_search_engine_id ||
+                          process.env.GOOGLE_CSE_ID ||
+                          process.env.google_cse_id;
+    
+    const hasGoogleAPI = googleApiKey &&
+                         googleEngineId &&
+                         !googleApiKey.includes('your_') &&
+                         !googleEngineId.includes('your_');
       
       if (hasGoogleAPI) {
         console.log(`✅ [Google Search API] Credentials found - using as primary search engine`);
+        console.log(`🔑 [Google Search API] API Key source: ${googleApiKey === process.env.GOOGLE_SEARCH_API_KEY ? 'GOOGLE_SEARCH_API_KEY' : 
+                                                               googleApiKey === process.env.google_search_api_key ? 'google_search_api_key' :
+                                                               googleApiKey === process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' : 'google_api_key'}`);
+        console.log(`🔑 [Google Search API] Engine ID source: ${googleEngineId === process.env.GOOGLE_SEARCH_ENGINE_ID ? 'GOOGLE_SEARCH_ENGINE_ID' : 
+                                                                googleEngineId === process.env.google_search_engine_id ? 'google_search_engine_id' :
+                                                                googleEngineId === process.env.GOOGLE_CSE_ID ? 'GOOGLE_CSE_ID' : 'google_cse_id'}`);
       } else {
         console.log(`⚠️ [Google Search API] Credentials not configured - using fallback methods`);
+        console.log(`🔍 [Google Search API] Debug info:`);
+        console.log(`   - GOOGLE_SEARCH_API_KEY: ${process.env.GOOGLE_SEARCH_API_KEY ? 'exists' : 'missing'}`);
+        console.log(`   - google_search_api_key: ${process.env.google_search_api_key ? 'exists' : 'missing'}`);
+        console.log(`   - GOOGLE_API_KEY: ${process.env.GOOGLE_API_KEY ? 'exists' : 'missing'}`);
+        console.log(`   - google_api_key: ${process.env.google_api_key ? 'exists' : 'missing'}`);
+        console.log(`   - GOOGLE_SEARCH_ENGINE_ID: ${process.env.GOOGLE_SEARCH_ENGINE_ID ? 'exists' : 'missing'}`);
+        console.log(`   - google_search_engine_id: ${process.env.google_search_engine_id ? 'exists' : 'missing'}`);
+        console.log(`   - GOOGLE_CSE_ID: ${process.env.GOOGLE_CSE_ID ? 'exists' : 'missing'}`);
+        console.log(`   - google_cse_id: ${process.env.google_cse_id ? 'exists' : 'missing'}`);
       }
       
       // חיפוש מקבילי במספר מקורות לביצועים טובים יותר
@@ -794,8 +820,15 @@ class UpdateChecker {
   async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
     try {
       // בדיקה אם יש Claude API key
-      if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
-        console.log('⚠️ [Claude AI] API key not configured, using basic analysis');
+      if (!process.env.CLAUDE_API_KEY) {
+        console.log('❌ [Claude AI] ERROR: CLAUDE_API_KEY not found in environment variables');
+        console.log('🔄 [Claude AI] Falling back to basic analysis...');
+        return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
+      }
+      
+      if (process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
+        console.log('❌ [Claude AI] ERROR: CLAUDE_API_KEY contains placeholder text');
+        console.log('🔄 [Claude AI] Falling back to basic analysis...');
         return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
@@ -1567,17 +1600,27 @@ ${resultsText}
       console.log(`🔍 [Google Search API] ===== STARTING SEARCH =====`);
       console.log(`🔍 [Google Search API] Query: "${query}"`);
       
-      const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-      const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+      // ניסוי למצוא את המפתחות עם שמות שונים (case insensitive)
+      const apiKey = process.env.GOOGLE_SEARCH_API_KEY || 
+                     process.env.google_search_api_key || 
+                     process.env.GOOGLE_API_KEY ||
+                     process.env.google_api_key;
+      
+      const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || 
+                            process.env.google_search_engine_id ||
+                            process.env.GOOGLE_CSE_ID ||
+                            process.env.google_cse_id;
       
       // בדיקת credentials מפורטת
       if (!apiKey) {
         console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_API_KEY not found in environment`);
+        console.log(`🔍 [Google Search API] Available env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ')}`);
         throw new Error('Google Search API key not configured');
       }
       
       if (!searchEngineId) {
         console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_ENGINE_ID not found in environment`);
+        console.log(`🔍 [Google Search API] Available env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ')}`);
         throw new Error('Google Search Engine ID not configured');
       }
       
@@ -1594,6 +1637,20 @@ ${resultsText}
       console.log(`✅ [Google Search API] Credentials validated`);
       console.log(`🔑 [Google Search API] API Key: ${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 5)}`);
       console.log(`🔑 [Google Search API] Engine ID: ${searchEngineId}`);
+      
+      // לוג איזה משתני סביבה נמצאו
+      const foundApiKeyVar = process.env.GOOGLE_SEARCH_API_KEY ? 'GOOGLE_SEARCH_API_KEY' :
+                             process.env.google_search_api_key ? 'google_search_api_key' :
+                             process.env.GOOGLE_API_KEY ? 'GOOGLE_API_KEY' :
+                             process.env.google_api_key ? 'google_api_key' : 'unknown';
+      
+      const foundEngineIdVar = process.env.GOOGLE_SEARCH_ENGINE_ID ? 'GOOGLE_SEARCH_ENGINE_ID' :
+                              process.env.google_search_engine_id ? 'google_search_engine_id' :
+                              process.env.GOOGLE_CSE_ID ? 'GOOGLE_CSE_ID' :
+                              process.env.google_cse_id ? 'google_cse_id' : 'unknown';
+      
+      console.log(`📋 [Google Search API] Using API Key from: ${foundApiKeyVar}`);
+      console.log(`📋 [Google Search API] Using Engine ID from: ${foundEngineIdVar}`);
       
       const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&num=5`;
       console.log(`🌐 [Google Search API] Request URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
