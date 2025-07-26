@@ -1982,6 +1982,81 @@ ${resultsText}
     return genericPhrases.some(phrase => textLower.includes(phrase.toLowerCase()));
   }
 
+  // תרגום דיווחי משתמשים לעברית
+  translateUserReportToHebrew(text) {
+    if (!text) return text;
+    
+    // מילון תרגומים מפורט לדיווחי משתמשים
+    const translations = {
+      // ביטויים שלמים
+      'After updating to Android': 'אחרי עדכון לאנדרואיד',
+      'I updated my': 'עדכנתי את ה',
+      'battery drains much faster': 'הסוללה נגמרת הרבה יותר מהר',
+      'battery life improved': 'חיי הסוללה השתפרו',
+      'performance is great': 'הביצועים מצוינים',
+      'working fine': 'עובד טוב',
+      'no issues': 'אין בעיות',
+      'some bugs': 'כמה באגים',
+      'overall stable': 'יציב באופן כללי',
+      'experience has been': 'החוויה הייתה',
+      'recommend': 'מומלץ',
+      'avoid': 'להימנע',
+      'much better': 'הרבה יותר טוב',
+      'worse than before': 'יותר גרוע מבעבר',
+      'significantly improved': 'השתפר משמעותיות',
+      
+      // מילים בודדות
+      'battery': 'סוללה',
+      'performance': 'ביצועים',
+      'update': 'עדכון',
+      'updated': 'עדכנתי',
+      'experience': 'חוויה',
+      'stable': 'יציב',
+      'faster': 'מהר יותר',
+      'slower': 'איטי יותר',
+      'better': 'טוב יותר',
+      'worse': 'גרוע יותר',
+      'great': 'מצוין',
+      'good': 'טוב',
+      'bad': 'רע',
+      'terrible': 'נורא',
+      'excellent': 'מעולה',
+      'issues': 'בעיות',
+      'problems': 'בעיות',
+      'bugs': 'באגים',
+      'crashes': 'קריסות',
+      'smooth': 'חלק',
+      'laggy': 'תקוע',
+      'fast': 'מהיר',
+      'slow': 'איטי',
+      'improved': 'השתפר',
+      'fixed': 'תוקן',
+      'broken': 'שבור',
+      'working': 'עובד',
+      'device': 'מכשיר',
+      'phone': 'טלפון'
+    };
+    
+    let translatedText = text;
+    
+    // תרגום ביטויים שלמים תחילה (חשוב יותר)
+    Object.entries(translations).forEach(([english, hebrew]) => {
+      if (english.includes(' ')) { // ביטויים שלמים
+        const regex = new RegExp(english, 'gi');
+        translatedText = translatedText.replace(regex, hebrew);
+      }
+    });
+    
+    // תרגום מילים בודדות
+    Object.entries(translations).forEach(([english, hebrew]) => {
+      if (!english.includes(' ')) { // מילים בודדות
+        const regex = new RegExp(`\\b${english}\\b`, 'gi');
+        translatedText = translatedText.replace(regex, hebrew);
+      }
+    });
+    
+    return translatedText;
+  }
 }
 
 module.exports = UpdateChecker;
