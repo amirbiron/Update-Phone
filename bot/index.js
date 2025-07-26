@@ -1,174 +1,103 @@
 require('dotenv').config();
 
-console.log('🤖 Starting Android Update Advisor Bot...');
-
-// בדיקת תצורת APIs זמינים
-function logAvailableServices() {
-  console.log('\n📊 === תצורת שירותים זמינים ===');
-  
-  // בדיקת Claude AI
-  if (process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_')) {
-    console.log('🧠 AI Engine: Claude API ✅ (Configured)');
-  } else {
-    console.log('🧠 AI Engine: Basic Analysis ⚠️ (Claude not configured)');
-  }
-  
-  // בדיקת Google Search API
-  if (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID && 
-      !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') && 
-      !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_')) {
-    console.log('🔍 Search Engine: Google Custom Search API ✅ (Primary)');
-  } else {
-    console.log('🔍 Search Engine: ⚠️ (Google not configured - search will fail)');
-  }
-  
-  // בדיקת MongoDB
-  if (process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('your_')) {
-    console.log('💾 Database: MongoDB ✅ (Connected)');
-  } else {
-    console.log('💾 Database: ⚠️ (Not configured)');
-  }
-  
-  console.log('=======================================\n');
-}
-
-logAvailableServices();
+console.log('🤖 Starting Android Update Advisor Bot in Webhook mode...');
 
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const DeviceAnalyzer = require('../common/deviceAnalyzer');
 const UpdateChecker = require('../common/updateChecker');
 const RecommendationEngine = require('../common/recommendationEngine');
-const Database = require('../common/database');
-const { formatResponseWithUserReports, parseUserMessage, logMessageSplit } = require('../common/utils');
+const { parseUserMessage, formatResponseWithUserReports } = require('../common/utils');
 
-// ... (כל קוד העזר והפקודות נשאר זהה)
+const token = process.env.TELEGRAM_BOT_TOKEN;
+const port = process.env.PORT || 3000;
+// חשוב: הגדר את המשתנה הזה בסביבת Render לכתובת הציבורית של האפליקציה שלך
+// לדוגמה: https://your-bot-name.onrender.com
+const url = process.env.WEBHOOK_URL; 
 
-async function sendQueryLimitMessage(chatId, bot) {
-  try {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const queryLimitInfo = await Database.checkQueryLimit(chatId);
-    let statusEmoji = '📊';
-    let statusText = '';
-    if (queryLimitInfo.remaining === 0) {
-      statusEmoji = '🚫';
-      statusText = ' (הגעתם למגבלה)';
-    } else if (queryLimitInfo.remaining <= 5) {
-      statusEmoji = '⚠️';
-      statusText = ' (נותרו מעט!)';
-    }
-    const limitMessage = `${statusEmoji} **שאילתות החודש:** ${queryLimitInfo.remaining}/${queryLimitInfo.limit}${statusText}`;
-    await bot.sendMessage(chatId, limitMessage, { parse_mode: 'Markdown' });
-  } catch (error) {
-    console.error('Error sending query limit message:', error.message);
-  }
+if (!token || !url) {
+    console.error('FATAL ERROR: TELEGRAM_BOT_TOKEN and WEBHOOK_URL must be set in environment variables.');
+    process.exit(1);
 }
 
-process.on('uncaughtException', (error) => { console.error('Uncaught Exception:', error.message); });
-process.on('unhandledRejection', (reason, promise) => { console.error('Unhandled Rejection:', reason); });
-
+// הפסק להשתמש ב-polling
+const bot = new TelegramBot(token);
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-async function initializeBot() {
-  try {
-    await Database.connect();
-    const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: process.env.NODE_ENV !== 'production' });
-    const deviceAnalyzer = new DeviceAnalyzer();
-    const updateChecker = new UpdateChecker();
-    const recommendationEngine = new RecommendationEngine();
+// Middleware לקריאת גוף הבקשה כ-JSON
+app.use(express.json());
 
-    console.log('🤖 Bot initialized successfully');
+// נקודת הקצה שה-webhook של טלגרם יפנה אליה
+app.post(`/bot${token}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
+});
 
-    // ... (פקודות /start, /help, /stats וכו' נשארות זהות)
-    bot.onText(/\/start/, async (msg) => {
-        const chatId = msg.chat.id;
-        const welcomeMessage = `
-🤖 **ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!**
-אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
-שלחו לי את שם המכשיר והעדכון שאתם שוקלים, לדוגמה:
-"כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 15?"
-`;
-        bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
-    });
+// הגדרת ה-webhook
+bot.setWebHook(`${url}/bot${token}`)
+  .then(() => {
+    console.log(`✅ Webhook set successfully to ${url}`);
+  })
+  .catch((error) => {
+    console.error('❌ Error setting webhook:', error.message);
+  });
 
+const deviceAnalyzer = new DeviceAnalyzer();
+const updateChecker = new UpdateChecker();
+const recommendationEngine = new RecommendationEngine();
 
-    bot.on('message', async (msg) => {
-      if (msg.text && msg.text.startsWith('/')) return;
+bot.onText(/\/start/, (msg) => {
+    bot.sendMessage(msg.chat.id, '🤖 Welcome! Ask me if you should update your Android device.\nExample: "Should I update Samsung Galaxy S23 to Android 15?"', { parse_mode: 'Markdown' });
+});
 
-      const chatId = msg.chat.id;
-      const messageText = msg.text;
-      if (!messageText) return;
+bot.on('message', async (msg) => {
+    if (msg.text && msg.text.startsWith('/')) return;
 
-      console.log(`📩 New message from ${chatId}: ${messageText}`);
+    const chatId = msg.chat.id;
+    const messageText = msg.text;
+    if (!messageText) return;
 
-      let waitingMsg;
-      try {
-        waitingMsg = await bot.sendMessage(chatId, '⏳ מאתר מידע, אנא המתינו...');
+    console.log(`\n\n📩 New message from ${chatId}: ${messageText}`);
+
+    let waitingMsg;
+    try {
+        waitingMsg = await bot.sendMessage(chatId, '⏳ Searching for information, please wait...');
 
         const parsedMessage = parseUserMessage(messageText);
         console.log('📋 Parsed message:', parsedMessage);
         
-        let deviceInfo;
-        let updateInfo;
-        let analysisResult;
-
-        if (parsedMessage.device && parsedMessage.version) {
-          console.log(`\n📊 === Processing Query ===`);
-          deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.device, parsedQuery.version);
-          
-          // ================================================================
-          // כאן התיקון המרכזי: מעבירים את שני האובייקטים כפרמטרים
-          // ================================================================
-          updateInfo = await updateChecker.checkForUpdates(deviceInfo, parsedMessage);
-          
-          analysisResult = await recommendationEngine.generateRecommendation(deviceInfo, updateInfo, parsedMessage);
-        } else {
-          // טיפול בשאלה כללית
-          deviceInfo = { device: 'General Inquiry' };
-          analysisResult = { recommendation: 'wait', reasoning: 'אנא ספק שם מכשיר וגרסה ספציפיים.' };
-          updateInfo = { searchResults: { forumDiscussions: [] } };
+        if (!parsedMessage.device || !parsedMessage.version) {
+            throw new Error("Could not identify device and version from your message. Please be more specific, e.g., 'Samsung S23 Android 15'.");
         }
+
+        const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.device);
+        const updateInfo = await updateChecker.checkForUpdates(deviceInfo, parsedMessage);
+        const analysisResult = await recommendationEngine.generateRecommendation(deviceInfo, updateInfo, parsedMessage);
 
         const messagesArray = formatResponseWithUserReports(deviceInfo, updateInfo, analysisResult);
         
-        await Database.logUserInteraction(chatId, 'question', {
-            question: messageText,
-            response: messagesArray[0],
-            hasUserReports: messagesArray.length > 1,
-        });
+        console.log(`✅ Found ${messagesArray.length} message parts to send.`);
 
         for (let i = 0; i < messagesArray.length; i++) {
-          if (i === 0 && waitingMsg) {
-            await bot.editMessageText(messagesArray[i], { chat_id: chatId, message_id: waitingMsg.message_id, parse_mode: 'HTML' });
-          } else {
-            await bot.sendMessage(chatId, messagesArray[i], { parse_mode: 'HTML' });
-          }
-          if (i < messagesArray.length - 1) await new Promise(resolve => setTimeout(resolve, 1500));
+            if (i === 0 && waitingMsg) {
+                await bot.editMessageText(messagesArray[i], { chat_id: chatId, message_id: waitingMsg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
+            } else {
+                await bot.sendMessage(chatId, messagesArray[i], { parse_mode: 'HTML', disable_web_page_preview: true });
+            }
+            if (i < messagesArray.length - 1) await new Promise(resolve => setTimeout(resolve, 1500));
         }
-        
-        await sendQueryLimitMessage(chatId, bot);
 
-      } catch (error) {
-        console.error('❌ Error processing message:', error.message);
-        const errorMessage = '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.';
+    } catch (error) {
+        console.error('❌ Error processing message:', error.stack);
+        const errorMessage = `❌ An error occurred: ${error.message}\nPlease try again.`;
         if (waitingMsg) {
-          await bot.editMessageText(errorMessage, { chat_id: chatId, message_id: waitingMsg.message_id, parse_mode: 'HTML' });
+            await bot.editMessageText(errorMessage, { chat_id: chatId, message_id: waitingMsg.message_id });
         } else {
-          await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
+            await bot.sendMessage(chatId, errorMessage);
         }
-      }
-    });
-
-    return bot;
-  } catch (error) {
-    console.error('Failed to initialize bot:', error.message);
-    process.exit(1);
-  }
-}
-
-app.listen(PORT, () => {
-  console.log(`🚀 Bot server is running on port ${PORT}`);
+    }
 });
 
-initializeBot();
+app.listen(port, () => {
+    console.log(`🚀 Bot server is listening on port ${port}`);
+});
