@@ -2,12 +2,11 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const TelegramBot = require('node-telegram-bot-api');
-// שינוי: הסרת הנתיבים מה-require
-const { handleUpdate, handleCallbackQuery, handleMyDeviceInfo } = require('./messageHandler');
-const { handleStart, handleDeviceCommand } = require('./commandHandler');
-const { initializeDatabase } = require('./database');
+const { handleUpdate, handleCallbackQuery, handleMyDeviceInfo } = require('./handlers/messageHandler');
+const { handleStart, handleDeviceCommand } = require('./handlers/commandHandler');
+const { initializeDatabase } = require('./common/database');
 const Scheduler = require('./scheduler');
-const { getRecommendation } = require('./recommendationEngine');
+const { getRecommendation } = require('./common/recommendationEngine');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const url = process.env.WEBHOOK_URL;
@@ -18,12 +17,10 @@ app.use(bodyParser.json());
 
 let bot;
 
-// נתיב לבדיקת בריאות של Render
 app.get('/', (req, res) => {
   res.send('Telegram Bot is running and healthy.');
 });
 
-// פונקציית אתחול ראשית
 async function main() {
   try {
     await initializeDatabase();
