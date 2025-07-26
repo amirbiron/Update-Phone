@@ -51,6 +51,8 @@ class RecommendationEngine {
   async generateRecommendation(deviceInfo, updateInfo, parsedQuery) {
     try {
       const analysis = updateInfo.analysis;
+      console.log(`🎯 [RecommendationEngine] Processing analysis type: ${typeof analysis}`);
+      console.log(`📊 [RecommendationEngine] Analysis preview: ${JSON.stringify(analysis).substring(0, 100)}...`);
       
       // חישוב ציון המלצה משוקלל
       const recommendationScore = this.calculateRecommendationScore(deviceInfo, analysis);
