@@ -351,16 +351,30 @@ class Scheduler {
 // יצירת מופע יחיד ולהפעילו
 const scheduler = new Scheduler();
 
-// הפעלה אוטומטית רק אם לא קוראים ישירות ל-runTaskNow ע"י פקודת cron
+// הפעלה אוטומטית רק אם לא במצב cron או test
 if (
   process.env.NODE_ENV !== 'test' &&
-  process.env.RUN_TASK_NOW !== 'true'
+  process.env.RUN_TASK_NOW !== 'true' &&
+  process.env.CRON_MODE !== 'true' &&
+  process.env.SCHEDULED_JOB !== 'true'
 ) {
+  console.log('🕒 Starting scheduler in normal mode...');
   scheduler.start();
+} else {
+  console.log('🚫 Scheduler startup DISABLED - running in cron/test mode');
+  console.log('📋 Environment flags:');
+  console.log(`   - NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`   - RUN_TASK_NOW: ${process.env.RUN_TASK_NOW}`);
+  console.log(`   - CRON_MODE: ${process.env.CRON_MODE}`);
+  console.log(`   - SCHEDULED_JOB: ${process.env.SCHEDULED_JOB}`);
 }
 
-// טיפול בסגירה נאותה - רק אם הסקדג'ולר פועל
-if (process.env.RUN_TASK_NOW !== 'true') {
+// טיפול בסגירה נאותה - רק אם הסקדג'ולר פועל (לא במצב cron)
+if (
+  process.env.RUN_TASK_NOW !== 'true' &&
+  process.env.CRON_MODE !== 'true' &&
+  process.env.SCHEDULED_JOB !== 'true'
+) {
   process.on('SIGINT', () => {
     console.log('\n🛑 Received SIGINT, stopping scheduler...');
     scheduler.stop();
@@ -372,6 +386,8 @@ if (process.env.RUN_TASK_NOW !== 'true') {
     scheduler.stop();
     process.exit(0);
   });
+} else {
+  console.log('🚫 Signal handlers DISABLED - running in cron mode');
 }
 
 module.exports = scheduler;

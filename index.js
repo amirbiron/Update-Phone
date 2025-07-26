@@ -1,4 +1,24 @@
 require('dotenv').config();
+
+// בדיקה מוקדמת אם זה הרצת משימה של cron - אם כן, לא להפעיל את הבוט
+if (process.env.RUN_TASK_NOW === 'true' || process.env.CRON_MODE === 'true' || process.env.SCHEDULED_JOB === 'true') {
+  console.log('🔧 Running in CRON/SCHEDULED mode - bot initialization is DISABLED');
+  console.log('📋 Available environment flags:');
+  console.log(`   - RUN_TASK_NOW: ${process.env.RUN_TASK_NOW}`);
+  console.log(`   - CRON_MODE: ${process.env.CRON_MODE}`);
+  console.log(`   - SCHEDULED_JOB: ${process.env.SCHEDULED_JOB}`);
+  console.log('🚫 Bot will NOT be started. Exiting immediately.');
+  process.exit(0);
+}
+
+// בדיקה נוספת - אם זה הרצה של cron-task.js או משימה מתוזמנת
+if (process.argv[0].includes('cron-task') || process.argv[1].includes('cron-task')) {
+  console.log('🔧 Detected cron-task execution - bot initialization is DISABLED');
+  process.exit(0);
+}
+
+console.log('🤖 Starting in BOT mode - bot initialization is ENABLED');
+
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const DeviceAnalyzer = require('./src/deviceAnalyzer');
@@ -14,12 +34,6 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
 });
-
-// בדיקה אם זה הרצת משימה של cron - אם כן, לא להפעיל את הבוט
-if (process.env.RUN_TASK_NOW === 'true') {
-  console.log('🔧 Running as cron task - bot will not be initialized');
-  process.exit(0);
-}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -412,5 +426,10 @@ app.listen(PORT, () => {
   console.log(`🤖 Bot is ${process.env.NODE_ENV === 'production' ? 'using webhooks' : 'polling'}`);
 });
 
-// הפעלת משימות מתוזמנות
-require('./src/scheduler');
+// הפעלת משימות מתוזמנות - רק אם מופעל הסקדג'ולר
+if (process.env.ENABLE_SCHEDULER !== 'false') {
+  console.log('🕒 Loading scheduler...');
+  require('./src/scheduler');
+} else {
+  console.log('🚫 Scheduler is DISABLED via ENABLE_SCHEDULER=false');
+}

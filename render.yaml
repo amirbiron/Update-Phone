@@ -81,16 +81,55 @@ staticSites:
     pullRequestPreviewsEnabled: false
     
 # הגדרות cron jobs (משימות מתוזמנות)
+# משתמש ב-cron-task.js כדי להבטיח הפרדה מלאה מהבוט
 cronJobs:
   - name: daily-cleanup
     schedule: "0 2 * * *"
     buildCommand: npm install
-    startCommand: RUN_TASK_NOW=true node -e "require('./src/scheduler').runTaskNow('daily')"
+    startCommand: node cron-task.js daily
+    envVars:
+      - key: CRON_MODE
+        value: true
+      - key: SCHEDULED_JOB
+        value: true
+      - key: RUN_TASK_NOW
+        value: true
     
   - name: weekly-maintenance
     schedule: "0 3 * * 0"
     buildCommand: npm install
-    startCommand: RUN_TASK_NOW=true node -e "require('./src/scheduler').runTaskNow('weekly')"
+    startCommand: node cron-task.js weekly
+    envVars:
+      - key: CRON_MODE
+        value: true
+      - key: SCHEDULED_JOB
+        value: true
+      - key: RUN_TASK_NOW
+        value: true
+        
+  - name: monthly-report
+    schedule: "0 4 1 * *"
+    buildCommand: npm install
+    startCommand: node cron-task.js monthly
+    envVars:
+      - key: CRON_MODE
+        value: true
+      - key: SCHEDULED_JOB
+        value: true
+      - key: RUN_TASK_NOW
+        value: true
+        
+  - name: popular-devices-check
+    schedule: "0 */6 * * *"
+    buildCommand: npm install
+    startCommand: node cron-task.js popular-check
+    envVars:
+      - key: CRON_MODE
+        value: true
+      - key: SCHEDULED_JOB
+        value: true
+      - key: RUN_TASK_NOW
+        value: true
 
 # הגדרות environment variables גלובליות
 envVarGroups:
