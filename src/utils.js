@@ -184,7 +184,7 @@ function formatResponse(deviceInfo, updateInfo, recommendation) {
   
   // דיווחי משתמשים - החלק החדש שהמשתמש ביקש!
   if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
-    response += `👥 <b>דיווחי משתמשים אמיתיים:</b>\n`;
+    response += `👥 <b>דיווחי משתמשים:</b>\n`;
     response += formatUserReports(updateInfo.searchResults);
     response += '\n';
   }
@@ -402,12 +402,11 @@ function formatUserReports(searchResults) {
     const topRedditPosts = searchResults.redditPosts
       .filter(post => post.score > 0) // רק פוסטים עם ציון חיובי
       .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-      .slice(0, 3);
+      .slice(0, 10);
     
     topRedditPosts.forEach(post => {
       const sentimentEmoji = getSentimentEmoji(post.sentiment);
       reports += `• ${sentimentEmoji} <b>"${truncateText(post.title, 60)}"</b>\n`;
-      reports += `  👤 ${post.author} | 👍 ${post.score} | 💬 ${post.numComments} | ${timeAgo(post.created)}\n`;
       
       if (post.selftext && post.selftext.trim().length > 0) {
         const cleanedText = cleanText(post.selftext);
@@ -416,6 +415,7 @@ function formatUserReports(searchResults) {
         }
       }
       
+      reports += `  👤 ${post.author} | 👍 ${post.score} | 💬 ${post.numComments} | ${timeAgo(post.created)}\n`;
       reports += `  🔗 <a href="${post.url}">קרא עוד</a>\n\n`;
     });
   }
@@ -424,18 +424,14 @@ function formatUserReports(searchResults) {
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
     reports += `🔸 <b>מפורומים טכניים:</b>\n`;
     
-    searchResults.forumDiscussions.slice(0, 2).forEach(discussion => {
+    searchResults.forumDiscussions.slice(0, 10).forEach(discussion => {
       reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`;
       reports += `  📍 ${discussion.source}\n`;
-      
-      if (discussion.summary) {
-        reports += `  📝 ${truncateText(discussion.summary, 150)}\n`;
-      }
       
       // הוספת דיווחי המשתמשים הספציפיים
       if (discussion.userReports && discussion.userReports.length > 0) {
         reports += `  <b>דיווחי משתמשים:</b>\n`;
-        discussion.userReports.slice(0, 2).forEach(userReport => {
+        discussion.userReports.slice(0, 10).forEach(userReport => {
           const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
           reports += `    ${sentimentEmoji} <i>"${truncateText(userReport.content, 100)}"</i>\n`;
           reports += `    👤 ${userReport.author} | ${timeAgo(userReport.date)}\n`;
@@ -450,7 +446,7 @@ function formatUserReports(searchResults) {
   if (searchResults.webSearchResults && searchResults.webSearchResults.length > 0) {
     const relevantWebResults = searchResults.webSearchResults
       .filter(result => result.relevance && result.relevance > 0.5)
-      .slice(0, 2);
+      .slice(0, 10);
     
     if (relevantWebResults.length > 0) {
       reports += `🔸 <b>מאתרי טכנולוגיה:</b>\n`;
@@ -458,7 +454,11 @@ function formatUserReports(searchResults) {
       relevantWebResults.forEach(result => {
         reports += `• <b>${truncateText(result.title, 60)}</b>\n`;
         if (result.snippet) {
-          reports += `  📝 ${truncateText(result.snippet, 150)}\n`;
+          // תרגום תוכן לעברית אם הוא באנגלית
+          const translatedSnippet = result.snippet.includes('Android') || result.snippet.includes('update') || result.snippet.includes('device') ? 
+            result.snippet.replace(/Android/g, 'אנדרואיד').replace(/update/gi, 'עדכון').replace(/device/gi, 'מכשיר') : 
+            result.snippet;
+          reports += `  📝 ${truncateText(translatedSnippet, 150)}\n`;
         }
         reports += `  🔗 <a href="${result.url}">קרא עוד</a>\n\n`;
       });
