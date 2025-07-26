@@ -828,7 +828,8 @@ class UpdateChecker {
 
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
 
-      console.log(`🧠 [Claude AI] Sending analysis request to Claude 3.5 Sonnet...`);
+      const modelToUse = process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022';
+      console.log(`🧠 [Claude AI] Sending analysis request to ${modelToUse}...`);
       console.log(`📝 [Claude AI] Analyzing device: ${deviceInfo.device} for ${parsedQuery.version}`);
       console.log(`🔑 [Claude AI] Using API key: ${process.env.CLAUDE_API_KEY.substring(0, 8)}...`);
 
@@ -840,7 +841,7 @@ class UpdateChecker {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
+          model: process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
           max_tokens: 1000,
           messages: [
             { role: 'user', content: prompt }
