@@ -50,7 +50,20 @@ class RecommendationEngine {
   // יצירת המלצה עיקרית
   async generateRecommendation(deviceInfo, updateInfo, parsedQuery) {
     try {
+      // בדיקה אם updateInfo קיים ולא null
+      if (!updateInfo) {
+        console.error('❌ [RecommendationEngine] updateInfo is null or undefined');
+        return this.getDefaultRecommendation(deviceInfo);
+      }
+
       const analysis = updateInfo.analysis;
+      
+      // בדיקה אם analysis קיים ולא null
+      if (!analysis) {
+        console.error('❌ [RecommendationEngine] updateInfo.analysis is null or undefined');
+        return this.getDefaultRecommendation(deviceInfo);
+      }
+
       console.log(`🎯 [RecommendationEngine] Processing analysis type: ${typeof analysis}`);
       console.log(`📊 [RecommendationEngine] Analysis preview: ${JSON.stringify(analysis).substring(0, 100)}...`);
       
@@ -436,6 +449,47 @@ class RecommendationEngine {
         technicalUser: { recommendation: action, note: 'בדקו מקורות נוספים' },
         regularUser: { recommendation: 'wait', note: 'חכו למידע נוסף' },
         businessUser: { recommendation: 'wait', note: 'חכו לניתוח מקיף יותר' }
+      },
+      lastUpdated: new Date(),
+      sources: []
+    };
+  }
+
+  // פונקציה לטיפול במקרים שבהם updateInfo הוא null
+  getDefaultRecommendation(deviceInfo) {
+    console.log('⚠️ [RecommendationEngine] Generating default recommendation due to missing updateInfo');
+    
+    return {
+      recommendation: 'wait',
+      confidence: 3,
+      stabilityRating: 5,
+      score: 0.3,
+      reasoning: 'לא ניתן היה לאסוף מידע מספיק על העדכון. מומלץ לחכות ולנסות שוב מאוחר יותר או לבדוק באופן ידני.',
+      benefits: ['עדכוני אבטחה חשובים'],
+      risks: ['מידע מוגבל זמין', 'לא ניתן לבצע ניתוח מקיף'],
+      timeline: {
+        action: 'נסו שוב מאוחר יותר או בדקו מקורות רשמיים',
+        timeframe: 'תוך מספר שעות',
+        nextCheck: new Date(Date.now() + 6 * 60 * 60 * 1000).toLocaleDateString('he-IL') // 6 שעות
+      },
+      specialNotes: [
+        'שגיאה בטעינת מידע העדכון',
+        'מומלץ לבדוק באתר היצרן הרשמי',
+        'נסו שוב מאוחר יותר'
+      ],
+      userTypeRecommendations: {
+        technicalUser: { 
+          recommendation: 'investigate', 
+          note: 'בדקו מקורות רשמיים ופורומים טכניים' 
+        },
+        regularUser: { 
+          recommendation: 'wait', 
+          note: 'חכו למידע נוסף או פנו לתמיכה טכנית' 
+        },
+        businessUser: { 
+          recommendation: 'wait', 
+          note: 'המתינו לניתוח מקיף יותר לפני עדכון מערכות קריטיות' 
+        }
       },
       lastUpdated: new Date(),
       sources: []
