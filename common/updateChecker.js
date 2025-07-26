@@ -938,41 +938,114 @@ ${resultsText}
     try {
       console.log(`🔍 Searching general info for: ${queryText}`);
       
-      // Extract device info from query text
-      const deviceKeywords = queryText.toLowerCase().match(/samsung|galaxy|s\d+|note|a\d+|huawei|xiaomi|oneplus|pixel|iphone/gi);
-      const versionKeywords = queryText.toLowerCase().match(/android\s*\d+|ios\s*\d+|\d+\.\d+/gi);
+      // Extract device info from query text (support Hebrew and English)
+      const deviceKeywords = queryText.toLowerCase().match(/samsung|galaxy|s\d+|note|a\d+|huawei|xiaomi|oneplus|pixel|iphone|גלקסי|סמסונג/gi);
+      const versionKeywords = queryText.toLowerCase().match(/android\s*\d+|אנדרואיד\s*\d+|ios\s*\d+|\d+\.\d+/gi);
       
-      if (!deviceKeywords && !versionKeywords) {
-        return {
-          success: false,
-          message: 'לא זוהו פרטי מכשיר או גרסה בשאילתה',
-          data: null
-        };
+      // Try to extract specific device models
+      let deviceModel = '';
+      let androidVersion = '';
+      
+      if (queryText.toLowerCase().includes('galaxy a54') || queryText.toLowerCase().includes('a54')) {
+        deviceModel = 'Samsung Galaxy A54';
+      } else if (queryText.toLowerCase().includes('galaxy s23') || queryText.toLowerCase().includes('s23')) {
+        deviceModel = 'Samsung Galaxy S23';
+      } else if (queryText.toLowerCase().includes('galaxy s22') || queryText.toLowerCase().includes('s22')) {
+        deviceModel = 'Samsung Galaxy S22';
+      } else if (deviceKeywords && deviceKeywords.length > 0) {
+        deviceModel = deviceKeywords.join(' ');
       }
       
-      // Create a basic search result
+      if (queryText.toLowerCase().includes('אנדרואיד 15') || queryText.toLowerCase().includes('android 15')) {
+        androidVersion = 'Android 15';
+      } else if (queryText.toLowerCase().includes('אנדרואיד 14') || queryText.toLowerCase().includes('android 14')) {
+        androidVersion = 'Android 14';
+      } else if (versionKeywords && versionKeywords.length > 0) {
+        androidVersion = versionKeywords[0];
+      }
+      
+      // If we have specific device and version, try to search for real information
+      if (deviceModel && androidVersion) {
+        console.log(`🔍 Searching for specific info: ${deviceModel} ${androidVersion}`);
+        
+                 try {
+           // Try to search Reddit for real information
+           const mockDeviceInfo = {
+             device: deviceModel,
+             manufacturerKey: deviceModel.toLowerCase().includes('samsung') ? 'samsung' : 'unknown'
+           };
+           const mockParsedQuery = {
+             version: androidVersion
+           };
+           
+           const redditResults = await this.searchReddit(mockDeviceInfo, mockParsedQuery);
+           
+           if (redditResults && redditResults.length > 0) {
+            let summary = `🔍 **מידע על עדכון ${deviceModel} ל-${androidVersion}:**\n\n`;
+            
+            // Add findings from Reddit
+            const relevantPosts = redditResults.slice(0, 3);
+                         relevantPosts.forEach((post, index) => {
+               summary += `📱 **דיווח ${index + 1}:**\n`;
+               summary += `• ${post.title}\n`;
+               if (post.selftext && post.selftext.length > 0) {
+                 const shortText = post.selftext.length > 200 ? 
+                   post.selftext.substring(0, 200) + '...' : 
+                   post.selftext;
+                 summary += `• ${shortText}\n`;
+               }
+               if (post.url) {
+                 summary += `🔗 [קישור לדיון](${post.url})\n\n`;
+               } else {
+                 summary += `\n`;
+               }
+             });
+            
+            summary += `💡 **המלצה כללית:**\n`;
+            summary += `• בדקו דיווחים נוספים לפני העדכון\n`;
+            summary += `• גבו את המכשיר לפני העדכון\n`;
+            summary += `• המתינו מספר ימים אחרי שחרור העדכון\n`;
+            summary += `• לחצו על הקישורים למידע נוסף\n\n`;
+            summary += `🔄 **לקבלת המלצה מדויקת יותר, שלחו:**\n`;
+            summary += `"${deviceModel}, Android [גרסה נוכחית], רוצה לעדכן ל-${androidVersion}"`;
+            
+            return {
+              success: true,
+              data: { summary },
+              message: 'נמצא מידע רלוונטי'
+            };
+          }
+        } catch (searchError) {
+          console.error('Error searching for specific info:', searchError?.message || searchError);
+        }
+      }
+      
+      // Fallback to basic response if no specific info found
       const searchResults = {
         sources: [],
         userReports: [],
-        summary: `חיפוש מידע כללי עבור: ${queryText}`
+        summary: `🔍 **חיפוש מידע עבור:** ${queryText}\n\n`
       };
       
-      // Try to search for general information
-      if (deviceKeywords) {
-        const deviceInfo = deviceKeywords.join(' ');
-        searchResults.summary += `\n📱 מכשיר מזוהה: ${deviceInfo}`;
+      if (deviceModel) {
+        searchResults.summary += `📱 **מכשיר מזוהה:** ${deviceModel}\n`;
       }
       
-      if (versionKeywords) {
-        const versionInfo = versionKeywords.join(' ');
-        searchResults.summary += `\n🔄 גרסה מזוהה: ${versionInfo}`;
+      if (androidVersion) {
+        searchResults.summary += `🔄 **גרסה מזוהה:** ${androidVersion}\n`;
       }
       
-      // Add some general advice
-      searchResults.summary += `\n\n💡 לקבלת מידע מדויק יותר, אנא ציינו:
-• דגם מכשיר מדויק (לדוגמה: Samsung Galaxy S10)
-• גרסת אנדרואיד הנוכחית
-• גרסת האנדרואיד שאליה תרצו לעדכן`;
+      if (deviceModel && androidVersion) {
+        searchResults.summary += `\n🔍 **מחפש מידע על העדכון...**\n`;
+        searchResults.summary += `למרות שזיהיתי את המכשיר והגרסה, לא מצאתי מידע ספציפי כרגע.\n\n`;
+      }
+      
+      searchResults.summary += `💡 **לקבלת המלצה מדויקת יותר, אנא ציינו:**\n`;
+      searchResults.summary += `• דגם מכשיר מדויק (לדוגמה: Samsung Galaxy A54)\n`;
+      searchResults.summary += `• גרסת אנדרואיד הנוכחית שלכם\n`;
+      searchResults.summary += `• גרסת האנדרואיד שאליה תרצו לעדכן\n\n`;
+      searchResults.summary += `📝 **דוגמה לשאלה טובה:**\n`;
+      searchResults.summary += `"Samsung Galaxy A54, Android 13, כדאי לעדכן לאנדרואיד 15?"`;
       
       return {
         success: true,
