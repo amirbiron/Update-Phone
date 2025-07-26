@@ -1,10 +1,54 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const qs = require('querystring');
 
 class UpdateChecker {
   constructor() {
     this.searchSources = this.initializeSearchSources();
     this.claudeApiUrl = 'https://api.anthropic.com/v1/messages';
+    this.redditToken = null;
+    this.redditTokenExpiry = null;
+  }
+
+  // קבלת access token מ-Reddit
+  async getRedditToken() {
+    try {
+      // בדיקה אם יש לנו token תקף
+      if (this.redditToken && this.redditTokenExpiry && Date.now() < this.redditTokenExpiry) {
+        return this.redditToken;
+      }
+
+      const clientId = process.env.REDDIT_CLIENT_ID;
+      const clientSecret = process.env.REDDIT_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        console.error('❌ Reddit API credentials not found in environment variables');
+        return null;
+      }
+
+      const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      const response = await axios.post('https://www.reddit.com/api/v1/access_token',
+        qs.stringify({ grant_type: 'client_credentials' }),
+        {
+          headers: {
+            'Authorization': `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'UpdatePhoneBot/1.0 by yourusername'
+          },
+          timeout: 10000
+        }
+      );
+
+      this.redditToken = response.data.access_token;
+      // Reddit tokens typically expire in 1 hour, we'll refresh 5 minutes early
+      this.redditTokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
+      
+      console.log('✅ Reddit access token obtained successfully');
+      return this.redditToken;
+    } catch (error) {
+      console.error('❌ Error getting Reddit access token:', error.message);
+      return null;
+    }
   }
 
   // מקורות חיפוש מידע
@@ -12,8 +56,8 @@ class UpdateChecker {
     return {
       reddit: {
         name: 'Reddit',
-        baseUrl: 'https://www.reddit.com',
-        searchUrl: 'https://www.reddit.com/search.json',
+        baseUrl: 'https://oauth.reddit.com',
+        searchUrl: 'https://oauth.reddit.com/search',
         weight: 0.7,
         enabled: true
       },
@@ -152,6 +196,13 @@ class UpdateChecker {
   // חיפוש ב-Reddit
   async searchReddit(deviceInfo, parsedQuery) {
     try {
+      // קבלת access token
+      const accessToken = await this.getRedditToken();
+      if (!accessToken) {
+        console.error('❌ Could not obtain Reddit access token');
+        return [];
+      }
+
       const subreddits = [
         'Android',
         'samsung', 'GooglePixel', 'Xiaomi', 'oneplus',
@@ -166,18 +217,20 @@ class UpdateChecker {
       for (const subreddit of subreddits.slice(0, 4)) { // הגדלתי ל-4 subreddits
         try {
           const response = await axios.get(
-            `https://www.reddit.com/r/${subreddit}/search.json`,
+            `https://oauth.reddit.com/r/${subreddit}/search`,
             {
               params: {
                 q: searchQuery,
                 sort: 'relevance',
                 t: 'month',
-                limit: 15 // הגדלתי ל-15 תוצאות
+                limit: 15, // הגדלתי ל-15 תוצאות
+                restrict_sr: 1 // חיפוש רק בתוך הסאברדיט הנוכחי
               },
               headers: {
-                'User-Agent': 'Android-Update-Bot/1.0'
+                'Authorization': `Bearer ${accessToken}`,
+                'User-Agent': 'UpdatePhoneBot/1.0 by yourusername'
               },
-              timeout: 5000
+              timeout: 8000
             }
           );
 
