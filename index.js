@@ -207,11 +207,25 @@ bot.on('message', async (msg) => {
     
     console.log(`📤 Sending update analysis to Telegram`);
     
-    // שליחת התשובה
+    // שליחת התשובה עם כפתורי פעולה
+    const inlineKeyboard = {
+      inline_keyboard: [
+        [
+          { text: '🔍 פרטים נוספים', callback_data: `details_${deviceInfo.device.replace(/\s+/g, '_')}` },
+          { text: '🔄 בדוק מכשיר אחר', callback_data: 'check_another' }
+        ],
+        [
+          { text: '❓ עזרה', callback_data: 'help' },
+          { text: '📊 סטטיסטיקות', callback_data: 'stats' }
+        ]
+      ]
+    };
+
     bot.editMessageText(formattedResponse, {
       chat_id: chatId,
       message_id: waitingMsg.message_id,
-      parse_mode: 'HTML'
+      parse_mode: 'HTML',
+      reply_markup: inlineKeyboard
     });
     
     // שמירת השאילתה במסד הנתונים
@@ -236,6 +250,88 @@ bot.on('message', async (msg) => {
       console.error(`❌ Error at [editMessageText]:`, editError.message);
       bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.');
     }
+  }
+});
+
+// טיפול בלחיצות על כפתורים
+bot.on('callback_query', async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+  const data = callbackQuery.data;
+
+  try {
+    // אישור קבלת הלחיצה
+    await bot.answerCallbackQuery(callbackQuery.id);
+
+    if (data === 'check_another') {
+      bot.sendMessage(chatId, '🔍 שלחו לי את פרטי המכשיר הבא שתרצו לבדוק:\n\nדוגמה: "כדאי לעדכן Samsung Galaxy S24 לאנדרואיד 14?"');
+      
+    } else if (data === 'help') {
+      const helpMessage = `
+🤖 <b>איך להשתמש בבוט:</b>
+
+📝 <b>דוגמאות לשאלות:</b>
+• "כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"
+• "Samsung Galaxy A54 Android 14 יציב?"
+• "בעיות ב Pixel 7 עדכון Android 14"
+
+🔍 <b>מה הבוט בודק:</b>
+• יציבות העדכון
+• בעיות מדווחות
+• המלצות קהילה
+• זמן מאז השחרור
+
+⚡ <b>פקודות נוספות:</b>
+• /start - התחלה
+• /help - עזרה מפורטת
+• /status - סטטוס המערכת
+
+❓ שאלות נוספות? פשוט כתבו לי!
+      `;
+      
+      bot.sendMessage(chatId, helpMessage, { parse_mode: 'HTML' });
+      
+    } else if (data === 'stats') {
+      try {
+        const stats = await Database.getSystemStats();
+        const statusMessage = `
+📊 <b>סטטיסטיקות המערכת:</b>
+
+🔍 סה"כ בדיקות: ${stats.totalQueries || 0}
+📱 מכשירים במעקב: ${stats.trackedDevices || 0}
+🆕 עדכונים השבוע: ${stats.weeklyUpdates || 0}
+⚡ זמן תגובה ממוצע: ${stats.avgResponseTime || 'N/A'}ms
+
+✅ המערכת פועלת כרגיל
+        `;
+        
+        bot.sendMessage(chatId, statusMessage, { parse_mode: 'HTML' });
+      } catch (error) {
+        bot.sendMessage(chatId, '❌ שגיאה בקבלת סטטיסטיקות. נסו שוב מאוחר יותר.');
+      }
+      
+    } else if (data.startsWith('details_')) {
+      const deviceName = data.replace('details_', '').replace(/_/g, ' ');
+      const detailsMessage = `
+🔍 <b>פרטים נוספים על ${deviceName}:</b>
+
+📋 <b>מידע כללי:</b>
+• הבוט בודק מספר מקורות מידע
+• כולל פורומים, אתרי טכנולוגיה ודיווחי משתמשים
+• ההמלצות מתעדכנות באופן שוטף
+
+🔄 <b>לעדכון נתונים:</b>
+שלחו שוב את השאלה שלכם לקבלת מידע מעודכן
+
+⚠️ <b>הערה:</b> המלצות הבוט הן לצורך הכוונה בלבד
+      `;
+      
+      bot.sendMessage(chatId, detailsMessage, { parse_mode: 'HTML' });
+    }
+
+  } catch (error) {
+    console.error(`❌ Error at [callback query]:`, error.message);
+    bot.sendMessage(chatId, '❌ אירעה שגיאה. נסו שוב מאוחר יותר.');
   }
 });
 
