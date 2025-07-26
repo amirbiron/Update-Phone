@@ -8,7 +8,7 @@ const DeviceAnalyzer = require('../common/deviceAnalyzer');
 const UpdateChecker = require('../common/updateChecker');
 const RecommendationEngine = require('../common/recommendationEngine');
 const Database = require('../common/database');
-const { formatResponse, formatResponseWithSplit, parseUserMessage, logMessageSplit } = require('../common/utils');
+const { formatResponse, formatResponseWithSplit, formatResponseWithUserReports, parseUserMessage, logMessageSplit } = require('../common/utils');
 
 // טיפול גלובלי בחריגות בלתי מטופלות
 process.on('uncaughtException', (error) => {
@@ -339,27 +339,113 @@ async function initializeBot() {
           analysisResult = await recommendationEngine.generateRecommendation(deviceInfo, updateInfo, parsedMessage);
           console.log('💡 Recommendation generated:', analysisResult);
 
-          response = formatResponse(analysisResult);
+          // בדיקה אם יש דיווחי משתמשים - אם כן נשתמש בפונקציה החדשה
+          if (updateInfo && updateInfo.searchResults && 
+              (updateInfo.searchResults.redditPosts?.length > 0 || 
+               updateInfo.searchResults.forumDiscussions?.length > 0)) {
+            
+            console.log('📊 Found user reports, using formatResponseWithUserReports');
+            const messagesArray = formatResponseWithUserReports(deviceInfo, updateInfo, analysisResult);
+            
+            // רישום האינטראקציה
+            await Database.logUserInteraction(chatId, 'question', {
+              question: messageText,
+              parsedData: parsedMessage,
+              response: messagesArray[0], // ההודעה הראשית
+              analysisResult: analysisResult,
+              hasUserReports: true,
+              totalMessages: messagesArray.length
+            });
+            
+            // מחיקת הודעת ההמתנה
+            await bot.deleteMessage(chatId, waitingMsg.message_id);
+            
+            // שליחת כל ההודעות
+            for (let i = 0; i < messagesArray.length; i++) {
+              const message = messagesArray[i];
+              const isFirst = i === 0;
+              const isLast = i === messagesArray.length - 1;
+              
+              await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+              
+              // רישום פיצול ההודעה
+              logMessageSplit(chatId, messageText, i + 1, messagesArray.length, message.length);
+              
+              // המתנה קצרה בין הודעות (מלבד ההודעה האחרונה)
+              if (!isLast) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+            }
+            
+            console.log(`✅ Sent ${messagesArray.length} messages with user reports`);
+            
+          } else {
+            // אין דיווחי משתמשים - שימוש בפונקציה הרגילה
+            response = formatResponse(analysisResult);
+            
+            // רישום האינטראקציה
+            await Database.logUserInteraction(chatId, 'question', {
+              question: messageText,
+              parsedData: parsedMessage,
+              response: response,
+              analysisResult: analysisResult
+            });
+            
+            // בדיקה אם התגובה ארוכה מדי לטלגרם
+            const responseWithSplit = formatResponseWithSplit(response);
+            
+            if (responseWithSplit.needsSplit) {
+              console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
+              
+              // מחיקת הודעת ההמתנה לפני שליחת החלקים
+              await bot.deleteMessage(chatId, waitingMsg.message_id);
+              
+              // שליחת החלקים
+              for (let i = 0; i < responseWithSplit.parts.length; i++) {
+                const part = responseWithSplit.parts[i];
+                const isLast = i === responseWithSplit.parts.length - 1;
+                
+                const partHeader = responseWithSplit.parts.length > 1 ? 
+                  `📄 חלק ${i + 1}/${responseWithSplit.parts.length}\n\n` : '';
+                
+                await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
+                
+                // רישום פיצול ההודעה
+                logMessageSplit(chatId, messageText, i + 1, responseWithSplit.parts.length, part.length);
+                
+                // המתנה קצרה בין חלקים (מלבד החלק האחרון)
+                if (!isLast) {
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+              }
+            } else {
+              // תגובה רגילה - עריכת הודעת ההמתנה
+              await bot.editMessageText(response, {
+                chat_id: chatId,
+                message_id: waitingMsg.message_id,
+                parse_mode: 'HTML'
+              });
+            }
+          }
         } else {
           // שאלה כללית - חיפוש מידע רלוונטי
           console.log('❓ Processing general question');
           
           const generalInfo = await updateChecker.searchGeneralInfo(messageText);
           response = generalInfo || 'מצטער, לא מצאתי מידע רלוונטי לשאלה שלכם. אנא נסו לנסח אחרת או שלחו פרטי מכשיר ספציפיים.';
-        }
-
-        // רישום האינטראקציה
-        await Database.logUserInteraction(chatId, 'question', {
-          question: messageText,
-          parsedData: parsedMessage,
-          response: response,
-          analysisResult: analysisResult
-        });
-
-        // בדיקה אם התגובה ארוכה מדי לטלגרם
-        const responseWithSplit = formatResponseWithSplit(response);
-        
-        if (responseWithSplit.needsSplit) {
+          
+          // רישום האינטראקציה
+          await Database.logUserInteraction(chatId, 'question', {
+            question: messageText,
+            parsedData: parsedMessage,
+            response: response,
+            analysisResult: null
+          });
+          
+          // בדיקה אם התגובה ארוכה מדי לטלגרם
+          const responseWithSplit = formatResponseWithSplit(response);
+          
+          if (responseWithSplit.needsSplit) {
           console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
           
           // מחיקת הודעת ההמתנה לפני שליחת החלקים
@@ -390,6 +476,7 @@ async function initializeBot() {
             message_id: waitingMsg.message_id,
             parse_mode: 'HTML'
           });
+        }
         }
 
         console.log('✅ Response sent successfully');
