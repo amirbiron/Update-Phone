@@ -2,205 +2,186 @@ const axios = require('axios');
 
 class UpdateChecker {
   constructor() {
-    // רשימת האתרים האמינים היחידה שהבוט יחפש בהם
     this.trustedSites = [
-      'reddit.com',
-      'xda-developers.com',
-      'androidpolice.com',
-      'androidauthority.com',
-      'gsmarena.com',
-      'sammobile.com',
-      '9to5google.com',
-      'community.samsung.com',
+      'reddit.com', 'xda-developers.com', 'androidpolice.com', 
+      'androidauthority.com', 'gsmarena.com', 'sammobile.com', '9to5google.com'
     ];
-
-    // רשימה שחורה של דומיינים שיסוננו תמיד
-    this.blacklistedDomains = ['tiktok.com', 'facebook.com', 'instagram.com', 'twitter.com'];
-
-    this.claudeApiUrl = 'https://api.anthropic.com/v1/messages';
+    this.redditApiUrl = 'https://www.reddit.com';
+    this.duckDuckGoApiUrl = 'https://api.duckduckgo.com/';
   }
 
   // פונקציה ראשית שהבוט קורא לה
   async checkForUpdates(deviceModel, currentVersion) {
     try {
-      console.log(`🔍 [checkForUpdates] Starting focused search for ${deviceModel} version ${currentVersion}`);
-      
-      const deviceInfo = this.createDeviceInfo(deviceModel);
+      console.log(`🔍 [checkForUpdates] Starting search for ${deviceModel} version ${currentVersion}`);
+      const deviceInfo = { device: deviceModel, manufacturer: this.getManufacturer(deviceModel) };
       const parsedQuery = { version: currentVersion };
       
       const searchResults = await this.gatherInformation(deviceInfo, parsedQuery);
       
       console.log(`🧠 [checkForUpdates] Starting analysis...`);
       const analysisResult = await this.analyzeWithClaude(deviceInfo, parsedQuery, searchResults);
-      console.log(`✅ [checkForUpdates] Analysis completed`);
       
       return {
         searchResults,
         analysis: analysisResult,
         deviceInfo,
         lastChecked: new Date(),
-        sources: this.trustedSites, // המקורות הם תמיד הרשימה האמינה
-      };
-
-    } catch (error) {
-      console.error(`❌ FATAL ERROR in [checkForUpdates]:`, error?.message || error);
-      // החזרת אובייקט ברירת מחדל תקין כדי למנוע קריסה
-      return {
-        error: 'Failed to check for updates due to a fatal error.',
-        searchResults: { redditPosts: [], forumDiscussions: [], officialSources: [] },
-        analysis: this.getFallbackAnalysis(this.createDeviceInfo(deviceModel), { version: currentVersion }, {}),
-        deviceInfo: this.createDeviceInfo(deviceModel),
-        lastChecked: new Date(),
         sources: this.trustedSites,
       };
-    }
-  }
-
-  // איסוף מידע ממוקד ממקורות אמינים בלבד
-  async gatherInformation(deviceInfo, parsedQuery) {
-    const results = {
-      redditPosts: [],
-      forumDiscussions: [],
-      officialSources: []
-    };
-
-    try {
-      // בדיקה שיש מפתחות API של גוגל
-      const hasGoogleAPI = process.env.GOOGLE_SEARCH_API_KEY &&
-                           process.env.GOOGLE_SEARCH_ENGINE_ID &&
-                           !process.env.GOOGLE_SEARCH_API_KEY.includes('your_');
-      
-      if (!hasGoogleAPI) {
-        console.log(`⚠️ [Google Search API] Credentials not configured. Cannot perform search.`);
-        return this.getEmptyResults();
-      }
-
-      // בניית שאילתת חיפוש ממוקדת
-      const siteQuery = this.trustedSites.map(site => `site:${site}`).join(' OR ');
-      const mainQuery = `(${siteQuery}) "${deviceInfo.device}" "${parsedQuery.version}" (update OR review OR problems OR issues OR battery OR performance)`;
-
-      console.log(`🔍 [gatherInformation] Executing focused query: ${mainQuery}`);
-      const googleResults = await this.googleCustomSearch(mainQuery);
-
-      if (!googleResults || googleResults.length === 0) {
-        console.log(`ℹ️ [gatherInformation] No results found from trusted sources.`);
-        return this.getEmptyResults();
-      }
-
-      // עיבוד וסינון התוצאות
-      const processedResults = this.processGoogleResults(googleResults, deviceInfo);
-      
-      results.forumDiscussions = processedResults; // כל התוצאות האמינות ייכנסו לכאן
-      
-      const totalResults = results.forumDiscussions.length;
-      console.log(`✅ [gatherInformation] Focused search completed: Found ${totalResults} relevant results.`);
-
     } catch (error) {
-      console.error(`❌ Error in [gatherInformation]:`, error?.message || error);
+      console.error(`❌ FATAL ERROR in [checkForUpdates]:`, error.message);
+      return this.getErrorFallback(deviceModel, currentVersion, error.message);
     }
+  }
+
+  // איסוף מידע עם תוכנית גיבוי
+  async gatherInformation(deviceInfo, parsedQuery) {
+    // שלב 1: ניסיון חיפוש ממוקד עם Google Custom Search API
+    const hasGoogleAPI = process.env.GOOGLE_SEARCH_API_KEY && !process.env.GOOGLE_SEARCH_API_KEY.includes('your_');
+    if (hasGoogleAPI) {
+      console.log('⭐ Primary Method: Attempting Google Custom Search API.');
+      const siteQuery = this.trustedSites.map(site => `site:${site}`).join(' OR ');
+      const mainQuery = `(${siteQuery}) "${deviceInfo.device}" "${parsedQuery.version}" update`;
+      
+      const googleResults = await this.googleCustomSearch(mainQuery);
+      if (googleResults && googleResults.length > 0) {
+        console.log(`✅ Google Search successful with ${googleResults.length} results.`);
+        return { forumDiscussions: this.processGoogleResults(googleResults) };
+      }
+      console.log('⚠️ Google Search returned no results. Proceeding to fallback methods.');
+    } else {
+      console.log('⚠️ Google API not configured. Using fallback methods.');
+    }
+
+    // שלב 2: תוכנית גיבוי - חיפוש ישיר ב-Reddit וב-DuckDuckGo
+    console.log('🔄 Fallback Method: Searching Reddit and DuckDuckGo directly.');
+    const searchQuery = `"${deviceInfo.device}" "${parsedQuery.version}" update`;
     
-    return results;
+    const [redditResults, duckduckgoResults] = await Promise.all([
+      this.searchRedditDirect(searchQuery),
+      this.searchDuckDuckGo(searchQuery)
+    ]);
+
+    const combinedResults = [...redditResults, ...duckduckgoResults];
+    
+    if (combinedResults.length === 0) {
+        console.log(`ℹ️ [gatherInformation] No results found from any source.`);
+    }
+
+    return { forumDiscussions: combinedResults };
   }
 
-  // עיבוד תוצאות החיפוש של גוגל
-  processGoogleResults(googleResults, deviceInfo) {
-    return googleResults
-      .filter(result => !this.blacklistedDomains.some(domain => result.link.includes(domain)))
-      .map(result => {
-        const sourceName = this.trustedSites.find(site => result.displayLink.includes(site)) || result.displayLink;
-        return {
-          title: result.title,
-          url: result.link,
-          source: sourceName,
-          summary: result.snippet,
-          date: new Date(),
-          sentiment: this.analyzeSentiment(result.title, result.snippet),
-          // חילוץ "דיווח" מה-snippet, אבל בצורה פשוטה יותר
-          userReports: [{
-            author: 'Web Source',
-            content: result.snippet,
-            sentiment: this.analyzeSentiment(result.title, result.snippet),
-            date: new Date()
-          }]
-        };
-      });
-  }
+  // --- שיטות חיפוש ---
 
-  // חיפוש עם Google Custom Search API
   async googleCustomSearch(query) {
     try {
       const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
       const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
-      
       const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&num=10`;
-      
-      const response = await axios.get(url, { timeout: 10000 });
-      
-      if (response.data && response.data.items && response.data.items.length > 0) {
-        console.log(`✅ [Google Search API] SUCCESS: ${response.data.items.length} results found for query.`);
-        return response.data.items;
-      } else {
-        console.log(`⚠️ [Google Search API] No results found in response for query.`);
-        return [];
-      }
+      const response = await axios.get(url, { timeout: 7000 });
+      return response.data?.items || [];
     } catch (error) {
-      console.error(`❌ [Google Search API] ERROR: ${error?.response?.data?.error?.message || error.message}`);
-      // לא זורקים שגיאה כדי שהאפליקציה לא תקרוס, פשוט מחזירים מערך ריק
+      console.error(`❌ Google Search API Error: ${error.message}`);
       return [];
     }
   }
 
-  // ניתוח עם Claude
-  async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
+  async searchRedditDirect(query) {
     try {
-      if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_')) {
-        console.log('⚠️ [Claude AI] Not configured. Falling back to basic analysis.');
-        return this.getFallbackAnalysis(deviceInfo, parsedQuery, searchResults);
-      }
-
-      const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
-
-      const response = await axios.post(this.claudeApiUrl, {
-        model: process.env.CLAUDE_MODEL || 'claude-3-haiku-20240307', // שימוש במודל מהיר וזול יותר
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        timeout: 15000
-      });
-      
-      const resultText = response.data?.content?.[0]?.text;
-      if (!resultText) {
-          throw new Error("Empty response from Claude");
-      }
-
-      console.log(`✅ [Claude AI] SUCCESS: Analysis completed.`);
-      return this.parseClaudeResponse(resultText);
-
+      const url = `${this.redditApiUrl}/search.json?q=${encodeURIComponent(query)}&sort=relevance&t=year&limit=5`;
+      const response = await axios.get(url, { headers: {'User-Agent': 'UpdateBot/1.0'}, timeout: 5000 });
+      const posts = response.data?.data?.children || [];
+      return posts.map(post => ({
+        title: post.data.title,
+        url: `${this.redditApiUrl}${post.data.permalink}`,
+        source: `reddit.com/r/${post.data.subreddit}`,
+        summary: post.data.selftext || post.data.title,
+      }));
     } catch (error) {
-      console.error(`❌ [Claude AI] ERROR: ${error.message}. Falling back to basic analysis.`);
-      return this.getFallbackAnalysis(deviceInfo, parsedQuery, searchResults);
+      console.error(`❌ Reddit direct search Error: ${error.message}`);
+      return [];
     }
   }
-  
-  // בניית הפרומפט לניתוח
-  buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults) {
-    const resultsText = this.formatSearchResultsForAnalysis(searchResults);
-    
-    return `Analyze the following information about an Android update and provide a recommendation for the user.
-Device: ${deviceInfo.device}
-Requested Update: ${parsedQuery.version}
 
-Collected Information from trusted sources:
+  async searchDuckDuckGo(query) {
+    try {
+      const siteQuery = this.trustedSites
+        .filter(site => site !== 'reddit.com') // כבר חיפשנו ברדיט
+        .map(site => `site:${site}`).join(' OR ');
+      const fullQuery = `(${siteQuery}) ${query}`;
+      const url = `${this.duckDuckGoApiUrl}?q=${encodeURIComponent(fullQuery)}&format=json&no_html=1`;
+      const response = await axios.get(url, { headers: {'User-Agent': 'UpdateBot/1.0'}, timeout: 5000 });
+      const results = response.data?.Results || response.data?.RelatedTopics || [];
+      return results.slice(0, 5).map(result => ({
+        title: result.Text,
+        url: result.FirstURL,
+        source: new URL(result.FirstURL).hostname,
+        summary: result.Text,
+      }));
+    } catch (error) {
+      console.error(`❌ DuckDuckGo search Error: ${error.message}`);
+      return [];
+    }
+  }
+
+  // --- עיבוד וניתוח ---
+
+  processGoogleResults(results) {
+    return results.map(result => ({
+      title: result.title,
+      url: result.link,
+      source: result.displayLink,
+      summary: result.snippet,
+    }));
+  }
+
+  async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
+    if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_')) {
+      return this.getFallbackAnalysis(searchResults);
+    }
+    try {
+      const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
+      const response = await axios.post(
+        'https://api.anthropic.com/v1/messages',
+        {
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: prompt }],
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.CLAUDE_API_KEY,
+            'anthropic-version': '2023-06-01',
+          },
+          timeout: 15000,
+        }
+      );
+      return this.parseClaudeResponse(response.data?.content?.[0]?.text);
+    } catch (error) {
+      console.error(`❌ Claude API Error: ${error.message}`);
+      return this.getFallbackAnalysis(searchResults);
+    }
+  }
+
+  buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults) {
+    const resultsText = (searchResults.forumDiscussions || [])
+      .slice(0, 5)
+      .map(d => `Source: ${d.source}\nTitle: ${d.title}\nSummary: ${d.summary}\n---`)
+      .join('\n\n');
+      
+    if (!resultsText) {
+        return `Analyze the update for device "${deviceInfo.device}" to version "${parsedQuery.version}". No specific user reports were found. Provide a generic recommendation based on the device's age and type. The response must be in JSON format: {"stabilityRating": 5, "majorIssues": ["No specific information found."], "benefits": [], "recommendation": "wait", "reasoning": "No user reports are available yet. It's recommended to wait for more information.", "confidence": "low"}`;
+    }
+
+    return `Analyze the following search results for an update to "${parsedQuery.version}" on the device "${deviceInfo.device}".
+Search Results:
 ${resultsText}
 
 Based ONLY on the provided information, generate a JSON response with the following structure:
 {
-  "stabilityRating": number (1-10, based on user reports),
+  "stabilityRating": number (1-10),
   "majorIssues": ["List of key reported issues"],
   "benefits": ["List of key reported benefits"],
   "recommendation": "recommended" | "wait" | "not_recommended",
@@ -209,70 +190,45 @@ Based ONLY on the provided information, generate a JSON response with the follow
 }`;
   }
 
-  // עיצוב תוצאות החיפוש עבור הפרומפט
-  formatSearchResultsForAnalysis(searchResults) {
-    if (!searchResults.forumDiscussions || searchResults.forumDiscussions.length === 0) {
-      return 'No specific information was found about this update.';
-    }
-    
-    return searchResults.forumDiscussions
-      .slice(0, 5) // שימוש ב-5 התוצאות הכי רלוונטיות
-      .map(d => `Source: ${d.source}\nTitle: ${d.title}\nSnippet: ${d.summary}\n---`)
-      .join('\n\n');
-  }
-
-  // פיענוח תשובת Claude
-  parseClaudeResponse(responseText) {
+  parseClaudeResponse(text) {
     try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsedJson = JSON.parse(jsonMatch[0]);
-        return { ...parsedJson, analysisMethod: 'claude' };
-      }
-    } catch (error) {
-      console.error(`❌ Error parsing Claude JSON response:`, error.message);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return { ...JSON.parse(jsonMatch[0]), analysisMethod: 'claude' };
+    } catch (e) {
+      console.error('Could not parse Claude JSON response.');
     }
-    // אם הפיענוח נכשל, נחזיר ניתוח בסיסי
-    return this.getFallbackAnalysis({}, {}, {});
+    return this.getFallbackAnalysis({ forumDiscussions: [] });
   }
 
-  // ניתוח חלופי במקרה של כשל
-  getFallbackAnalysis(deviceInfo, parsedQuery, searchResults) {
+  getFallbackAnalysis(searchResults) {
     const hasResults = searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0;
-    
     return {
       stabilityRating: hasResults ? 6 : 5,
       majorIssues: hasResults ? ["Check sources for details"] : ["Limited information available"],
       benefits: [],
       recommendation: "wait",
-      reasoning: "Analysis is based on limited data. It is recommended to wait for more user reports.",
+      reasoning: "Analysis is based on limited data. It is recommended to wait for more information.",
       confidence: "low",
-      analysisMethod: 'fallback'
+      analysisMethod: 'fallback',
     };
   }
+
+  getErrorFallback(deviceModel, currentVersion, errorMessage) {
+    return {
+        error: errorMessage,
+        searchResults: { forumDiscussions: [] },
+        analysis: this.getFallbackAnalysis({ forumDiscussions: [] }),
+        deviceInfo: { device: deviceModel, manufacturer: this.getManufacturer(deviceModel) },
+        lastChecked: new Date(),
+        sources: [],
+      };
+  }
   
-  // פונקציות עזר
-  getEmptyResults() {
-    return { redditPosts: [], forumDiscussions: [], officialSources: [] };
-  }
-
-  createDeviceInfo(deviceModel) {
-    const manufacturer = deviceModel.toLowerCase().includes('samsung') ? 'Samsung' :
-                         deviceModel.toLowerCase().includes('google') ? 'Google' : 'Unknown';
-    return { device: deviceModel, manufacturer };
-  }
-
-  analyzeSentiment(title, text) {
-    const fullText = `${title} ${text}`.toLowerCase();
-    const positiveWords = ['good', 'great', 'stable', 'fast', 'improved'];
-    const negativeWords = ['bad', 'slow', 'drain', 'crash', 'bug', 'issue', 'problem'];
-    
-    const positiveCount = positiveWords.filter(word => fullText.includes(word)).length;
-    const negativeCount = negativeWords.filter(word => fullText.includes(word)).length;
-
-    if (positiveCount > negativeCount) return 'positive';
-    if (negativeCount > positiveCount) return 'negative';
-    return 'neutral';
+  getManufacturer(deviceModel) {
+      const model = deviceModel.toLowerCase();
+      if (model.includes('samsung') || model.includes('galaxy')) return 'Samsung';
+      if (model.includes('google') || model.includes('pixel')) return 'Google';
+      return 'Unknown';
   }
 }
 
