@@ -46,7 +46,7 @@ class UpdateChecker {
       console.log('✅ Reddit access token obtained successfully');
       return this.redditToken;
     } catch (error) {
-      console.error('❌ Error getting Reddit access token:', error.message);
+      console.error('❌ Error getting Reddit access token:', error?.message || error);
       return null;
     }
   }
@@ -105,7 +105,7 @@ class UpdateChecker {
       };
 
     } catch (error) {
-      console.error(`❌ Error at [checkUpdate]:`, error.message);
+      console.error(`❌ Error at [checkUpdate]:`, error?.message || error);
       return {
         error: 'Failed to check update',
         deviceInfo,
@@ -141,7 +141,7 @@ class UpdateChecker {
       results.officialSources = officialResults;
 
     } catch (error) {
-      console.error(`❌ Error at [gatherInformation]:`, error.message);
+      console.error(`❌ Error at [gatherInformation]:`, error?.message || error);
     }
 
     console.log(`📄 Finished collecting search results`);
@@ -170,7 +170,7 @@ class UpdateChecker {
         // המתנה קטנה בין חיפושים
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`❌ Error at [performWebSearch]:`, error.message);
+        console.error(`❌ Error at [performWebSearch]:`, error?.message || error);
       }
     }
 
@@ -255,7 +255,7 @@ class UpdateChecker {
             results.push(...posts);
           }
         } catch (error) {
-          console.error(`❌ Error at [searchReddit subreddit ${subreddit}]:`, error.message);
+          console.error(`❌ Error at [searchReddit subreddit ${subreddit}]:`, error?.message || error);
         }
       }
 
@@ -272,7 +272,7 @@ class UpdateChecker {
         })
         .slice(0, 10);
     } catch (error) {
-      console.error(`❌ Error at [searchReddit]:`, error.message);
+      console.error(`❌ Error at [searchReddit]:`, error?.message || error);
       return [];
     }
   }
@@ -315,7 +315,7 @@ class UpdateChecker {
         });
       }
     } catch (error) {
-      console.error(`❌ Error at [searchTechForums]:`, error.message);
+      console.error(`❌ Error at [searchTechForums]:`, error?.message || error);
     }
 
     return results;
@@ -346,7 +346,7 @@ class UpdateChecker {
         });
       }
     } catch (error) {
-      console.error(`❌ Error at [searchOfficialSources]:`, error.message);
+      console.error(`❌ Error at [searchOfficialSources]:`, error?.message || error);
     }
 
     return results;
@@ -386,7 +386,7 @@ class UpdateChecker {
       return result;
 
     } catch (error) {
-      console.error(`❌ Error at [analyzeWithClaude]:`, error.message);
+      console.error(`❌ Error at [analyzeWithClaude]:`, error?.message || error);
       return 'אירעה שגיאה בעת ניסיון לנתח את המידע עם Claude.';
     }
   }
@@ -476,7 +476,7 @@ ${resultsText}
         };
       }
     } catch (error) {
-      console.error(`❌ Error at [parseClaudeResponse]:`, error.message);
+      console.error(`❌ Error at [parseClaudeResponse]:`, error?.message || error);
     }
 
     // אם לא הצלחנו לחלץ JSON, ננתח את הטקסט באופן בסיסי

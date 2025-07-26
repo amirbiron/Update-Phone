@@ -94,7 +94,7 @@ class RecommendationEngine {
       };
 
     } catch (error) {
-      console.error('Error generating recommendation:', error);
+      console.error('Error generating recommendation:', error?.message || error);
       return this.getFallbackRecommendation(deviceInfo, parsedQuery);
     }
   }
