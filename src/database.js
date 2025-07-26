@@ -130,13 +130,11 @@ class Database {
   // יצירת אינדקסים לביצועים טובים יותר
   async createIndexes() {
     try {
-      await Query.createIndex({ chatId: 1, timestamp: -1 });
-      await Query.createIndex({ 'deviceInfo.manufacturerKey': 1, 'deviceInfo.deviceKey': 1 });
-      await UpdateTracking.createIndex({ manufacturerKey: 1, deviceKey: 1, version: 1 });
-      await SystemStats.createIndex({ date: -1 });
-      await Feedback.createIndex({ chatId: 1, timestamp: -1 });
-      await UserLimit.createIndex({ chatId: 1 });
-      await UserLimit.createIndex({ lastResetDate: 1 });
+      await Query.createIndexes();
+      await UpdateTracking.createIndexes();
+      await SystemStats.createIndexes();
+      await Feedback.createIndexes();
+      await UserLimit.createIndexes();
     } catch (error) {
       console.error('Error creating indexes:', error?.message || error);
     }
