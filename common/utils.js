@@ -603,10 +603,6 @@ function formatUserReports(searchResults) {
   
 
   
-  if (reports.trim() === '') {
-    reports = `לא נמצאו דיווחי משתמשים ספציפיים לעדכון זה.\nמומלץ לבדוק בפורומים ידנית או להמתין למידע נוסף.\n`;
-  }
-  
   return reports;
 }
 
