@@ -1599,6 +1599,13 @@ ${resultsText}
       console.log(`🔍 [Google Search API] ===== STARTING SEARCH =====`);
       console.log(`🔍 [Google Search API] Query: "${query}"`);
       
+      // הדפסת כל משתני הסביבה הרלוונטיים לדיבאג
+      console.log(`🔑 [Google Search API] Environment Variables Debug:`);
+      console.log(`   - GOOGLE_SEARCH_API_KEY: ${process.env.GOOGLE_SEARCH_API_KEY ? `exists (${process.env.GOOGLE_SEARCH_API_KEY.substring(0, 10)}...)` : 'MISSING/UNDEFINED'}`);
+      console.log(`   - GOOGLE_SEARCH_ENGINE_ID: ${process.env.GOOGLE_SEARCH_ENGINE_ID ? `exists (${process.env.GOOGLE_SEARCH_ENGINE_ID})` : 'MISSING/UNDEFINED'}`);
+      console.log(`   - NODE_ENV: ${process.env.NODE_ENV || 'undefined'}`);
+      console.log(`   - All Google-related env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ') || 'none found'}`);
+      
       const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
       const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
       
@@ -1606,6 +1613,7 @@ ${resultsText}
       if (!apiKey) {
         console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_API_KEY not found in environment`);
         console.log(`🔍 [Google Search API] Available env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ')}`);
+        console.log(`❌ [Google Search API] UNKNOWN ERROR: Google Search API key not configured`);
         throw new Error('Google Search API key not configured');
       }
       

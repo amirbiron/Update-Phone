@@ -37,6 +37,19 @@ services:
         value: 10
       - key: CLEANUP_INTERVAL_DAYS
         value: 90
+      # Google Search API - יש להגדיר ידנית ב-Render dashboard
+      - key: GOOGLE_SEARCH_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_ENGINE_ID
+        sync: false
+      # Claude API - יש להגדיר ידנית ב-Render dashboard
+      - key: CLAUDE_API_KEY
+        sync: false
+      # Reddit API - יש להגדיר ידנית ב-Render dashboard
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
     
     # הגדרות scaling אוטומטי
     scaling:
@@ -94,6 +107,15 @@ cronJobs:
         value: true
       - key: RUN_TASK_NOW
         value: true
+      # משתני API - יש להגדיר ידנית ב-Render dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: GOOGLE_SEARCH_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_ENGINE_ID
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
     
   - name: weekly-maintenance
     schedule: "0 3 * * 0"
@@ -106,6 +128,15 @@ cronJobs:
         value: true
       - key: RUN_TASK_NOW
         value: true
+      # משתני API - יש להגדיר ידנית ב-Render dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: GOOGLE_SEARCH_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_ENGINE_ID
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
         
   - name: monthly-report
     schedule: "0 4 1 * *"
@@ -118,6 +149,15 @@ cronJobs:
         value: true
       - key: RUN_TASK_NOW
         value: true
+      # משתני API - יש להגדיר ידנית ב-Render dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: GOOGLE_SEARCH_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_ENGINE_ID
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
         
   - name: popular-devices-check
     schedule: "0 */6 * * *"
@@ -130,6 +170,15 @@ cronJobs:
         value: true
       - key: RUN_TASK_NOW
         value: true
+      # משתני API - יש להגדיר ידנית ב-Render dashboard
+      - key: MONGODB_URI
+        sync: false
+      - key: GOOGLE_SEARCH_API_KEY
+        sync: false
+      - key: GOOGLE_SEARCH_ENGINE_ID
+        sync: false
+      - key: CLAUDE_API_KEY
+        sync: false
 
 # הגדרות environment variables גלובליות
 envVarGroups:

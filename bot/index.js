@@ -20,6 +20,12 @@ function logAvailableServices() {
   }
   
   // בדיקת Google Search API
+  console.log(`\n🔑 === Google Search API Debug Info ===`);
+  console.log(`🔑 GOOGLE_SEARCH_API_KEY: ${process.env.GOOGLE_SEARCH_API_KEY ? `exists (${process.env.GOOGLE_SEARCH_API_KEY.substring(0, 10)}...)` : 'MISSING/UNDEFINED'}`);
+  console.log(`🔑 GOOGLE_SEARCH_ENGINE_ID: ${process.env.GOOGLE_SEARCH_ENGINE_ID ? `exists (${process.env.GOOGLE_SEARCH_ENGINE_ID})` : 'MISSING/UNDEFINED'}`);
+  console.log(`🔑 All Google-related env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ') || 'none found'}`);
+  console.log(`=======================================\n`);
+  
   if (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID && 
       !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') && 
       !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_')) {
