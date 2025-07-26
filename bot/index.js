@@ -479,6 +479,7 @@ ${usageEmoji} **שאילתות החודש:**
 
         let response = '';
         let analysisResult = null;
+        let updateInfo = null; // הגדרת המשתנה בסקופ הנכון
 
         if (parsedMessage.device && parsedMessage.version) {
           // יש פרטי מכשיר - נתן המלצה מותאמת
@@ -525,23 +526,52 @@ ${usageEmoji} **שאילתות החודש:**
               totalMessages: messagesArray.length
             });
             
-            // מחיקת הודעת ההמתנה
-            await bot.deleteMessage(chatId, waitingMsg.message_id);
-            
             // שליחת כל ההודעות
             for (let i = 0; i < messagesArray.length; i++) {
               const message = messagesArray[i];
               const isFirst = i === 0;
               const isLast = i === messagesArray.length - 1;
               
-              await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
-              
-              // רישום פיצול ההודעה
-              logMessageSplit(chatId, messageText, i + 1, messagesArray.length, message.length);
-              
-              // המתנה קצרה בין הודעות (מלבד ההודעה האחרונה)
-              if (!isLast) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
+              try {
+                // אם זו ההודעה הראשונה, נערוך את הודעת ההמתנה
+                if (isFirst && waitingMsg) {
+                  try {
+                    await bot.editMessageText(message, {
+                      chat_id: chatId,
+                      message_id: waitingMsg.message_id,
+                      parse_mode: 'HTML'
+                    });
+                    // אפס את waitingMsg כדי שלא ננסה למחוק אותה שוב
+                    waitingMsg = null;
+                  } catch (editError) {
+                    console.log('⚠️ Failed to edit waiting message, sending new message:', editError.message);
+                    // אם העריכה נכשלה, שלח הודעה חדשה
+                    await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+                    // נמחק את הודעת ההמתנה אם עדיין קיימת
+                    if (waitingMsg) {
+                      try {
+                        await bot.deleteMessage(chatId, waitingMsg.message_id);
+                      } catch (deleteError) {
+                        console.log('⚠️ Could not delete waiting message:', deleteError.message);
+                      }
+                      waitingMsg = null;
+                    }
+                  }
+                } else {
+                  // שלח הודעה חדשה
+                  await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+                }
+                
+                // רישום פיצול ההודעה
+                logMessageSplit(chatId, messageText, i + 1, messagesArray.length, message.length);
+                
+                // המתנה קצרה בין הודעות (מלבד ההודעה האחרונה)
+                if (!isLast) {
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+              } catch (sendError) {
+                console.error(`❌ Error sending message ${i + 1}:`, sendError);
+                // נמשיך לשלוח את שאר ההודעות
               }
             }
             
@@ -568,37 +598,71 @@ ${usageEmoji} **שאילתות החודש:**
             if (responseWithSplit.needsSplit) {
               console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
               
-              // מחיקת הודעת ההמתנה לפני שליחת החלקים
-              await bot.deleteMessage(chatId, waitingMsg.message_id);
-              
               // שליחת החלקים
               for (let i = 0; i < responseWithSplit.parts.length; i++) {
                 const part = responseWithSplit.parts[i];
+                const isFirst = i === 0;
                 const isLast = i === responseWithSplit.parts.length - 1;
                 
                 const partHeader = responseWithSplit.parts.length > 1 ? 
                   `📄 חלק ${i + 1}/${responseWithSplit.parts.length}\n\n` : '';
                 
-                await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
-                
-                // רישום פיצול ההודעה
-                logMessageSplit(chatId, messageText, i + 1, responseWithSplit.parts.length, part.length);
-                
-                // המתנה קצרה בין חלקים (מלבד החלק האחרון)
-                if (!isLast) {
-                  await new Promise(resolve => setTimeout(resolve, 1500));
+                try {
+                  // אם זו ההודעה הראשונה, נערוך את הודעת ההמתנה
+                  if (isFirst && waitingMsg) {
+                    try {
+                      await bot.editMessageText(partHeader + part, {
+                        chat_id: chatId,
+                        message_id: waitingMsg.message_id,
+                        parse_mode: 'HTML'
+                      });
+                      waitingMsg = null;
+                    } catch (editError) {
+                      console.log('⚠️ Failed to edit waiting message, sending new message:', editError.message);
+                      await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
+                      if (waitingMsg) {
+                        try {
+                          await bot.deleteMessage(chatId, waitingMsg.message_id);
+                        } catch (deleteError) {
+                          console.log('⚠️ Could not delete waiting message:', deleteError.message);
+                        }
+                        waitingMsg = null;
+                      }
+                    }
+                  } else {
+                    await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
+                  }
+                  
+                  // רישום פיצול ההודעה
+                  logMessageSplit(chatId, messageText, i + 1, responseWithSplit.parts.length, part.length);
+                  
+                  // המתנה קצרה בין חלקים (מלבד החלק האחרון)
+                  if (!isLast) {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                  }
+                } catch (sendError) {
+                  console.error(`❌ Error sending part ${i + 1}:`, sendError);
                 }
               }
             } else {
               // תגובה רגילה - עריכת הודעת ההמתנה
-              try {
-                await bot.editMessageText(response, {
-                  chat_id: chatId,
-                  message_id: waitingMsg.message_id,
-                  parse_mode: 'HTML'
-                });
-              } catch (error) {
-                console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+              if (waitingMsg) {
+                try {
+                  await bot.editMessageText(response, {
+                    chat_id: chatId,
+                    message_id: waitingMsg.message_id,
+                    parse_mode: 'HTML'
+                  });
+                } catch (error) {
+                  console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+                  await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
+                  try {
+                    await bot.deleteMessage(chatId, waitingMsg.message_id);
+                  } catch (deleteError) {
+                    console.log('⚠️ Could not delete waiting message:', deleteError.message);
+                  }
+                }
+              } else {
                 await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
               }
             }
@@ -638,40 +702,74 @@ ${usageEmoji} **שאילתות החודש:**
           const responseWithSplit = formatResponseWithSplit(response, forceSplit);
           
           if (responseWithSplit.needsSplit) {
-          const splitReason = forceSplit ? 'forced split for better readability' : 'length exceeded limit';
-          console.log(`📄 Response splitting (${response.length} chars, ${splitReason}), splitting into ${responseWithSplit.parts.length} parts`);
-          
-          // מחיקת הודעת ההמתנה לפני שליחת החלקים
-          await bot.deleteMessage(chatId, waitingMsg.message_id);
-          
-          // שליחת החלקים
-          for (let i = 0; i < responseWithSplit.parts.length; i++) {
-            const part = responseWithSplit.parts[i];
-            const isLast = i === responseWithSplit.parts.length - 1;
+            const splitReason = forceSplit ? 'forced split for better readability' : 'length exceeded limit';
+            console.log(`📄 Response splitting (${response.length} chars, ${splitReason}), splitting into ${responseWithSplit.parts.length} parts`);
             
-            const partHeader = responseWithSplit.parts.length > 1 ? 
-              `📄 חלק ${i + 1}/${responseWithSplit.parts.length}\n\n` : '';
-            
-            await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
-            
-            // רישום פיצול ההודעה
-            logMessageSplit(chatId, messageText, i + 1, responseWithSplit.parts.length, part.length);
-            
-            // המתנה קצרה בין חלקים (מלבד החלק האחרון)
-            if (!isLast) {
-              await new Promise(resolve => setTimeout(resolve, 1500));
+            // שליחת החלקים
+            for (let i = 0; i < responseWithSplit.parts.length; i++) {
+              const part = responseWithSplit.parts[i];
+              const isFirst = i === 0;
+              const isLast = i === responseWithSplit.parts.length - 1;
+              
+              const partHeader = responseWithSplit.parts.length > 1 ? 
+                `📄 חלק ${i + 1}/${responseWithSplit.parts.length}\n\n` : '';
+              
+              try {
+                // אם זו ההודעה הראשונה, נערוך את הודעת ההמתנה
+                if (isFirst && waitingMsg) {
+                  try {
+                    await bot.editMessageText(partHeader + part, {
+                      chat_id: chatId,
+                      message_id: waitingMsg.message_id,
+                      parse_mode: 'HTML'
+                    });
+                    waitingMsg = null;
+                  } catch (editError) {
+                    console.log('⚠️ Failed to edit waiting message, sending new message:', editError.message);
+                    await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
+                    if (waitingMsg) {
+                      try {
+                        await bot.deleteMessage(chatId, waitingMsg.message_id);
+                      } catch (deleteError) {
+                        console.log('⚠️ Could not delete waiting message:', deleteError.message);
+                      }
+                      waitingMsg = null;
+                    }
+                  }
+                } else {
+                  await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
+                }
+                
+                // רישום פיצול ההודעה
+                logMessageSplit(chatId, messageText, i + 1, responseWithSplit.parts.length, part.length);
+                
+                // המתנה קצרה בין חלקים (מלבד החלק האחרון)
+                if (!isLast) {
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+              } catch (sendError) {
+                console.error(`❌ Error sending part ${i + 1}:`, sendError);
+              }
             }
-          }
-                            } else {
+          } else {
             // תגובה רגילה - עריכת הודעת ההמתנה
-            try {
-              await bot.editMessageText(response, {
-                chat_id: chatId,
-                message_id: waitingMsg.message_id,
-                parse_mode: 'HTML'
-              });
-            } catch (error) {
-              console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+            if (waitingMsg) {
+              try {
+                await bot.editMessageText(response, {
+                  chat_id: chatId,
+                  message_id: waitingMsg.message_id,
+                  parse_mode: 'HTML'
+                });
+              } catch (error) {
+                console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+                await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
+                try {
+                  await bot.deleteMessage(chatId, waitingMsg.message_id);
+                } catch (deleteError) {
+                  console.log('⚠️ Could not delete waiting message:', deleteError.message);
+                }
+              }
+            } else {
               await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
             }
           }
@@ -733,15 +831,28 @@ ${usageEmoji} **שאילתות החודש:**
         }
       
       } catch (error) {
-        console.error('Error processing message:', error?.message || error);
+        console.error('❌ Error processing message:', error?.message || error);
+        console.error('❌ Error stack:', error?.stack);
         
         try {
-          bot.editMessageText(
-            '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.\n\nאם הבעיה נמשכת, אנא צרו קשר עם התמיכה.',
-            { chat_id: chatId, message_id: waitingMsg?.message_id }
-          );
-        } catch (editError) {
-          bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.');
+          // נסה לערוך את הודעת ההמתנה אם קיימת
+          if (waitingMsg) {
+            try {
+              await bot.editMessageText(
+                '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.\n\nאם הבעיה נמשכת, אנא צרו קשר עם התמיכה.',
+                { chat_id: chatId, message_id: waitingMsg.message_id, parse_mode: 'HTML' }
+              );
+            } catch (editError) {
+              console.error('❌ Failed to edit error message:', editError.message);
+              // אם העריכה נכשלה, שלח הודעה חדשה
+              await bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.', { parse_mode: 'HTML' });
+            }
+          } else {
+            // אם אין הודעת המתנה, שלח הודעה חדשה
+            await bot.sendMessage(chatId, '❌ אירעה שגיאה בעיבוד השאלה. אנא נסו שוב מאוחר יותר.', { parse_mode: 'HTML' });
+          }
+        } catch (sendError) {
+          console.error('❌ Failed to send error message:', sendError?.message || sendError);
         }
       }
     });
