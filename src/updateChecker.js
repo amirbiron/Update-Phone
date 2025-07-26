@@ -268,52 +268,6 @@ class UpdateChecker {
     return results;
   }
 
-  // חילוץ ציטוטים מייצגים מתגובת Claude
-  extractUserQuotes(text) {
-    const negativeKeywords = [
-      "בעיה", "בעיות", "קריסה", "נפילה", "שגיאה", "לא עובד", "לא מצליח",
-      "תקלה", "באג", "מתרוקן", "מתרסק", "נתקע", "ירידה", "חמור", "ביצועים"
-    ];
-    
-    // מילים שמציינות כותרות או הקדמות שלא רוצים לכלול
-    const excludePatterns = [
-      "בעיות עיקריות", "בעיות שדווחו", "תקלות עיקריות", "דיווחים על",
-      "בעיות:", "תקלות:", "שדווחו:", "עיקריות:"
-    ];
-    
-    const lines = text.split("\n");
-    const quotes = [];
-
-    for (const line of lines) {
-      if (negativeKeywords.some(word => line.includes(word))) {
-        const clean = line.replace(/^[-•*\s]+/, "").trim();
-        
-        // בדיקה שזה לא כותרת או הקדמה
-        const isHeader = excludePatterns.some(pattern => clean.includes(pattern));
-        
-        // בדיקה אם זה ציטוט בגרשיים
-        const isQuotedText = clean.startsWith('"') && clean.endsWith('"');
-        
-        // בדיקה שהשורה מכילה תוכן מספיק
-        const hasSubstantialContent = clean.length > 15 && 
-                                     (clean.includes("משתמש") || 
-                                      clean.includes("דיווח") || 
-                                      clean.includes("חווים") ||
-                                      clean.includes("מדווח") ||
-                                      isQuotedText);
-        
-        if (clean && !quotes.includes(clean) && !isHeader && hasSubstantialContent) {
-          // אם זה כבר בגרשיים, נשאיר כמו שזה. אחרת נוסיף גרשיים
-          const formattedQuote = isQuotedText ? `• ${clean}` : `• "${clean}"`;
-          quotes.push(formattedQuote);
-        }
-      }
-      if (quotes.length >= 3) break;
-    }
-
-    return quotes;
-  }
-
   // ניתוח עם Claude
   async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
     try {
@@ -329,7 +283,7 @@ class UpdateChecker {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-3-opus',
+          model: 'claude-3-opus-20240229',
           max_tokens: 1000,
           messages: [
             { role: 'user', content: prompt }
@@ -343,17 +297,9 @@ class UpdateChecker {
         throw new Error(`Claude API error: ${response.status} - ${JSON.stringify(data)}`);
       }
 
-      const claudeSummary = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
+      const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
       console.log(`✅ Received response from Claude`);
-      
-      // חילוץ ציטוטים מייצגים מתגובת Claude
-      const quotes = this.extractUserQuotes(claudeSummary);
-      const quoteSection = quotes.length > 0 ? `\n🗣️ דיווחים מהמשתמשים:\n${quotes.join("\n")}` : "";
-      
-      // שילוב הציטוטים עם התגובה הבסיסית
-      const finalMessage = claudeSummary + quoteSection;
-      
-      return finalMessage;
+      return result;
 
     } catch (error) {
       console.error(`❌ Error at [analyzeWithClaude]:`, error.message);
