@@ -1882,77 +1882,83 @@ ${resultsText}
     
     console.log(`🔍 [extractUserReports] Analyzing text: "${text.substring(0, 100)}..."`);
     
+    let sentencesChecked = 0;
+    let sentencesPassed = 0;
     const userReports = [];
     const fullText = `${title} ${text}`.toLowerCase();
     
-    // דפוסים שמזהים דיווחי משתמשים אמיתיים
+    // דפוסים שמזהים דיווחי משתמשים אמיתיים - עודכן להיות פחות מגביל
     const userReportPatterns = [
-      /after.*updat.*to.*android.*\d+.*(.{20,100})/gi,
-      /i.*updat.*my.*(.{20,100})/gi,
-      /battery.*life.*(.{15,80})/gi,
-      /performance.*(.{15,80})/gi,
-      /experience.*with.*(.{15,80})/gi,
-      /problem.*with.*(.{15,80})/gi,
-      /issue.*with.*(.{15,80})/gi,
-      /working.*fine.*(.{10,60})/gi,
-      /recommend.*(.{10,60})/gi,
-      /avoid.*(.{10,60})/gi
+      /after.*updat.*to.*android.*\d+.*/gi,
+      /i.*updat.*my.*/gi,
+      /battery.*life.*/gi,
+      /performance.*/gi,
+      /experience.*with.*/gi,
+      /problem.*with.*/gi,
+      /issue.*with.*/gi,
+      /working.*fine.*/gi,
+      /recommend.*/gi,
+      /avoid.*/gi
     ];
     
-    // דפוסים בעברית - משופרים
+    // דפוסים בעברית - משופרים להיות פחות מגבילים
     const hebrewPatterns = [
-      /אחרי.*עדכון.*ל.*אנדרואיד.*\d+.*(.{15,100})/gi,
-      /עדכנתי.*את.*המכשיר.*(.{15,100})/gi,
-      /עדכנתי.*ל.*אנדרואיד.*\d+.*(.{15,100})/gi,
-      /הסוללה.*(.{15,80})/gi,
-      /ביצועים.*(.{15,80})/gi,
-      /בעיות.*עם.*העדכון.*(.{15,100})/gi,
-      /בעיות.*אחרי.*עדכון.*(.{15,100})/gi,
-      /עובד.*טוב.*אחרי.*עדכון.*(.{10,80})/gi,
-      /מומלץ.*לעדכן.*(.{10,80})/gi,
-      /להימנע.*מעדכון.*(.{10,80})/gi,
-      /החוויה.*שלי.*עם.*(.{15,100})/gi,
-      /התקנתי.*את.*העדכון.*(.{15,100})/gi
+      /אחרי.*עדכון.*ל.*אנדרואיד.*\d+.*/gi,
+      /עדכנתי.*את.*המכשיר.*/gi,
+      /עדכנתי.*ל.*אנדרואיד.*\d+.*/gi,
+      /הסוללה.*/gi,
+      /ביצועים.*/gi,
+      /בעיות.*עם.*העדכון.*/gi,
+      /בעיות.*אחרי.*עדכון.*/gi,
+      /עובד.*טוב.*אחרי.*עדכון.*/gi,
+      /מומלץ.*לעדכן.*/gi,
+      /להימנע.*מעדכון.*/gi,
+      /החוויה.*שלי.*עם.*/gi,
+      /התקנתי.*את.*העדכון.*/gi
     ];
     
     const allPatterns = [...userReportPatterns, ...hebrewPatterns];
     
-    // חיפוש דפוסים בטקסט
-    allPatterns.forEach(pattern => {
-      const matches = text.match(pattern);
-      if (matches) {
-        matches.forEach(match => {
-          // ניקוי הטקסט שנמצא
-          let cleanedReport = match.replace(/^\W+|\W+$/g, '').trim();
-          
-          // וידוא שהדיווח לא קצר מדי או ארוך מדי
-          if (cleanedReport.length >= 20 && cleanedReport.length <= 200) {
-            // בדיקה שזה לא טקסט גנרי
-            if (!this.isGenericText(cleanedReport)) {
-              userReports.push({
-                author: 'Forum User',
-                content: cleanedReport,
-                sentiment: this.analyzeSentiment('', cleanedReport),
-                date: new Date(),
-                isExtracted: true
-              });
-            }
+    // חיפוש דפוסים בטקסט - עודכן להתמודד עם כל הטקסט ולא רק חלקים, ולמנוע כפילויות
+    let patternMatched = false;
+    for (const pattern of allPatterns) {
+      if (pattern.test(text) && !patternMatched) {
+        sentencesChecked++;
+        patternMatched = true; // למנוע התאמה נוספת באותו טקסט
+        // וידוא שהדיווח לא קצר מדי או ארוך מדי - עדכון הגבלות לפי הדרישות
+        if (text.length >= 10 && text.length <= 350) {
+          // בדיקה שזה לא טקסט גנרי
+          if (!this.isGenericText(text)) {
+            sentencesPassed++;
+            userReports.push({
+              author: 'Forum User',
+              content: text.trim(),
+              sentiment: this.analyzeSentiment('', text),
+              date: new Date(),
+              isExtracted: true
+            });
           }
-        });
+        } else if (text.length > 350) {
+          console.log(`⚠️ [extractUserReports] Pattern matched but text too long (${text.length} chars), rejecting: "${text.substring(0, 50)}..."`);
+        }
+        break; // יציאה אחרי התאמה ראשונה
       }
-    });
+    }
     
     // אם לא נמצאו דפוסים ספציפיים, ננסה לזהות דיווחי משתמשים בצורה פשוטה יותר
-    if (userReports.length === 0) {
+    if (userReports.length === 0 && !patternMatched) {
+      sentencesChecked++;
       // בדיקה פשוטה לטקסט בעברית שמכיל מילות מפתח
-      const hebrewKeywords = ['עדכון', 'אנדרואיד', 'סוללה', 'ביצועים', 'בעיות', 'עובד', 'מומלץ'];
-      const englishKeywords = ['update', 'android', 'battery', 'performance', 'experience', 'after'];
+      const hebrewKeywords = ['עדכון', 'אנדרואיד', 'סוללה', 'ביצועים', 'בעיות', 'בעיה', 'עובד', 'עבד', 'מומלץ', 'הסתדר'];
+      const englishKeywords = ['update', 'android', 'battery', 'performance', 'experience', 'after', 'problem', 'issue', 'works', 'working', 'fine', 'better', 'worse', 'improved'];
       
       const hasHebrewKeywords = hebrewKeywords.some(keyword => text.includes(keyword));
       const hasEnglishKeywords = englishKeywords.some(keyword => fullText.includes(keyword));
       
-      if ((hasHebrewKeywords || hasEnglishKeywords) && text.length >= 30 && text.length <= 200) {
+      // עדכון הגבלות האורך לפי הדרישות: 10-350 תווים - חשוב לבדוק את כל הטקסט
+      if ((hasHebrewKeywords || hasEnglishKeywords) && text.length >= 10 && text.length <= 350) {
         if (!this.isGenericText(text)) {
+          sentencesPassed++;
           userReports.push({
             author: 'Forum User',
             content: text.trim(),
@@ -1961,8 +1967,13 @@ ${resultsText}
             isExtracted: true
           });
         }
+      } else if ((hasHebrewKeywords || hasEnglishKeywords) && text.length > 350) {
+        console.log(`⚠️ [extractUserReports] Text too long (${text.length} chars), rejecting: "${text.substring(0, 50)}..."`);
       }
     }
+    
+    // הוספת לוגים על כמות משפטים שנבדקו וכמה עברו את הסינון
+    console.log(`📊 [extractUserReports] Sentences checked: ${sentencesChecked}, passed filtering: ${sentencesPassed}`);
     
     // אם לא נמצאו דיווחים ספציפיים, נחזיר ריק במקום תוכן גנרי
     if (userReports.length === 0) {
@@ -1979,23 +1990,62 @@ ${resultsText}
     return userReports.slice(0, 3);
   }
 
-  // בדיקה אם הטקסט גנרי ולא דיווח אמיתי
+  // בדיקה אם הטקסט גנרי ולא דיווח אמיתי - עודכן להיות פחות מגביל
   isGenericText(text) {
-    const genericPhrases = [
+    const textLower = text.toLowerCase();
+    
+    // ביטויים גנריים מובהקים שצריכים סינון חמור
+    const strongGenericPhrases = [
       'דיונים קהילתיים',
       'מאמרים וביקורות',
       'חיפוש ב',
       'מידע על עדכון',
       'נמצאו דיונים',
+      'לפרטים נוספים',
+      'קישור למידע',
       'discussions about',
       'articles and reviews',
       'search for',
       'information about',
-      'found discussions'
+      'found discussions',
+      'for more information',
+      'link to details'
     ];
     
-    const textLower = text.toLowerCase();
-    return genericPhrases.some(phrase => textLower.includes(phrase.toLowerCase()));
+    // מילים שמעידות על חוויה אמיתית - לא לסנן אותן
+    const authenticExperienceWords = [
+      'בעיה', 'בעיות', 'הסתדר', 'עובד', 'עבד', 'מומלץ', 'ממליץ',
+      'חוויה', 'נסיון', 'שלי', 'אצלי', 'התקנתי', 'עדכנתי',
+      'problem', 'problems', 'issue', 'issues', 'works', 'working', 
+      'experience', 'my', 'installed', 'updated', 'after', 'before',
+      'recommend', 'avoid', 'fixed', 'solved', 'better', 'worse'
+    ];
+    
+    // אם יש מילות חוויה אמיתית, לא לסנן כטקסט גנרי
+    const hasAuthenticWords = authenticExperienceWords.some(word => 
+      textLower.includes(word)
+    );
+    
+    if (hasAuthenticWords) {
+      // גם אם יש מילים אמיתיות, עדיין נבדק אם יש ביטויים גנריים חזקים
+      const hasStrongGeneric = strongGenericPhrases.some(phrase => 
+        textLower.includes(phrase.toLowerCase())
+      );
+      return hasStrongGeneric;
+    }
+    
+    // בדיקה לביטויים גנריים רגילים רק אם אין מילים אמיתיות
+    const regularGenericPhrases = [
+      'מידע זמין',
+      'ניתן למצוא',
+      'ראה עוד',
+      'available information',
+      'can be found',
+      'see more'
+    ];
+    
+    return strongGenericPhrases.concat(regularGenericPhrases)
+      .some(phrase => textLower.includes(phrase.toLowerCase()));
   }
 
   // תרגום דיווחי משתמשים לעברית באמצעות Claude
