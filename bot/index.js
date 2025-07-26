@@ -591,11 +591,16 @@ ${usageEmoji} **שאילתות החודש:**
               }
             } else {
               // תגובה רגילה - עריכת הודעת ההמתנה
-              await bot.editMessageText(response, {
-                chat_id: chatId,
-                message_id: waitingMsg.message_id,
-                parse_mode: 'HTML'
-              });
+              try {
+                await bot.editMessageText(response, {
+                  chat_id: chatId,
+                  message_id: waitingMsg.message_id,
+                  parse_mode: 'HTML'
+                });
+              } catch (error) {
+                console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+                await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
+              }
             }
             
             // הודעת מידע על שאילתות נותרות
@@ -659,11 +664,16 @@ ${usageEmoji} **שאילתות החודש:**
           }
                             } else {
             // תגובה רגילה - עריכת הודעת ההמתנה
-            await bot.editMessageText(response, {
-              chat_id: chatId,
-              message_id: waitingMsg.message_id,
-              parse_mode: 'HTML'
-            });
+            try {
+              await bot.editMessageText(response, {
+                chat_id: chatId,
+                message_id: waitingMsg.message_id,
+                parse_mode: 'HTML'
+              });
+            } catch (error) {
+              console.log('⚠️ Failed to edit message, sending new message instead:', error.message);
+              await bot.sendMessage(chatId, response, { parse_mode: 'HTML' });
+            }
           }
           
           // הודעת מידע על שאילתות נותרות (גם לשאלות כלליות)
