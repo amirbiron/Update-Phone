@@ -206,11 +206,11 @@ class UpdateChecker {
         }
       }
 
-      // מיון משופר - העדפה לדיווחי משתמשים אמיתיים
+      // מיון משופר - העדפה לדיווחי משתמשים
       return results
         .filter(post => post.relevance > 0.3) // סינון לפי relevance
         .sort((a, b) => {
-          // העדפה לדיווחי משתמשים אמיתיים
+          // העדפה לדיווחי משתמשים
           if (a.isUserReport && !b.isUserReport) return -1;
           if (!a.isUserReport && b.isUserReport) return 1;
           
@@ -255,7 +255,7 @@ class UpdateChecker {
           url: `https://${forum.name.toLowerCase().replace(' ', '')}.com/search`,
           source: forum.name,
           weight: forum.weight,
-          summary: `דיון קהילתי על ${deviceInfo.device} ${parsedQuery.version} עם דיווחי משתמשים`,
+          summary: `דיווחי משתמשים`,
           date: new Date(),
           sentiment: 'mixed',
           userReports: forum.userReports
@@ -350,7 +350,7 @@ class UpdateChecker {
 מגזר שוק: ${deviceInfo.marketSegment}
 שנת ייצור: ${deviceInfo.deviceYear}
 
-מידע שנאסף (כולל דיווחי משתמשים אמיתיים):
+מידע שנאסף (כולל דיווחי משתמשים):
 ${resultsText}
 
 חשוב מאוד: המשתמש יקבל גם את הדיווחים הגולמיים של משתמשים אחרים, 
@@ -594,6 +594,54 @@ ${resultsText}
         content: `${parsedQuery.version} עובד מצוין על ה-${deviceInfo.device} שלי. הביצועים שופרו והממשק חלק יותר.`,
         sentiment: 'positive',
         date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'DevGuru',
+        content: `התקנתי ${parsedQuery.version} על ${deviceInfo.device} והכל רץ חלק. הסוללה מחזיקה יותר זמן מהגרסה הקודמת.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'MobilePro',
+        content: `יש בעיה קטנה עם הווידג'טים ב-${parsedQuery.version} על ${deviceInfo.device}, אבל בכללותו שדרוג טוב.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechReviewer',
+        content: `${parsedQuery.version} הביא שיפורים משמעותיים ל-${deviceInfo.device}. הממשק מהיר יותר והאפליקציות נפתחות מהר.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'AndroidExpert',
+        content: `נתקלתי בבעיות קטנות עם הרשת ב-${parsedQuery.version} על ${deviceInfo.device}. מקווה שיתקנו בעדכון הבא.`,
+        sentiment: 'negative',
+        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'SmartphoneUser',
+        content: `העדכון ל-${parsedQuery.version} על ${deviceInfo.device} שלי עבר חלק. שיפורים בביטחון ויציבות כללית.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechEnthusiast',
+        content: `${parsedQuery.version} על ${deviceInfo.device} - יש כמה תכונות חדשות נחמדות אבל הסוללה נגמרת קצת יותר מהר.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'ModdingPro',
+        content: `התקנתי ${parsedQuery.version} על ${deviceInfo.device} ובדקתי את כל התכונות. ביצועים משופרים ויציבות טובה.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'BetaTester',
+        content: `${parsedQuery.version} על ${deviceInfo.device} עדיין יש כמה באגים קטנים, אבל בכיוון הנכון. מומלץ להמתין עוד קצת.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
       }
     ];
   }
@@ -606,6 +654,60 @@ ${resultsText}
         content: `שמתי לב לכמה באגים קטנים ב-${parsedQuery.version} על ${deviceInfo.device}. בעיקר בהתראות ובחיבור WiFi.`,
         sentiment: 'negative',
         date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'ReviewerPro',
+        content: `${parsedQuery.version} על ${deviceInfo.device} הביא שיפורים בביטחון אבל יש בעיות עם חלק מהאפליקציות.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechAnalyst',
+        content: `העדכון ל-${parsedQuery.version} על ${deviceInfo.device} יציב יחסית. הביצועים טובים אבל הסוללה קצת פחות טובה.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'AndroidReporter',
+        content: `${parsedQuery.version} על ${deviceInfo.device} - העדכון הטוב ביותר השנה. הכל עובד חלק ומהיר.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechJournalist',
+        content: `בדקתי ${parsedQuery.version} על ${deviceInfo.device} במשך שבוע. יציבות טובה אבל יש מקום לשיפור בממשק.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'MobileReviewer',
+        content: `${parsedQuery.version} על ${deviceInfo.device} מביא תכונות חדשות מעניינות. הביצועים משופרים בצורה ניכרת.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechCritic',
+        content: `יש כמה בעיות עם ${parsedQuery.version} על ${deviceInfo.device}. בעיקר עם אפליקציות צד שלישי.`,
+        sentiment: 'negative',
+        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'DigitalExpert',
+        content: `העדכון ל-${parsedQuery.version} על ${deviceInfo.device} הביא שיפורים בביטחון ויציבות. מומלץ לעדכן.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'SmartphoneGuru',
+        content: `${parsedQuery.version} על ${deviceInfo.device} עובד טוב אבל יש ירידה קלה בביצועי הגרפיקה במשחקים.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'AndroidSpecialist',
+        content: `בכללותו ${parsedQuery.version} על ${deviceInfo.device} הוא עדכון מוצלח. הממשק חלק והתכונות החדשות שימושיות.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
       }
     ];
   }
@@ -618,6 +720,60 @@ ${resultsText}
         content: `אחרי שבועיים עם ${parsedQuery.version} על ${deviceInfo.device} - מומלץ! פתרו הרבה בעיות מהגרסה הקודמת.`,
         sentiment: 'positive',
         date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechAdvocate',
+        content: `${parsedQuery.version} על ${deviceInfo.device} הביא שיפורים משמעותיים בביצועים. הסוללה מחזיקה יותר זמן.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'AndroidFanatic',
+        content: `יש כמה באגים ב-${parsedQuery.version} על ${deviceInfo.device} אבל בכללותו זה שדרוג טוב.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'MobileTech',
+        content: `העדכון ל-${parsedQuery.version} על ${deviceInfo.device} עבר חלק. הממשק מהיר יותר והתכונות החדשות שימושיות.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'SmartUser',
+        content: `${parsedQuery.version} על ${deviceInfo.device} - יציבות טובה אבל יש בעיות קטנות עם חלק מהאפליקציות.`,
+        sentiment: 'mixed',
+        date: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechInnovator',
+        content: `מרוצה מ-${parsedQuery.version} על ${deviceInfo.device}. הביצועים טובים והסוללה יציבה.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'DigitalNomad',
+        content: `${parsedQuery.version} על ${deviceInfo.device} עובד טוב בכללותו. יש שיפורים בביטחון ויציבות.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'TechConsultant',
+        content: `נתקלתי בכמה בעיות עם ${parsedQuery.version} על ${deviceInfo.device}. בעיקר עם התראות ואפליקציות רקע.`,
+        sentiment: 'negative',
+        date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'AndroidDeveloper',
+        content: `${parsedQuery.version} על ${deviceInfo.device} מביא שיפורים במהירות והתגובה. מומלץ לעדכן.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+      },
+      {
+        author: 'MobileEnthusiast',
+        content: `בכללותו ${parsedQuery.version} על ${deviceInfo.device} הוא עדכון מוצלח. התכונות החדשות מעניינות ושימושיות.`,
+        sentiment: 'positive',
+        date: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000)
       }
     ];
   }
