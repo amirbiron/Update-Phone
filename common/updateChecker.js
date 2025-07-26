@@ -1884,6 +1884,8 @@ ${resultsText}
     
     const userReports = [];
     const fullText = `${title} ${text}`.toLowerCase();
+    let sentencesChecked = 0;
+    let sentencesPassed = 0;
     
     // דפוסים שמזהים דיווחי משתמשים אמיתיים
     const userReportPatterns = [
@@ -1922,13 +1924,15 @@ ${resultsText}
       const matches = text.match(pattern);
       if (matches) {
         matches.forEach(match => {
+          sentencesChecked++;
           // ניקוי הטקסט שנמצא
           let cleanedReport = match.replace(/^\W+|\W+$/g, '').trim();
           
-          // וידוא שהדיווח לא קצר מדי או ארוך מדי
-          if (cleanedReport.length >= 20 && cleanedReport.length <= 200) {
+          // וידוא שהדיווח לא קצר מדי או ארוך מדי - עדכון לגבולות חדשים
+          if (cleanedReport.length >= 10 && cleanedReport.length <= 350) {
             // בדיקה שזה לא טקסט גנרי
             if (!this.isGenericText(cleanedReport)) {
+              sentencesPassed++;
               userReports.push({
                 author: 'Forum User',
                 content: cleanedReport,
@@ -1944,15 +1948,29 @@ ${resultsText}
     
     // אם לא נמצאו דפוסים ספציפיים, ננסה לזהות דיווחי משתמשים בצורה פשוטה יותר
     if (userReports.length === 0) {
+      sentencesChecked++;
       // בדיקה פשוטה לטקסט בעברית שמכיל מילות מפתח
       const hebrewKeywords = ['עדכון', 'אנדרואיד', 'סוללה', 'ביצועים', 'בעיות', 'עובד', 'מומלץ'];
       const englishKeywords = ['update', 'android', 'battery', 'performance', 'experience', 'after'];
       
+      // מילים משמעותיות קצרות שחשובות כדיווחי משתמשים
+      const meaningfulShortReports = [
+        'בעיה', 'בעיות', 'הסתדר', 'עובד', 'עובדת', 'טוב', 'רע', 'איטי', 'מהיר',
+        'מומלץ', 'להימנע', 'בסדר', 'נורא', 'מצוין', 'לא טוב', 'לא עובד',
+        'problem', 'issue', 'works', 'good', 'bad', 'slow', 'fast', 'ok', 'fine',
+        'recommend', 'avoid', 'great', 'terrible', 'excellent', 'not good', 'doesnt work'
+      ];
+      
       const hasHebrewKeywords = hebrewKeywords.some(keyword => text.includes(keyword));
       const hasEnglishKeywords = englishKeywords.some(keyword => fullText.includes(keyword));
+      const isMeaningfulShort = meaningfulShortReports.some(word => 
+        text.toLowerCase().trim() === word.toLowerCase() || 
+        text.toLowerCase().trim().includes(word.toLowerCase())
+      );
       
-      if ((hasHebrewKeywords || hasEnglishKeywords) && text.length >= 30 && text.length <= 200) {
+      if ((hasHebrewKeywords || hasEnglishKeywords || isMeaningfulShort) && text.length >= 10 && text.length <= 350) {
         if (!this.isGenericText(text)) {
+          sentencesPassed++;
           userReports.push({
             author: 'Forum User',
             content: text.trim(),
@@ -1961,22 +1979,37 @@ ${resultsText}
             isExtracted: true
           });
         }
+      } else if (isMeaningfulShort && text.length >= 3 && text.length < 10) {
+        // טיפול מיוחד במילים משמעותיות קצרות (3-9 תווים)
+        if (!this.isGenericText(text)) {
+          sentencesPassed++;
+          userReports.push({
+            author: 'Forum User',
+            content: text.trim(),
+            sentiment: this.analyzeSentiment('', text),
+            date: new Date(),
+            isExtracted: true,
+            isShortMeaningful: true
+          });
+        }
       }
     }
     
     // אם לא נמצאו דיווחים ספציפיים, נחזיר ריק במקום תוכן גנרי
     if (userReports.length === 0) {
       console.log(`ℹ️  [extractUserReports] No specific user reports found in text: "${text.substring(0, 100)}..."`);
+      console.log(`📊 [extractUserReports] Sentences checked: ${sentencesChecked}, passed filtering: ${sentencesPassed}`);
       return [];
     }
     
     console.log(`✅ [extractUserReports] Found ${userReports.length} user reports`);
+    console.log(`📊 [extractUserReports] Sentences checked: ${sentencesChecked}, passed filtering: ${sentencesPassed}`);
     userReports.forEach((report, index) => {
       console.log(`   Report ${index + 1}: "${report.content.substring(0, 50)}..."`);
     });
     
-    // הגבלה למקסימום 3 דיווחים איכותיים
-    return userReports.slice(0, 3);
+    // הסרת מגבלת 3 דיווחים - כל דיווח שמחולץ ועובר סינון יוצג
+    return userReports;
   }
 
   // בדיקה אם הטקסט גנרי ולא דיווח אמיתי
@@ -1994,7 +2027,21 @@ ${resultsText}
       'found discussions'
     ];
     
-    const textLower = text.toLowerCase();
+    // מילים משמעותיות קצרות שלא צריכות להיחשב כגנריות
+    const meaningfulShortWords = [
+      'בעיה', 'בעיות', 'הסתדר', 'עובד', 'עובדת', 'טוב', 'רע', 'איטי', 'מהיר',
+      'מומלץ', 'להימנע', 'כן', 'לא', 'אוקיי', 'בסדר', 'נורא', 'מצוין',
+      'problem', 'issue', 'works', 'good', 'bad', 'slow', 'fast', 'ok', 'fine',
+      'recommend', 'avoid', 'yes', 'no', 'great', 'terrible', 'excellent'
+    ];
+    
+    const textLower = text.toLowerCase().trim();
+    
+    // אם זה מילה משמעותית קצרה, לא לסנן
+    if (meaningfulShortWords.some(word => textLower === word.toLowerCase())) {
+      return false;
+    }
+    
     return genericPhrases.some(phrase => textLower.includes(phrase.toLowerCase()));
   }
 
