@@ -271,12 +271,12 @@ class UpdateChecker {
   async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
     try {
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
-      
-      const response = await fetch(this.claudeApiUrl, {
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.CLAUDE_API_KEY}`,
+          'x-api-key': process.env.CLAUDE_API_KEY,
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
@@ -288,19 +288,18 @@ class UpdateChecker {
         })
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status}`);
+        throw new Error(`Claude API error: ${response.status} - ${JSON.stringify(data)}`);
       }
 
-      const data = await response.json();
-      const analysisText = data.content[0].text;
-
-      // ניתוח התשובה של Claude
-      return this.parseClaudeResponse(analysisText);
+      const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
+      return result;
 
     } catch (error) {
       console.error('Error analyzing with Claude:', error);
-      return this.getFallbackAnalysis(deviceInfo, parsedQuery, searchResults);
+      return 'אירעה שגיאה בעת ניסיון לנתח את המידע עם Claude.';
     }
   }
 
