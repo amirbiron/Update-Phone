@@ -518,7 +518,7 @@ function formatUserReports(searchResults) {
         
         if (realUserReports.length > 0) {
           reports += `  <b>דיווחי משתמשים:</b>\n`;
-          realUserReports.slice(0, 2).forEach(userReport => {
+          realUserReports.forEach(userReport => {
             const userSentimentEmoji = getSentimentEmoji(userReport.sentiment);
             let reportText = `    ${userSentimentEmoji} <i>"${userReport.content}"</i>`;
             
@@ -566,7 +566,7 @@ function formatUserReports(searchResults) {
         
         if (realUserReports.length > 0) {
           reports += `  <b>דיווחי משתמשים:</b>\n`;
-          realUserReports.slice(0, 2).forEach(userReport => { // עד 2 דיווחים אמיתיים
+          realUserReports.forEach(userReport => { // כל הדיווחים האמיתיים
             const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
             reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
             if (userReport.author && !userReport.author.includes('Editorial')) {
@@ -724,7 +724,7 @@ function splitUserReports(searchResults) {
           });
           
           if (realReports.length > 0) {
-            realReports.slice(0, 3).forEach(report => {
+            realReports.forEach(report => {
               if (reportCount < 8) {
                 const sentimentEmoji = getSentimentEmoji(report.sentiment);
                 let reportText = `    ${sentimentEmoji} "${report.content}"`;
@@ -765,7 +765,7 @@ function splitUserReports(searchResults) {
     let reportCount = 0;
     searchResults.redditPosts.forEach(post => {
       if (post.userReports && post.userReports.length > 0 && reportCount < 4) {
-        post.userReports.slice(0, 2).forEach(report => {
+        post.userReports.forEach(report => {
           if (reportCount < 4) {
             const sentimentEmoji = getSentimentEmoji(report.sentiment);
             userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
@@ -848,8 +848,8 @@ function formatForumReports(forumDiscussions) {
     
     if (discussion.userReports && discussion.userReports.length > 0) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
-      // 1 דיווח פנימי - המידע הכי חשוב
-      discussion.userReports.slice(0, 1).forEach(userReport => {
+      // כל הדיווחים הפנימיים
+      discussion.userReports.forEach(userReport => {
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
         reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
         if (userReport.author) {
