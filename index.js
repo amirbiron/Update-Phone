@@ -215,10 +215,11 @@ ${remainingInfo}📝 פורמטים נתמכים לשאלות:
 • דפוסים היסטוריים של היצרן
 • ניתוח סנטימנט של דיווחי משתמשים
 
-🔢 <b>הגבלות שימוש:</b>
-• כל משתמש: 30 שאילתות בחודש
+⚠️ <b>🔢 הגבלות שימוש - חשוב לדעת!</b>
+• <b>כל משתמש: 30 שאילתות בחודש בלבד</b>
 • המגבלה מתאפסת בתחילת כל חודש
 • זה מבטיח שירות הוגן לכל המשתמשים
+• 📊 מונה השאילתות יופיע אחרי כל תשובה
 
 ❓ שאלות נוספות? פשוט כתבו לי!
   `;
@@ -376,6 +377,14 @@ ${await updateChecker.getServicesStatus()}
         recommendation,
         timestamp: new Date()
       });
+      
+      // שליחת הודעת מונה השאילתות הנותרות
+      const updatedLimitCheck = await Database.checkUserQueryLimit(chatId);
+      const counterMessage = `📊 <b>נשארו לך עוד ${updatedLimitCheck.remaining} שאלות לבוט החודש</b>`;
+      
+      // המתנה קצרה לפני שליחת הודעת המונה
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await bot.sendMessage(chatId, counterMessage, { parse_mode: 'HTML' });
     
     } catch (error) {
       console.error('Error processing message:', error?.message || error);
