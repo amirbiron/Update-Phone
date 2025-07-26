@@ -182,6 +182,13 @@ function formatResponse(deviceInfo, updateInfo, recommendation) {
     response += '\n';
   }
   
+  // דיווחי משתמשים - החלק החדש שהמשתמש ביקש!
+  if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
+    response += `👥 <b>דיווחי משתמשים אמיתיים:</b>\n`;
+    response += formatUserReports(updateInfo.searchResults);
+    response += '\n';
+  }
+  
   // הסבר
   if (recommendation.reasoning) {
     response += `📋 <b>הסבר:</b>\n${recommendation.reasoning}\n\n`;
@@ -375,6 +382,106 @@ function generateQueryId(deviceInfo, parsedQuery) {
 // פורמט מידע לדיבאג
 function formatDebugInfo(data) {
   return JSON.stringify(data, null, 2);
+}
+
+// בדיקה אם יש דיווחי משתמשים
+function hasUserReports(searchResults) {
+  return (searchResults.redditPosts && searchResults.redditPosts.length > 0) ||
+         (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0);
+}
+
+// עיצוב דיווחי משתמשים
+function formatUserReports(searchResults) {
+  let reports = '';
+  
+  // דיווחים מ-Reddit
+  if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
+    reports += `\n🔸 <b>מ-Reddit:</b>\n`;
+    
+    // מיון לפי relevance ו-score
+    const topRedditPosts = searchResults.redditPosts
+      .filter(post => post.score > 0) // רק פוסטים עם ציון חיובי
+      .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
+      .slice(0, 3);
+    
+    topRedditPosts.forEach(post => {
+      const sentimentEmoji = getSentimentEmoji(post.sentiment);
+      reports += `• ${sentimentEmoji} <b>"${truncateText(post.title, 60)}"</b>\n`;
+      reports += `  👤 ${post.author} | 👍 ${post.score} | 💬 ${post.numComments} | ${timeAgo(post.created)}\n`;
+      
+      if (post.selftext && post.selftext.trim().length > 0) {
+        const cleanedText = cleanText(post.selftext);
+        if (cleanedText.length > 0) {
+          reports += `  📝 ${truncateText(cleanedText, 150)}\n`;
+        }
+      }
+      
+      reports += `  🔗 <a href="${post.url}">קרא עוד</a>\n\n`;
+    });
+  }
+  
+  // דיווחים מפורומים טכניים - כולל דיווחי המשתמשים החדשים
+  if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
+    reports += `🔸 <b>מפורומים טכניים:</b>\n`;
+    
+    searchResults.forumDiscussions.slice(0, 2).forEach(discussion => {
+      reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`;
+      reports += `  📍 ${discussion.source}\n`;
+      
+      if (discussion.summary) {
+        reports += `  📝 ${truncateText(discussion.summary, 150)}\n`;
+      }
+      
+      // הוספת דיווחי המשתמשים הספציפיים
+      if (discussion.userReports && discussion.userReports.length > 0) {
+        reports += `  <b>דיווחי משתמשים:</b>\n`;
+        discussion.userReports.slice(0, 2).forEach(userReport => {
+          const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
+          reports += `    ${sentimentEmoji} <i>"${truncateText(userReport.content, 100)}"</i>\n`;
+          reports += `    👤 ${userReport.author} | ${timeAgo(userReport.date)}\n`;
+        });
+      }
+      
+      reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
+    });
+  }
+  
+  // דיווחים מחיפוש כללי
+  if (searchResults.webSearchResults && searchResults.webSearchResults.length > 0) {
+    const relevantWebResults = searchResults.webSearchResults
+      .filter(result => result.relevance && result.relevance > 0.5)
+      .slice(0, 2);
+    
+    if (relevantWebResults.length > 0) {
+      reports += `🔸 <b>מאתרי טכנולוגיה:</b>\n`;
+      
+      relevantWebResults.forEach(result => {
+        reports += `• <b>${truncateText(result.title, 60)}</b>\n`;
+        if (result.snippet) {
+          reports += `  📝 ${truncateText(result.snippet, 150)}\n`;
+        }
+        reports += `  🔗 <a href="${result.url}">קרא עוד</a>\n\n`;
+      });
+    }
+  }
+  
+  if (reports.trim() === '') {
+    reports = `לא נמצאו דיווחי משתמשים ספציפיים לעדכון זה.\nמומלץ לבדוק בפורומים ידנית או להמתין למידע נוסף.\n`;
+  }
+  
+  return reports;
+}
+
+// אימוג'י לפי סנטימנט
+function getSentimentEmoji(sentiment) {
+  const emojis = {
+    'positive': '😊',
+    'negative': '😞', 
+    'mixed': '😐',
+    'neutral': '😐'
+  };
+  
+  return emojis[sentiment] || '😐';
 }
 
 module.exports = {
