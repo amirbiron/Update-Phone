@@ -47,7 +47,7 @@ class UpdateChecker {
   // בדיקת עדכון עיקרית
   async checkUpdate(deviceInfo, parsedQuery) {
     try {
-      console.log(`Checking update for ${deviceInfo.device} - ${parsedQuery.version}`);
+      console.log(`📱 Checking update for ${deviceInfo.device} - ${parsedQuery.version}`);
       
       const searchResults = await this.gatherInformation(deviceInfo, parsedQuery);
       const analysisResult = await this.analyzeWithClaude(deviceInfo, parsedQuery, searchResults);
@@ -61,7 +61,7 @@ class UpdateChecker {
       };
 
     } catch (error) {
-      console.error('Error checking update:', error);
+      console.error(`❌ Error at [checkUpdate]:`, error.message);
       return {
         error: 'Failed to check update',
         deviceInfo,
@@ -97,9 +97,10 @@ class UpdateChecker {
       results.officialSources = officialResults;
 
     } catch (error) {
-      console.error('Error gathering information:', error);
+      console.error(`❌ Error at [gatherInformation]:`, error.message);
     }
 
+    console.log(`📄 Finished collecting search results`);
     return results;
   }
 
@@ -125,7 +126,7 @@ class UpdateChecker {
         // המתנה קטנה בין חיפושים
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`Error searching for: ${query}`, error);
+        console.error(`❌ Error at [performWebSearch]:`, error.message);
       }
     }
 
@@ -195,13 +196,13 @@ class UpdateChecker {
             results.push(...posts);
           }
         } catch (error) {
-          console.error(`Error searching Reddit r/${subreddit}:`, error.message);
+          console.error(`❌ Error at [searchReddit subreddit ${subreddit}]:`, error.message);
         }
       }
 
       return results.sort((a, b) => b.relevance - a.relevance).slice(0, 10);
     } catch (error) {
-      console.error('Error searching Reddit:', error);
+      console.error(`❌ Error at [searchReddit]:`, error.message);
       return [];
     }
   }
@@ -230,7 +231,7 @@ class UpdateChecker {
         });
       }
     } catch (error) {
-      console.error('Error searching tech forums:', error);
+      console.error(`❌ Error at [searchTechForums]:`, error.message);
     }
 
     return results;
@@ -261,7 +262,7 @@ class UpdateChecker {
         });
       }
     } catch (error) {
-      console.error('Error searching official sources:', error);
+      console.error(`❌ Error at [searchOfficialSources]:`, error.message);
     }
 
     return results;
@@ -271,6 +272,8 @@ class UpdateChecker {
   async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
     try {
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
+
+      console.log(`🤖 Sending prompt to Claude...`);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: 'POST',
@@ -295,10 +298,11 @@ class UpdateChecker {
       }
 
       const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
+      console.log(`✅ Received response from Claude`);
       return result;
 
     } catch (error) {
-      console.error('Error analyzing with Claude:', error);
+      console.error(`❌ Error at [analyzeWithClaude]:`, error.message);
       return 'אירעה שגיאה בעת ניסיון לנתח את המידע עם Claude.';
     }
   }
@@ -385,7 +389,7 @@ ${resultsText}
         };
       }
     } catch (error) {
-      console.error('Error parsing Claude response:', error);
+      console.error(`❌ Error at [parseClaudeResponse]:`, error.message);
     }
 
     // אם לא הצלחנו לחלץ JSON, ננתח את הטקסט באופן בסיסי
