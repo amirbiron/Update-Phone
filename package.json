@@ -5,12 +5,16 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "start:bot": "node bot/index.js",
+    "start:scheduler": "node scheduler/index.js",
     "dev": "nodemon index.js",
+    "dev:bot": "nodemon bot/index.js",
+    "dev:scheduler": "nodemon scheduler/index.js",
     "test": "jest",
-    "cron:daily": "node cron-task.js daily",
-    "cron:weekly": "node cron-task.js weekly",
-    "cron:monthly": "node cron-task.js monthly",
-    "cron:popular": "node cron-task.js popular-check"
+    "cron:daily": "node scheduler/cron-task.js daily",
+    "cron:weekly": "node scheduler/cron-task.js weekly",
+    "cron:monthly": "node scheduler/cron-task.js monthly",
+    "cron:popular": "node scheduler/cron-task.js popular-check"
   },
   "keywords": [
     "telegram",
