@@ -11,11 +11,9 @@ class UpdateChecker {
   }
 
   // --- פונקציה ראשית ---
-  async checkForUpdates(deviceModel, currentVersion) {
+  async checkForUpdates(deviceInfo, parsedQuery) {
     try {
-      console.log(`🔍 [checkForUpdates] Starting multi-stage search for ${deviceModel} version ${currentVersion}`);
-      const deviceInfo = { device: deviceModel, manufacturer: this.getManufacturer(deviceModel) };
-      const parsedQuery = { version: currentVersion };
+      console.log(`🔍 [checkForUpdates] Received search request for ${deviceInfo.device} -> ${parsedQuery.version}`);
       
       const searchResults = await this.gatherInformation(deviceInfo, parsedQuery);
       
@@ -30,19 +28,17 @@ class UpdateChecker {
       };
     } catch (error) {
       console.error(`❌ FATAL ERROR in [checkForUpdates]:`, error.message);
-      return this.getErrorFallback(deviceModel, error.message);
+      return this.getErrorFallback(deviceInfo, error.message);
     }
   }
 
   // --- איסוף מידע רב-שלבי ---
   async gatherInformation(deviceInfo, parsedQuery) {
-    // בדיקה מקדימה של מפתח ה-API
     if (!process.env.GOOGLE_SEARCH_API_KEY || process.env.GOOGLE_SEARCH_API_KEY.includes('your_')) {
       console.error('❌ Google API Key is not configured. Cannot perform search.');
       return { forumDiscussions: [] };
     }
 
-    // שלב 1: חיפוש סופר-ממוקד
     console.log('⭐ Stage 1: Highly-focused search on trusted sites.');
     let query = `"${deviceInfo.device}" "${parsedQuery.version}" (update OR review OR problems)`;
     let results = await this.runFocusedSearch(query);
@@ -51,16 +47,14 @@ class UpdateChecker {
       return { forumDiscussions: results };
     }
 
-    // שלב 2: חיפוש רחב יותר (בלי מספר גרסה)
     console.log('⭐ Stage 2: Broader search on trusted sites.');
-    query = `"${deviceInfo.device}" update OR "android 15"`;
+    query = `"${deviceInfo.device}" update OR "${parsedQuery.version}"`;
     results = await this.runFocusedSearch(query);
     if (results.length > 0) {
       console.log(`✅ Stage 2 successful with ${results.length} results.`);
       return { forumDiscussions: results };
     }
 
-    // שלב 3: חיפוש כללי עם רשימה שחורה
     console.log('⭐ Stage 3: General web search with blacklist.');
     const blacklistQuery = this.blacklistedDomains.map(d => `-site:${d}`).join(' ');
     query = `"${deviceInfo.device}" "${parsedQuery.version}" update ${blacklistQuery}`;
@@ -75,7 +69,6 @@ class UpdateChecker {
   }
 
   // --- מנועי חיפוש ---
-
   async runFocusedSearch(query) {
     const siteQuery = this.trustedSites.map(site => `site:${site}`).join(' OR ');
     const fullQuery = `(${siteQuery}) ${query}`;
@@ -99,12 +92,11 @@ class UpdateChecker {
       const status = error.response?.status;
       const message = error.response?.data?.error?.message || error.message;
       console.error(`❌ Google Search API Error (Status: ${status || 'N/A'}): ${message}`);
-      return []; // החזרת מערך ריק במקום קריסה
+      return [];
     }
   }
 
   // --- עיבוד וניתוח ---
-  
   processGoogleResults(items) {
       return items.map(item => ({
           title: item.title,
@@ -162,7 +154,6 @@ Based ONLY on the provided information, generate a JSON response: {"stabilityRat
   }
 
   // --- פונקציות עזר וגיבוי ---
-
   getFallbackAnalysis(searchResults) {
     const hasResults = searchResults?.forumDiscussions?.length > 0;
     return {
@@ -176,12 +167,12 @@ Based ONLY on the provided information, generate a JSON response: {"stabilityRat
     };
   }
 
-  getErrorFallback(deviceModel, errorMessage) {
+  getErrorFallback(deviceInfo, errorMessage) {
     return {
       error: errorMessage,
       searchResults: { forumDiscussions: [] },
       analysis: this.getFallbackAnalysis({ forumDiscussions: [] }),
-      deviceInfo: { device: deviceModel, manufacturer: this.getManufacturer(deviceModel) },
+      deviceInfo,
       lastChecked: new Date(),
     };
   }
