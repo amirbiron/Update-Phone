@@ -85,12 +85,12 @@ cronJobs:
   - name: daily-cleanup
     schedule: "0 2 * * *"
     buildCommand: npm install
-    startCommand: node -e "require('./src/scheduler').runTaskNow('daily')"
+    startCommand: RUN_TASK_NOW=true node -e "require('./src/scheduler').runTaskNow('daily')"
     
   - name: weekly-maintenance
     schedule: "0 3 * * 0"
     buildCommand: npm install
-    startCommand: node -e "require('./src/scheduler').runTaskNow('weekly')"
+    startCommand: RUN_TASK_NOW=true node -e "require('./src/scheduler').runTaskNow('weekly')"
 
 # הגדרות environment variables גלובליות
 envVarGroups:
