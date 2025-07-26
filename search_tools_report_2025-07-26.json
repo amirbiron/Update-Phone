@@ -1,0 +1,223 @@
+{
+  "timestamp": "2025-07-26T09:13:10.680Z",
+  "summary": {
+    "apiEndpoints": 9,
+    "searchMethods": 9,
+    "dataSources": 6,
+    "analysisTools": 7
+  },
+  "details": {
+    "apiEndpoints": [
+      {
+        "name": "Reddit OAuth API",
+        "type": "social",
+        "file": "src/updateChecker.js",
+        "occurrences": 3,
+        "status": "detected"
+      },
+      {
+        "name": "Reddit API",
+        "type": "social",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      },
+      {
+        "name": "Claude API (Anthropic)",
+        "type": "ai",
+        "file": "src/updateChecker.js",
+        "occurrences": 2,
+        "status": "detected"
+      },
+      {
+        "name": "XDA Developers",
+        "type": "forum",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      },
+      {
+        "name": "Android Police",
+        "type": "news",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      },
+      {
+        "name": "Android Authority",
+        "type": "news",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      },
+      {
+        "name": "GSMArena",
+        "type": "specs",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      },
+      {
+        "name": "Samsung Security",
+        "type": "official",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      },
+      {
+        "name": "Android Source",
+        "type": "official",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "status": "detected"
+      }
+    ],
+    "searchMethods": [
+      {
+        "name": "searchReddit",
+        "description": "חיפוש ב-Reddit",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "type": "method"
+      },
+      {
+        "name": "searchTechForums",
+        "description": "חיפוש בפורומים טכניים",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "type": "method"
+      },
+      {
+        "name": "searchOfficialSources",
+        "description": "חיפוש במקורות רשמיים",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "type": "method"
+      },
+      {
+        "name": "gatherInformation",
+        "description": "איסוף מידע כללי",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "type": "method"
+      },
+      {
+        "name": "analyzeWithClaude",
+        "description": "ניתוח עם Claude AI",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "type": "method"
+      },
+      {
+        "name": "checkUpdate",
+        "description": "בדיקת עדכונים",
+        "file": "src/updateChecker.js",
+        "occurrences": 1,
+        "type": "method"
+      },
+      {
+        "name": "generateXDAUserReports",
+        "description": "יצירת דיווחי משתמשים XDA",
+        "file": "src/updateChecker.js",
+        "occurrences": 2,
+        "type": "method"
+      },
+      {
+        "name": "generateAndroidPoliceReports",
+        "description": "יצירת דיווחי משתמשים Android Police",
+        "file": "src/updateChecker.js",
+        "occurrences": 2,
+        "type": "method"
+      },
+      {
+        "name": "generateAndroidAuthorityReports",
+        "description": "יצירת דיווחי משתמשים Android Authority",
+        "file": "src/updateChecker.js",
+        "occurrences": 2,
+        "type": "method"
+      }
+    ],
+    "dataSources": [
+      {
+        "name": "Reddit",
+        "category": "Social Media",
+        "file": "src/updateChecker.js",
+        "mentions": 5
+      },
+      {
+        "name": "XDA Developers",
+        "category": "Tech Forum",
+        "file": "src/updateChecker.js",
+        "mentions": 1
+      },
+      {
+        "name": "Android Police",
+        "category": "Tech News",
+        "file": "src/updateChecker.js",
+        "mentions": 4
+      },
+      {
+        "name": "Android Authority",
+        "category": "Tech News",
+        "file": "src/updateChecker.js",
+        "mentions": 4
+      },
+      {
+        "name": "GSMArena",
+        "category": "Device Specs",
+        "file": "src/updateChecker.js",
+        "mentions": 3
+      },
+      {
+        "name": "Samsung Security Bulletins",
+        "category": "Official",
+        "file": "src/updateChecker.js",
+        "mentions": 1
+      }
+    ],
+    "analysisTools": [
+      {
+        "name": "Claude Sonnet 4",
+        "type": "AI Analysis",
+        "file": "src/updateChecker.js",
+        "usage": 1
+      },
+      {
+        "name": "Anthropic API",
+        "type": "AI Service",
+        "file": "src/updateChecker.js",
+        "usage": 3
+      },
+      {
+        "name": "Sentiment Analysis",
+        "type": "Text Analysis",
+        "file": "src/updateChecker.js",
+        "usage": 34
+      },
+      {
+        "name": "Claude Response Parser",
+        "type": "Response Processing",
+        "file": "src/updateChecker.js",
+        "usage": 2
+      },
+      {
+        "name": "Relevance Calculator",
+        "type": "Scoring Algorithm",
+        "file": "src/updateChecker.js",
+        "usage": 2
+      },
+      {
+        "name": "User Report Detector",
+        "type": "Content Classification",
+        "file": "src/updateChecker.js",
+        "usage": 8
+      },
+      {
+        "name": "Experience Extractor",
+        "type": "Content Analysis",
+        "file": "src/updateChecker.js",
+        "usage": 2
+      }
+    ]
+  }
+}

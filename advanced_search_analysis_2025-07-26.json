@@ -1,0 +1,143 @@
+{
+  "timestamp": "2025-07-26T09:14:08.080Z",
+  "analysis": {
+    "searchWorkflow": [
+      {
+        "step": 1,
+        "name": "קבלת שאילתה מהמשתמש",
+        "method": "parseUserMessage",
+        "file": "src/utils.js",
+        "description": "ניתוח הודעת המשתמש וחילוץ פרטי המכשיר"
+      },
+      {
+        "step": 2,
+        "name": "ניתוח פרטי המכשיר",
+        "method": "analyzeDevice",
+        "file": "src/deviceAnalyzer.js",
+        "description": "בדיקת תקינות המכשיר וקבלת מידע טכני"
+      },
+      {
+        "step": 3,
+        "name": "איסוף מידע ממקורות שונים",
+        "method": "gatherInformation",
+        "file": "src/updateChecker.js",
+        "description": "חיפוש במקורות מידע שונים"
+      },
+      {
+        "step": 4,
+        "name": "חיפוש ב-Reddit",
+        "method": "searchReddit",
+        "file": "src/updateChecker.js",
+        "description": "חיפוש בסאברדיטים רלוונטיים"
+      },
+      {
+        "step": 5,
+        "name": "חיפוש בפורומים טכניים",
+        "method": "searchTechForums",
+        "file": "src/updateChecker.js",
+        "description": "איסוף מידע מפורומים מקצועיים"
+      },
+      {
+        "step": 6,
+        "name": "בדיקת מקורות רשמיים",
+        "method": "searchOfficialSources",
+        "file": "src/updateChecker.js",
+        "description": "חיפוש במקורות רשמיים של יצרנים"
+      },
+      {
+        "step": 7,
+        "name": "ניתוח עם Claude AI",
+        "method": "analyzeWithClaude",
+        "file": "src/updateChecker.js",
+        "description": "ניתוח מתקדם של המידע שנאסף"
+      },
+      {
+        "step": 8,
+        "name": "יצירת המלצה",
+        "method": "generateRecommendation",
+        "file": "src/recommendationEngine.js",
+        "description": "יצירת המלצה מבוססת נתונים"
+      }
+    ],
+    "simulatedData": [
+      {
+        "source": "XDA User Reports",
+        "method": "generateXDAUserReports",
+        "count": 10,
+        "type": "simulated",
+        "description": "דיווחי משתמשים מדומים מ-XDA Developers"
+      },
+      {
+        "source": "Android Police Reports",
+        "method": "generateAndroidPoliceReports",
+        "count": 10,
+        "type": "simulated",
+        "description": "דיווחי משתמשים מדומים מ-Android Police"
+      },
+      {
+        "source": "Android Authority Reports",
+        "method": "generateAndroidAuthorityReports",
+        "count": 10,
+        "type": "simulated",
+        "description": "דיווחי משתמשים מדומים מ-Android Authority"
+      }
+    ],
+    "dependencies": [
+      {
+        "name": "axios",
+        "purpose": "HTTP requests for Reddit API and web scraping",
+        "usage": "API calls",
+        "critical": true
+      },
+      {
+        "name": "cheerio",
+        "purpose": "HTML parsing for web scraping",
+        "usage": "Content extraction",
+        "critical": true
+      },
+      {
+        "name": "node-telegram-bot-api",
+        "purpose": "Telegram Bot integration",
+        "usage": "Bot communication",
+        "critical": true
+      },
+      {
+        "name": "dotenv",
+        "purpose": "Environment variables management",
+        "usage": "API keys and configuration",
+        "critical": true
+      }
+    ],
+    "efficiency": {
+      "realTimeSearch": {
+        "reddit": "Active - uses Reddit OAuth API",
+        "forums": "Simulated - generates mock data",
+        "official": "Partial - checks official URLs but doesn't scrape"
+      },
+      "dataQuality": {
+        "reddit": "High - real user discussions",
+        "forums": "Medium - simulated but realistic",
+        "official": "High - official security bulletins"
+      },
+      "updateFrequency": {
+        "reddit": "Real-time",
+        "forums": "Static simulated data",
+        "official": "Manual URL checking"
+      }
+    }
+  },
+  "recommendations": [
+    "הוספת חיפוש אמיתי בפורומים טכניים",
+    "יישום web scraping למקורות רשמיים",
+    "הוספת cache למניעת חיפושים חוזרים",
+    "יישום rate limiting לAPI calls",
+    "הוספת מקורות חיפוש נוספים"
+  ],
+  "summary": {
+    "totalWorkflowSteps": 8,
+    "simulatedDataSources": 3,
+    "dependencies": 4,
+    "realTimeSearchCapability": "Partial (Reddit only)",
+    "aiAnalysisCapability": "Full (Claude Sonnet 4)"
+  }
+}
