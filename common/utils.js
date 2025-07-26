@@ -110,7 +110,7 @@ function extractDeviceInfo(deviceText) {
 // ניתוח הודעה חופשית
 function parseFreetextMessage(text) {
   // חיפוש של מילות מפתח
-  const deviceKeywords = ['galaxy', 'pixel', 'redmi', 'poco', 'oneplus'];
+  const deviceKeywords = ['galaxy', 'pixel', 'redmi', 'poco', 'oneplus', 'tab', 'tablet', 'pad', 'טאבלט'];
   const versionKeywords = ['android', 'one ui', 'miui', 'oxygen'];
   
   let device = null;
@@ -407,7 +407,7 @@ function hasUserReports(searchResults) {
   return hasRedditReports || hasForumReports;
 }
 
-// עיצוב דיווחי משתמשים
+// עיצוב דיווחי משתמשים - ללא קיצורים
 function formatUserReports(searchResults) {
   let reports = '';
   
@@ -419,16 +419,16 @@ function formatUserReports(searchResults) {
     const topRedditPosts = searchResults.redditPosts
       .filter(post => post.score > 0) // רק פוסטים עם ציון חיובי
       .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-      .slice(0, 10);
+      .slice(0, 10); // 10 דיווחים מ-Reddit
     
     topRedditPosts.forEach(post => {
       const sentimentEmoji = getSentimentEmoji(post.sentiment);
-      reports += `• ${sentimentEmoji} <b>"${truncateText(post.title, 60)}"</b>\n`;
+      reports += `• ${sentimentEmoji} <b>"${post.title}"</b>\n`; // ללא קיצור כותרת
       
       if (post.selftext && post.selftext.trim().length > 0) {
         const cleanedText = cleanText(post.selftext);
         if (cleanedText.length > 0) {
-          reports += `  📝 ${truncateText(cleanedText, 150)}\n`;
+          reports += `  📝 ${cleanedText}\n`; // ללא קיצור תוכן
         }
       }
       
@@ -440,17 +440,23 @@ function formatUserReports(searchResults) {
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
     reports += `🔸 <b>מפורומים טכניים:</b>\n`;
     
-    searchResults.forumDiscussions.slice(0, 10).forEach(discussion => {
-      reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`;
+    searchResults.forumDiscussions.slice(0, 10).forEach(discussion => { // 10 דיווחים מפורומים
+      reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
       reports += `  📍 ${discussion.source}\n`;
       
       // הוספת דיווחי המשתמשים הספציפיים
       if (discussion.userReports && discussion.userReports.length > 0) {
         reports += `  <b>דיווחי משתמשים:</b>\n`;
-        discussion.userReports.slice(0, 10).forEach(userReport => {
+        discussion.userReports.slice(0, 10).forEach(userReport => { // 10 דיווחים פנימיים
           const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
-          reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`;
-          reports += `    👤 ${userReport.author} | ${timeAgo(userReport.date)}\n`;
+          reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
+          if (userReport.author) {
+            reports += `    👤 ${userReport.author}`;
+            if (userReport.date) {
+              reports += ` | ${timeAgo(userReport.date)}`;
+            }
+            reports += `\n`;
+          }
         });
       }
       
@@ -547,34 +553,28 @@ function splitUserReports(searchResults) {
     return [];
   }
 
-  // הגבלת מספר החלקים למקסימום 2 (במקום 4) כדי למנוע ספאם
-  if (reportSections.length > 2) {
-    const truncatedSections = reportSections.slice(0, 2);
-    const lastSection = truncatedSections[truncatedSections.length - 1];
-    lastSection.content += `\n\n<i>📊 הוגבל מספר הדיווחים כדי למנוע ספאם. סה"כ ${reportSections.length} מקורות נבדקו.</i>`;
-    return truncatedSections;
-  }
-  
+  // החזרת כל החלקים - ללא הגבלה, נפצל להודעות נפרדות
+  console.log(`📊 Found ${reportSections.length} user report sections, will send as separate messages`);
   return reportSections;
 }
 
-// עיצוב דיווחי Reddit בנפרד
+// עיצוב דיווחי Reddit בנפרד - ללא קיצורים
 function formatRedditReports(redditPosts) {
   let reports = '';
   
   const topRedditPosts = redditPosts
     .filter(post => post.score > 0)
     .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-    .slice(0, 10); // מגביל ל-10 דיווחים
+    .slice(0, 10); // 10 דיווחים מ-Reddit
   
   topRedditPosts.forEach(post => {
     const sentimentEmoji = getSentimentEmoji(post.sentiment);
-    reports += `• ${sentimentEmoji} <b>"${truncateText(post.title, 60)}"</b>\n`;
+    reports += `• ${sentimentEmoji} <b>"${post.title}"</b>\n`; // ללא קיצור כותרת
     
     if (post.selftext && post.selftext.trim().length > 0) {
       const cleanedText = cleanText(post.selftext);
       if (cleanedText.length > 0) {
-        reports += `  📝 ${truncateText(cleanedText, 120)}\n`;
+        reports += `  📝 ${cleanedText}\n`; // ללא קיצור תוכן
       }
     }
     
@@ -584,7 +584,7 @@ function formatRedditReports(redditPosts) {
   return reports;
 }
 
-// עיצוב דיווחי פורומים בנפרד
+// עיצוב דיווחי פורומים בנפרד - ללא קיצורים
 function formatForumReports(forumDiscussions) {
   let reports = '';
   
@@ -601,17 +601,24 @@ function formatForumReports(forumDiscussions) {
     }
   }
   
-  // הגבלה ל-6 דיווחים ייחודיים (במקום 10) כדי למנוע ספאם
-  uniqueDiscussions.slice(0, 6).forEach(discussion => {
-    reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`;
+  // 10 דיווחים ייחודיים מפורומים
+  uniqueDiscussions.slice(0, 10).forEach(discussion => {
+    reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
     reports += `  📍 ${discussion.source}\n`;
     
     if (discussion.userReports && discussion.userReports.length > 0) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
-      // הגבלה ל-3 דיווחים פנימיים (במקום 8) כדי למנוע עומס
-      discussion.userReports.slice(0, 3).forEach(userReport => {
+      // 10 דיווחים פנימיים - המידע הכי חשוב
+      discussion.userReports.slice(0, 10).forEach(userReport => {
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
-        reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`;
+        reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
+        if (userReport.author) {
+          reports += `    👤 ${userReport.author}`;
+          if (userReport.date) {
+            reports += ` | ${timeAgo(userReport.date)}`;
+          }
+          reports += `\n`;
+        }
       });
     } else {
       reports += `  📝 <i>אין דיווחי משתמשים ספציפיים</i>\n`;
@@ -729,8 +736,8 @@ function translateToHebrew(text) {
   return translatedText;
 }
 
-// עיצוב תשובה סופית עם פיצול אוטומטי
-function formatResponseWithSplit(deviceInfo, updateInfo, recommendation) {
+// עיצוב תשובה סופית עם פיצול אוטומטי לדיווחי משתמשים
+function formatResponseWithUserReports(deviceInfo, updateInfo, recommendation) {
   // יצירת ההודעה הראשית (בלי דיווחי משתמשים)
   const mainResponse = formatMainResponse(deviceInfo, updateInfo, recommendation);
   const messages = [mainResponse];
@@ -749,6 +756,26 @@ function formatResponseWithSplit(deviceInfo, updateInfo, recommendation) {
   }
   
   return messages;
+}
+
+// פונקציה לפיצול הודעות רגילות (עבור תאימות לאחור)
+function formatResponseWithSplit(response) {
+  const TELEGRAM_LIMIT = 4096;
+  
+  if (response.length <= TELEGRAM_LIMIT) {
+    return {
+      needsSplit: false,
+      parts: [response]
+    };
+  }
+  
+  // פיצול ההודעה לחלקים
+  const parts = splitLongMessage(response);
+  
+  return {
+    needsSplit: true,
+    parts: parts
+  };
 }
 
 // עיצוב התשובה הראשית (בלי דיווחי משתמשים)
@@ -867,7 +894,8 @@ function logMessageSplit(messages) {
 module.exports = {
   parseUserMessage,
   formatResponse,
-  formatResponseWithSplit, // הפונקציה החדשה
+  formatResponseWithSplit, // פונקציה לפיצול הודעות רגילות
+  formatResponseWithUserReports, // הפונקציה החדשה לדיווחי משתמשים
   splitLongMessage,        // פונקציות עזר חדשות
   checkMessageLength,      // פונקציות דיבאג חדשות
   logMessageSplit,

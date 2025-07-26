@@ -8,7 +8,84 @@ const DeviceAnalyzer = require('../common/deviceAnalyzer');
 const UpdateChecker = require('../common/updateChecker');
 const RecommendationEngine = require('../common/recommendationEngine');
 const Database = require('../common/database');
-const { formatResponse, formatResponseWithSplit, parseUserMessage, logMessageSplit } = require('../common/utils');
+const { formatResponse, formatResponseWithSplit, formatResponseWithUserReports, parseUserMessage, logMessageSplit } = require('../common/utils');
+
+// פונקציה לשליחת הודעת מידע על שאילתות נותרות
+async function sendQueryLimitMessage(chatId, bot) {
+  try {
+    // המתנה קצרה לפני שליחת הודעת המידע
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const queryLimitInfo = await Database.checkQueryLimit(chatId);
+    
+    // בחירת אימוג'י ומסר לפי כמות השאילתות הנותרות
+    let statusEmoji = '📊';
+    let statusText = '';
+    let extraTip = '';
+    
+    if (queryLimitInfo.remaining === 0) {
+      statusEmoji = '🚫';
+      statusText = ' (הגעתם למגבלה)';
+      extraTip = '\n🔄 **המגבלה תתאפס בתחילת החודש הבא**';
+    } else if (queryLimitInfo.remaining <= 3) {
+      statusEmoji = '🔴';
+      statusText = ' (אחרונות!)';
+      extraTip = '\n⚡ **השתמשו בחכמה - נותרו מעט שאילתות**';
+    } else if (queryLimitInfo.remaining <= 5) {
+      statusEmoji = '⚠️';
+      statusText = ' (נותרו מעט!)';
+      extraTip = '\n💡 **שמרו שאילתות לעדכונים חשובים**';
+    } else if (queryLimitInfo.remaining <= 10) {
+      statusEmoji = '📉';
+      statusText = ' (בדרך לסיום)';
+    } else if (queryLimitInfo.remaining >= 25) {
+      statusEmoji = '✅';
+      statusText = ' (הרבה נותרו)';
+      extraTip = '\n🎉 **אתם יכולים לשאול בחופשיות!**';
+    }
+    
+    const limitMessage = `
+${statusEmoji} **שאילתות החודש:** ${queryLimitInfo.remaining}/${queryLimitInfo.limit}${statusText}${extraTip}
+
+💡 **טיפ:** השתמשו בפקודה /stats לסטטיסטיקות מפורטות
+    `.trim();
+    
+    await bot.sendMessage(chatId, limitMessage, { parse_mode: 'Markdown' });
+    console.log(`📊 Sent query limit info: ${queryLimitInfo.remaining}/${queryLimitInfo.limit}`);
+    
+    // הודעות מיוחדות במילים עגולים
+    const usedQueries = queryLimitInfo.limit - queryLimitInfo.remaining;
+    const usagePercentage = (usedQueries / queryLimitInfo.limit) * 100;
+    
+    // הודעה כשמגיעים ל-50% מהשאילתות
+    if (usedQueries === Math.floor(queryLimitInfo.limit * 0.5)) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await bot.sendMessage(chatId, `
+🎯 **הגעתם לחצי הדרך!**
+
+השתמשתם ב-${usedQueries} שאילתות מתוך ${queryLimitInfo.limit} 📈
+
+💪 **המשיכו לשאול - עוד הרבה מקום!**
+      `.trim(), { parse_mode: 'Markdown' });
+    }
+    
+    // הודעה כשמגיעים ל-75% מהשאילתות
+    if (usedQueries === Math.floor(queryLimitInfo.limit * 0.75)) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await bot.sendMessage(chatId, `
+🔥 **75% מהשאילתות נוצלו!**
+
+נותרו ${queryLimitInfo.remaining} שאילתות החודש 📊
+
+⚡ **השתמשו בהן בחכמה לעדכונים החשובים ביותר**
+      `.trim(), { parse_mode: 'Markdown' });
+    }
+    
+  } catch (error) {
+    console.error('Error sending query limit message:', error?.message || error);
+    // לא עוצרים את התהליך אם הודעת המידע נכשלה
+  }
+}
 
 // טיפול גלובלי בחריגות בלתי מטופלות
 process.on('uncaughtException', (error) => {
@@ -45,26 +122,51 @@ async function initializeBot() {
     // פקודת התחלה
     bot.onText(/\/start/, async (msg) => {
       const chatId = msg.chat.id;
+      
+      // בדיקת הגבלת שאילתות
+      let queryLimitInfo;
+      try {
+        queryLimitInfo = await Database.checkQueryLimit(chatId);
+      } catch (error) {
+        console.error('Error checking query limit:', error?.message || error);
+        queryLimitInfo = { remaining: 30, limit: 30 };
+      }
+      
       const welcomeMessage = `
-🤖 שלום! אני בוט יועץ עדכוני אנדרואיד
+🤖 **ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!**
 
-📱 אני יכול לעזור לכם לקבל החלטות חכמות לגבי עדכון המכשיר שלכם!
+📊 **שאילתות נותרות החודש: ${queryLimitInfo.remaining}/${queryLimitInfo.limit}**
 
-💡 פשוט שלחו לי את פרטי המכשיר שלכם בפורמט הבא:
-\`דגם: [שם המכשיר]
-גרסה נוכחית: [גרסת אנדרואיד]\`
+אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
 
-או לחלופין:
-\`Samsung Galaxy S21
-Android 12\`
+📱 **איך זה עובד:**
+1. שלחו לי את פרטי המכשיר שלכם
+2. אני אבדוק את המצב של העדכון החדש
+3. אתן לכם המלצה מפורטת
+4. 👥 **חדש!** אציג לכם דיווחי משתמשים!
 
-🔍 אני אבדוק עבורכם:
-• האם יש עדכונים זמינים
-• האם העדכון מומלץ
-• מה החדש בעדכון
-• בעיות ידועות (אם יש)
+⭐ **מה מיוחד בבוט:**
+• דיווחי משתמשים מפורומים ו-Reddit
+• ציטוטים ישירים מחוות דעת של משתמשים אחרים
+• קישורים למקורות כדי שתוכלו לקרוא עוד
+• ניתוח מקצועי משולב עם חוות דעת אמיתיות
+• 🆕 **חיפוש מידע לכל דגם מכשיר!**
 
-📊 תוכלו גם לשאול שאלות כלליות על עדכוני אנדרואיד!
+💬 **דוגמאות לשאלות:**
+• "כדאי לעדכן Samsung Galaxy S23 לאנדרואיד 14?"
+• "יש בעיות בעדכון One UI 6.0 ל-Galaxy A54?"
+• "מה עם עדכון ל-Pixel 8 לאנדרואיד 14?"
+
+🔢 **הגבלות שימוש:**
+• כל משתמש יכול לשאול עד 30 שאלות בחודש
+• המגבלה מתאפסת בתחילת כל חודש
+
+📞 **פקודות נוספות:**
+/help - עזרה מפורטת
+/status - סטטוס המערכת
+/feedback - משוב
+
+**בואו נתחיל! שאלו אותי על העדכון שלכם** 🚀
       `;
       
       bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
@@ -81,25 +183,33 @@ Android 12\`
     bot.onText(/\/help/, async (msg) => {
       const chatId = msg.chat.id;
       const helpMessage = `
-🆘 עזרה - בוט יועץ עדכוני אנדרואיד
+🆘 **עזרה מפורטת - בוט יועץ עדכוני אנדרואיד**
 
-📋 פקודות זמינות:
-• \`/start\` - התחלת השיחה
-• \`/help\` - הצגת הודעה זו
-• \`/stats\` - סטטיסטיקות שימוש
+📋 **פקודות זמינות:**
+• \`/start\` - התחלת השיחה וברכה
+• \`/help\` - הצגת הודעת עזרה זו
+• \`/stats\` - סטטיסטיקות שימוש אישיות
+• \`/status\` - בדיקת סטטוס המערכת
+• \`/feedback\` - שליחת משוב והצעות
 
-📱 איך להשתמש:
-1️⃣ שלחו את פרטי המכשיר שלכם
-2️⃣ אקבל המלצה מותאמת אישית
-3️⃣ תוכלו לשאול שאלות נוספות
+📱 **איך להשתמש בבוט:**
+1️⃣ **שלחו פרטי מכשיר** - "Samsung Galaxy S23, Android 13"
+2️⃣ **אקבלו המלצה מותאמת** עם דיווחי משתמשים אמיתיים
+3️⃣ **שאלו שאלות נוספות** על עדכונים ובעיות
 
-💡 דוגמאות לשאלות:
-• "Samsung Galaxy S22, Android 13"
-• "Pixel 6 Pro, Android 12"
-• "מה חדש באנדרואיד 14?"
-• "האם כדאי לעדכן לאנדרואיד 13?"
+💡 **דוגמאות לשאלות שאפשר לשאול:**
+• "כדאי לעדכן Samsung Galaxy S22 לאנדרואיד 14?"
+• "יש בעיות בעדכון One UI 6.0?"
+• "מה חדש באנדרואיד 15?"
+• "הסוללה נגמרת מהר אחרי העדכון"
 
-🔧 בעיות? צרו קשר עם המפתח.
+🔍 **מה תקבלו בתשובה:**
+• המלצה מקצועית מבוססת נתונים
+• דיווחי משתמשים אמיתיים מפורומים
+• קישורים למקורות נוספים
+• ציטוטים ישירים מחוות דעת
+
+🔧 **בעיות או שאלות?** השתמשו ב-/feedback
       `;
       
       bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
@@ -119,22 +229,104 @@ Android 12\`
         const stats = await Database.getUserStats(chatId);
         const globalStats = await Database.getGlobalStats();
         
+        // בדיקת מגבלת שאילתות
+        const queryLimitInfo = await Database.checkQueryLimit(chatId);
+        const usedQueries = queryLimitInfo.limit - queryLimitInfo.remaining;
+        const usagePercentage = Math.round((usedQueries / queryLimitInfo.limit) * 100);
+        
+        // אימוג'י לפי אחוז השימוש
+        let usageEmoji = '📊';
+        if (usagePercentage >= 90) usageEmoji = '🔴';
+        else if (usagePercentage >= 75) usageEmoji = '🟠';
+        else if (usagePercentage >= 50) usageEmoji = '🟡';
+        else if (usagePercentage >= 25) usageEmoji = '🟢';
+        else usageEmoji = '✅';
+        
         const statsMessage = `
-📊 הסטטיסטיקות שלכם:
+📊 **הסטטיסטיקות שלכם:**
+
+👤 **פעילות אישית:**
 • שאלות שנשאלו: ${stats.questionsAsked || 0}
 • המלצות שהתקבלו: ${stats.recommendationsReceived || 0}
 • תאריך הצטרפות: ${stats.joinDate ? new Date(stats.joinDate).toLocaleDateString('he-IL') : 'לא זמין'}
 
-🌍 סטטיסטיקות כלליות:
+${usageEmoji} **שאילתות החודש:**
+• נוצלו: ${usedQueries}/${queryLimitInfo.limit} (${usagePercentage}%)
+• נותרו: ${queryLimitInfo.remaining}
+• מתאפס ב: ${new Date(queryLimitInfo.resetDate).toLocaleDateString('he-IL')}
+
+🌍 **סטטיסטיקות כלליות:**
 • סה"כ משתמשים: ${globalStats.totalUsers || 0}
 • סה"כ שאלות: ${globalStats.totalQuestions || 0}
 • עדכונים נבדקו היום: ${globalStats.updatesCheckedToday || 0}
         `;
         
-        bot.sendMessage(chatId, statsMessage);
+        bot.sendMessage(chatId, statsMessage, { parse_mode: 'Markdown' });
       } catch (error) {
         console.error('Error getting stats:', error?.message || error);
         bot.sendMessage(chatId, '❌ שגיאה בקבלת הסטטיסטיקות. נסו שוב מאוחר יותר.');
+      }
+    });
+
+    // פקודת סטטוס
+    bot.onText(/\/status/, async (msg) => {
+      const chatId = msg.chat.id;
+      const statusMessage = `
+🟢 **סטטוס המערכת**
+
+🤖 **בוט:** פעיל ותקין
+📊 **מסד נתונים:** מחובר
+🔄 **שירותי עדכונים:** פעילים
+🌐 **חיבור לאינטרנט:** יציב
+
+⏰ **זמן פעילות:** ${Math.floor(process.uptime() / 3600)} שעות
+💾 **זיכרון בשימוש:** ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB
+
+✅ **כל המערכות פועלות תקין!**
+      `;
+      
+      bot.sendMessage(chatId, statusMessage, { parse_mode: 'Markdown' });
+      
+      try {
+        await Database.logUserInteraction(chatId, 'status_command', { command: '/status' });
+      } catch (error) {
+        console.error('Error logging status command:', error?.message || error);
+      }
+    });
+
+    // פקודת משוב
+    bot.onText(/\/feedback/, async (msg) => {
+      const chatId = msg.chat.id;
+      const feedbackMessage = `
+💬 **משוב ובקשות**
+
+🙏 נשמח לשמוע את דעתכם על הבוט!
+
+📝 **איך לשלוח משוב:**
+• שלחו הודעה החל במילה "משוב:"
+• לדוגמה: "משוב: הבוט מעולה אבל הייתי רוצה יותר מידע על..."
+
+🐛 **דיווח על באגים:**
+• שלחו הודעה החל במילה "באג:"
+• לדוגמה: "באג: הבוט לא מזהה את המכשיר Samsung..."
+
+💡 **הצעות לשיפור:**
+• שלחו הודעה החל במילה "הצעה:"
+• לדוגמה: "הצעה: להוסיף תמיכה במכשירי Xiaomi..."
+
+📧 **יצירת קשר ישירה:**
+• אימייל: support@androidupdatebot.com
+• טלגרם: @AndroidUpdateSupport
+
+תודה שאתם עוזרים לנו להשתפר! 🚀
+      `;
+      
+      bot.sendMessage(chatId, feedbackMessage, { parse_mode: 'Markdown' });
+      
+      try {
+        await Database.logUserInteraction(chatId, 'feedback_command', { command: '/feedback' });
+      } catch (error) {
+        console.error('Error logging feedback command:', error?.message || error);
       }
     });
 
@@ -153,7 +345,68 @@ Android 12\`
         return;
       }
 
+      // טיפול בהודעות משוב
+      if (messageText.startsWith('משוב:') || messageText.startsWith('באג:') || messageText.startsWith('הצעה:')) {
+        try {
+          const feedbackType = messageText.startsWith('משוב:') ? 'feedback' : 
+                              messageText.startsWith('באג:') ? 'bug' : 'suggestion';
+          const feedbackContent = messageText.substring(messageText.indexOf(':') + 1).trim();
+          
+          await Database.saveFeedback({
+            chatId: chatId,
+            type: feedbackType,
+            content: feedbackContent,
+            timestamp: new Date()
+          });
+          
+          const responseMessage = `
+✅ **תודה על ${feedbackType === 'feedback' ? 'המשוב' : feedbackType === 'bug' ? 'דיווח הבאג' : 'ההצעה'}!**
+
+📝 **קיבלנו את ההודעה שלכם:**
+"${feedbackContent}"
+
+🔄 **נבדוק את הנושא ונחזור אליכם בהקדם**
+
+💬 **רוצים להוסיף עוד פרטים?** פשוט שלחו הודעה נוספת
+          `;
+          
+          bot.sendMessage(chatId, responseMessage, { parse_mode: 'Markdown' });
+          
+          await Database.logUserInteraction(chatId, 'feedback_sent', { 
+            type: feedbackType, 
+            content: feedbackContent.substring(0, 100) 
+          });
+          
+          return;
+        } catch (error) {
+          console.error('Error handling feedback:', error?.message || error);
+          bot.sendMessage(chatId, '❌ שגיאה בשמירת המשוב. אנא נסו שוב מאוחר יותר.');
+          return;
+        }
+      }
+
       console.log(`📩 New message from ${chatId}: ${messageText}`);
+
+      // בדיקת הגבלת שאילתות
+      let queryLimitInfo;
+      try {
+        queryLimitInfo = await Database.checkQueryLimit(chatId);
+        if (!queryLimitInfo.allowed) {
+          bot.sendMessage(chatId, `
+❌ **הגעתם למגבלת השאילתות החודשית**
+
+📊 **שאילתות שהשתמשתם החודש:** ${queryLimitInfo.used}/${queryLimitInfo.limit}
+
+⏰ **המגבלה תתאפס ב:** ${new Date(queryLimitInfo.resetDate).toLocaleDateString('he-IL')}
+
+💡 **רוצים יותר שאילתות?** 
+צרו קשר איתנו באמצעות /feedback לשדרוג החשבון שלכם.
+          `);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking query limit:', error?.message || error);
+      }
 
       let waitingMsg;
       try {
@@ -183,27 +436,119 @@ Android 12\`
           analysisResult = await recommendationEngine.generateRecommendation(deviceInfo, updateInfo, parsedMessage);
           console.log('💡 Recommendation generated:', analysisResult);
 
-          response = formatResponse(analysisResult);
+          // בדיקה אם יש דיווחי משתמשים - אם כן נשתמש בפונקציה החדשה
+          if (updateInfo && updateInfo.searchResults && 
+              (updateInfo.searchResults.redditPosts?.length > 0 || 
+               updateInfo.searchResults.forumDiscussions?.length > 0)) {
+            
+            console.log('📊 Found user reports, using formatResponseWithUserReports');
+            const messagesArray = formatResponseWithUserReports(deviceInfo, updateInfo, analysisResult);
+            
+            // רישום האינטראקציה
+            await Database.logUserInteraction(chatId, 'question', {
+              question: messageText,
+              parsedData: parsedMessage,
+              response: messagesArray[0], // ההודעה הראשית
+              analysisResult: analysisResult,
+              hasUserReports: true,
+              totalMessages: messagesArray.length
+            });
+            
+            // מחיקת הודעת ההמתנה
+            await bot.deleteMessage(chatId, waitingMsg.message_id);
+            
+            // שליחת כל ההודעות
+            for (let i = 0; i < messagesArray.length; i++) {
+              const message = messagesArray[i];
+              const isFirst = i === 0;
+              const isLast = i === messagesArray.length - 1;
+              
+              await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+              
+              // רישום פיצול ההודעה
+              logMessageSplit(chatId, messageText, i + 1, messagesArray.length, message.length);
+              
+              // המתנה קצרה בין הודעות (מלבד ההודעה האחרונה)
+              if (!isLast) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+            }
+            
+            console.log(`✅ Sent ${messagesArray.length} messages with user reports`);
+            
+            // הודעת מידע על שאילתות נותרות
+            await sendQueryLimitMessage(chatId, bot);
+            
+          } else {
+            // אין דיווחי משתמשים - שימוש בפונקציה הרגילה
+            response = formatResponse(analysisResult);
+            
+            // רישום האינטראקציה
+            await Database.logUserInteraction(chatId, 'question', {
+              question: messageText,
+              parsedData: parsedMessage,
+              response: response,
+              analysisResult: analysisResult
+            });
+            
+            // בדיקה אם התגובה ארוכה מדי לטלגרם
+            const responseWithSplit = formatResponseWithSplit(response);
+            
+            if (responseWithSplit.needsSplit) {
+              console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
+              
+              // מחיקת הודעת ההמתנה לפני שליחת החלקים
+              await bot.deleteMessage(chatId, waitingMsg.message_id);
+              
+              // שליחת החלקים
+              for (let i = 0; i < responseWithSplit.parts.length; i++) {
+                const part = responseWithSplit.parts[i];
+                const isLast = i === responseWithSplit.parts.length - 1;
+                
+                const partHeader = responseWithSplit.parts.length > 1 ? 
+                  `📄 חלק ${i + 1}/${responseWithSplit.parts.length}\n\n` : '';
+                
+                await bot.sendMessage(chatId, partHeader + part, { parse_mode: 'HTML' });
+                
+                // רישום פיצול ההודעה
+                logMessageSplit(chatId, messageText, i + 1, responseWithSplit.parts.length, part.length);
+                
+                // המתנה קצרה בין חלקים (מלבד החלק האחרון)
+                if (!isLast) {
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+              }
+            } else {
+              // תגובה רגילה - עריכת הודעת ההמתנה
+              await bot.editMessageText(response, {
+                chat_id: chatId,
+                message_id: waitingMsg.message_id,
+                parse_mode: 'HTML'
+              });
+            }
+            
+            // הודעת מידע על שאילתות נותרות
+            await sendQueryLimitMessage(chatId, bot);
+          }
         } else {
           // שאלה כללית - חיפוש מידע רלוונטי
           console.log('❓ Processing general question');
           
           const generalInfo = await updateChecker.searchGeneralInfo(messageText);
           response = generalInfo || 'מצטער, לא מצאתי מידע רלוונטי לשאלה שלכם. אנא נסו לנסח אחרת או שלחו פרטי מכשיר ספציפיים.';
-        }
-
-        // רישום האינטראקציה
-        await Database.logUserInteraction(chatId, 'question', {
-          question: messageText,
-          parsedData: parsedMessage,
-          response: response,
-          analysisResult: analysisResult
-        });
-
-        // בדיקה אם התגובה ארוכה מדי לטלגרם
-        const responseWithSplit = formatResponseWithSplit(response);
-        
-        if (responseWithSplit.needsSplit) {
+          
+          // רישום האינטראקציה
+          await Database.logUserInteraction(chatId, 'question', {
+            question: messageText,
+            parsedData: parsedMessage,
+            response: response,
+            analysisResult: null
+          });
+          
+          // בדיקה אם התגובה ארוכה מדי לטלגרם
+          const responseWithSplit = formatResponseWithSplit(response);
+          
+          if (responseWithSplit.needsSplit) {
           console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
           
           // מחיקת הודעת ההמתנה לפני שליחת החלקים
@@ -227,13 +572,17 @@ Android 12\`
               await new Promise(resolve => setTimeout(resolve, 1500));
             }
           }
-        } else {
-          // תגובה רגילה - עריכת הודעת ההמתנה
-          await bot.editMessageText(response, {
-            chat_id: chatId,
-            message_id: waitingMsg.message_id,
-            parse_mode: 'HTML'
-          });
+                            } else {
+            // תגובה רגילה - עריכת הודעת ההמתנה
+            await bot.editMessageText(response, {
+              chat_id: chatId,
+              message_id: waitingMsg.message_id,
+              parse_mode: 'HTML'
+            });
+          }
+          
+          // הודעת מידע על שאילתות נותרות (גם לשאלות כלליות)
+          await sendQueryLimitMessage(chatId, bot);
         }
 
         console.log('✅ Response sent successfully');
@@ -244,6 +593,9 @@ Android 12\`
           const questionCount = (userStats.questionsAsked || 0) + 1;
           
           await Database.updateUserStats(chatId, { questionsAsked: questionCount });
+          
+          // עדכון מונה השאילתות החודשי
+          await Database.updateQueryCount(chatId);
           
           // הודעת מידע כל 5 שאלות
           const counterMessage = questionCount % 5 === 0 ? 
