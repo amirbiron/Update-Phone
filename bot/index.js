@@ -480,21 +480,21 @@ ${usageEmoji} **שאילתות החודש:**
         let response = '';
         let analysisResult = null;
 
-        if (parsedMessage.deviceModel && parsedMessage.currentVersion) {
+        if (parsedMessage.device && parsedMessage.version) {
           // יש פרטי מכשיר - נתן המלצה מותאמת
           console.log(`\n📊 === Query Processing Started ===`);
           console.log(`👤 User: ${chatId}`);
-          console.log(`📱 Device: ${parsedMessage.deviceModel}`);
-          console.log(`🔄 Version: ${parsedMessage.currentVersion}`);
-          console.log(`🔍 Analyzing device: ${parsedMessage.deviceModel} with Android ${parsedMessage.currentVersion}`);
+          console.log(`📱 Device: ${parsedMessage.device}`);
+          console.log(`🔄 Version: ${parsedMessage.version}`);
+          console.log(`🔍 Analyzing device: ${parsedMessage.device} with Android ${parsedMessage.version}`);
 
           // ניתוח המכשיר
-          const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.deviceModel, parsedMessage.currentVersion);
+          const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.device, parsedMessage.version);
           console.log('📱 Device analysis result:', deviceInfo);
 
           // בדיקת עדכונים עם לוגים מפורטים
-          console.log(`🔍 [Bot] Calling checkForUpdates for: ${parsedMessage.deviceModel} ${parsedMessage.currentVersion}`);
-          const updateInfo = await updateChecker.checkForUpdates(parsedMessage.deviceModel, parsedMessage.currentVersion);
+          console.log(`🔍 [Bot] Calling checkForUpdates for: ${parsedMessage.device} ${parsedMessage.version}`);
+          const updateInfo = await updateChecker.checkForUpdates(parsedMessage.device, parsedMessage.version);
           console.log('🔄 [Bot] Update check result:', {
             hasSearchResults: !!updateInfo.searchResults,
             redditCount: updateInfo.searchResults?.redditPosts?.length || 0,
@@ -552,7 +552,7 @@ ${usageEmoji} **שאילתות החודש:**
             
           } else {
             // אין דיווחי משתמשים - שימוש בפונקציה הרגילה
-            response = formatResponse(analysisResult);
+            response = formatResponse(deviceInfo, updateInfo, analysisResult);
             
             // רישום האינטראקציה
             await Database.logUserInteraction(chatId, 'question', {
@@ -676,7 +676,22 @@ ${usageEmoji} **שאילתות החודש:**
         
         // סיכום השירותים שהיו בשימוש
         console.log(`\n🔍 === Services Summary ===`);
-        console.log(`🧠 AI Engine: ${process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_') ? 'Claude API' : 'Basic Analysis'}`);
+        
+        // בדיקה אמיתית אם Claude עבד בשאילתה זו
+        const claudeActuallyUsed = updateInfo && updateInfo.analysis && 
+          (typeof updateInfo.analysis === 'string' && !updateInfo.analysis.includes('ניתוח זה מבוסס על כלים בסיסיים')) ||
+          (typeof updateInfo.analysis === 'object' && updateInfo.analysis.analysisMethod === 'claude');
+        
+        const claudeConfigured = process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_');
+        
+        if (claudeConfigured && claudeActuallyUsed) {
+          console.log(`🧠 AI Engine: Claude API ✅ (Used Successfully)`);
+        } else if (claudeConfigured) {
+          console.log(`🧠 AI Engine: Claude API ⚠️ (Configured but Failed/Fallback Used)`);
+        } else {
+          console.log(`🧠 AI Engine: Basic Analysis ❌ (Claude not configured)`);
+        }
+        
         console.log(`🔍 Search: ${process.env.GOOGLE_SEARCH_API_KEY && !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') ? 'Google (Primary) + DuckDuckGo (Fallback)' : 'DuckDuckGo Only'}`);
         console.log(`📱 Reddit: ${process.env.REDDIT_CLIENT_ID && !process.env.REDDIT_CLIENT_ID.includes('your_') ? 'Enabled' : 'Disabled'}`);
         console.log(`===============================\n`);
