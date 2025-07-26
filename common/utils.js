@@ -461,14 +461,14 @@ function hasUserReports(searchResults) {
     searchResults.redditPosts.length > 0 && 
     searchResults.redditPosts.some(post => post.score > 0 || post.selftext?.trim().length > 20);
   
-  // בדיקת דיווחי פורומים - רק אם יש תוכן אמיתי ולא רק קישורי חיפוש
+  // בדיקת דיווחי פורומים - רק אם יש דיווחים אמיתיים של משתמשים
   const hasForumReports = searchResults.forumDiscussions && 
     searchResults.forumDiscussions.length > 0 &&
     searchResults.forumDiscussions.some(discussion => 
       discussion.userReports && 
       discussion.userReports.length > 0 &&
       discussion.userReports.some(report => {
-        // בדיקה מחמירה יותר לדיווחים אמיתיים
+        // בדיקה מחמירה יותר לדיווחים אמיתיים - לא snippet או תוכן גנרי
         const isGeneric = report.content.includes('מאמרים וביקורות') || 
                          report.content.includes('דיונים קהילתיים') ||
                          report.content.includes('discussions about') ||
@@ -542,25 +542,38 @@ function formatUserReports(searchResults) {
     });
   }
   
-  // דיווחים מפורומים טכניים - כולל דיווחי המשתמשים החדשים
+  // דיווחים מפורומים טכניים - רק דיונים עם דיווחי משתמשים אמיתיים
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
-    reports += `🔸 <b>מפורומים טכניים:</b>\n`;
+    // סינון דיונים שיש להם דיווחי משתמשים אמיתיים בלבד
+    const discussionsWithRealReports = searchResults.forumDiscussions.filter(discussion => {
+      return discussion.userReports && 
+             discussion.userReports.length > 0 &&
+             discussion.userReports.some(report => {
+               const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                                report.content.includes('מאמרים וביקורות') ||
+                                report.content.includes('discussions about') ||
+                                report.content.includes('articles and reviews') ||
+                                report.content.length < 30 ||
+                                report.isPlaceholder === true;
+               return !isGeneric;
+             });
+    });
     
-    searchResults.forumDiscussions.slice(0, 20).forEach(discussion => { // 20 דיווחים מפורומים
-      reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
-      reports += `  📍 ${discussion.source}\n`;
+    if (discussionsWithRealReports.length > 0) {
+      reports += `🔸 <b>מפורומים טכניים:</b>\n`;
       
-      // הוספת דיווחי המשתמשים הספציפיים - רק אם הם אמיתיים
-      if (discussion.userReports && discussion.userReports.length > 0) {
+      discussionsWithRealReports.slice(0, 20).forEach(discussion => { // 20 דיווחים מפורומים
+        reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
+        reports += `  📍 ${discussion.source}\n`;
+        
         // סינון דיווחים אמיתיים (לא גנריים)
         const realUserReports = discussion.userReports.filter(report => {
-          // בדיקה שהדיווח לא גנרי
           const isGeneric = report.content.includes('דיונים קהילתיים') || 
                            report.content.includes('מאמרים וביקורות') ||
                            report.content.includes('discussions about') ||
+                           report.content.includes('articles and reviews') ||
                            report.content.length < 30 ||
                            report.isPlaceholder === true;
-          
           return !isGeneric;
         });
         
@@ -581,17 +594,11 @@ function formatUserReports(searchResults) {
               reports += `\n`;
             }
           });
-        } else {
-          // אם אין דיווחים אמיתיים, נציין זאת
-          reports += `  <i>לא נמצאו דיווחי משתמשים ספציפיים</i>\n`;
         }
-      } else {
-        // אם אין userReports בכלל
-        reports += `  <i>לא נמצאו דיווחי משתמשים ספציפיים</i>\n`;
-      }
-      
-      reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
-    });
+        
+        reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
+      });
+    }
   }
   
 
@@ -691,69 +698,77 @@ function splitUserReports(searchResults) {
   
   // דיווחים מפורומים
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
-    // מיון הדיווחים לפי מקור
-    const reportsBySource = {};
-    searchResults.forumDiscussions.forEach(discussion => {
-      const source = discussion.source || 'פורום כללי';
-      if (!reportsBySource[source]) {
-        reportsBySource[source] = [];
-      }
-      reportsBySource[source].push(discussion);
+    // סינון דיונים שיש להם דיווחי משתמשים אמיתיים בלבד
+    const discussionsWithRealReports = searchResults.forumDiscussions.filter(discussion => {
+      return discussion.userReports && 
+             discussion.userReports.length > 0 &&
+             discussion.userReports.some(report => {
+               const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                                report.content.includes('מאמרים וביקורות') ||
+                                report.content.includes('discussions about') ||
+                                report.content.includes('articles and reviews') ||
+                                report.content.length < 30 ||
+                                report.isPlaceholder === true;
+               return !isGeneric;
+             });
     });
     
-    // עיצוב הדיווחים לפי מקור
-    Object.keys(reportsBySource).forEach(source => {
-      const discussions = reportsBySource[source];
-      userReportsContent += `• <b>${discussions[0].title || 'samsung galaxy a54 אנדרואיד 15'}</b>\n`;
-      userReportsContent += `  📍 ${source}\n`;
-      userReportsContent += `  דיווחי משתמשים:\n`;
-      
-      // הוספת דיווחי משתמשים (עד 8 דיווחים)
-      let reportCount = 0;
-      discussions.forEach(discussion => {
-        // בדיקה אם יש userReports אמיתיים
-        if (discussion.userReports && discussion.userReports.length > 0 && reportCount < 8) {
-          // סינון דיווחים אמיתיים בלבד
-          const realReports = discussion.userReports.filter(report => {
-            const isGeneric = report.content.includes('דיונים קהילתיים') || 
-                             report.content.includes('מאמרים וביקורות') ||
-                             report.content.includes('discussions about') ||
-                             report.content.length < 30 ||
-                             report.isPlaceholder === true;
-            return !isGeneric;
-          });
-          
-          if (realReports.length > 0) {
-            realReports.slice(0, 3).forEach(report => {
-              if (reportCount < 8) {
-                const sentimentEmoji = getSentimentEmoji(report.sentiment);
-                let reportText = `    ${sentimentEmoji} "${report.content}"`;
-                
-                // הוספת סימון תרגום אם רלוונטי
-                if (report.originalContent && report.originalContent !== report.content) {
-                  reportText += ` (מתורגם)`;
-                }
-                
-                userReportsContent += reportText + `\n`;
-                reportCount++;
-              }
-            });
-          } else if (discussion.snippet && reportCount < 8 && discussion.snippet.length > 30) {
-            // אם אין userReports אמיתיים, השתמש ב-snippet רק אם הוא משמעותי
-            const sentimentEmoji = '😐';
-            userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
-            reportCount++;
-          }
-        } else if (discussion.snippet && reportCount < 8 && discussion.snippet.length > 30) {
-          // אם אין userReports, השתמש ב-snippet רק אם הוא משמעותי
-          const sentimentEmoji = '😐';
-          userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
-          reportCount++;
+    if (discussionsWithRealReports.length > 0) {
+      // מיון הדיווחים לפי מקור
+      const reportsBySource = {};
+      discussionsWithRealReports.forEach(discussion => {
+        const source = discussion.source || 'פורום כללי';
+        if (!reportsBySource[source]) {
+          reportsBySource[source] = [];
         }
+        reportsBySource[source].push(discussion);
       });
       
-      userReportsContent += `  🔗 קרא עוד\n\n`;
-    });
+      // עיצוב הדיווחים לפי מקור
+      Object.keys(reportsBySource).forEach(source => {
+        const discussions = reportsBySource[source];
+        userReportsContent += `• <b>${discussions[0].title || 'samsung galaxy a54 אנדרואיד 15'}</b>\n`;
+        userReportsContent += `  📍 ${source}\n`;
+        userReportsContent += `  דיווחי משתמשים:\n`;
+        
+        // הוספת דיווחי משתמשים (עד 8 דיווחים)
+        let reportCount = 0;
+        discussions.forEach(discussion => {
+          // בדיקה אם יש userReports אמיתיים
+          if (discussion.userReports && discussion.userReports.length > 0 && reportCount < 8) {
+            // סינון דיווחים אמיתיים בלבד
+            const realReports = discussion.userReports.filter(report => {
+              const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                               report.content.includes('מאמרים וביקורות') ||
+                               report.content.includes('discussions about') ||
+                               report.content.includes('articles and reviews') ||
+                               report.content.length < 30 ||
+                               report.isPlaceholder === true;
+              return !isGeneric;
+            });
+            
+            if (realReports.length > 0) {
+              realReports.slice(0, 3).forEach(report => {
+                if (reportCount < 8) {
+                  const sentimentEmoji = getSentimentEmoji(report.sentiment);
+                  let reportText = `    ${sentimentEmoji} "${report.content}"`;
+                  
+                  // הוספת סימון תרגום אם רלוונטי
+                  if (report.originalContent && report.originalContent !== report.content) {
+                    reportText += ` (מתורגם)`;
+                  }
+                  
+                  userReportsContent += reportText + `\n`;
+                  reportCount++;
+                }
+              });
+            }
+          }
+        });
+        
+        userReportsContent += `  🔗 קרא עוד\n\n`;
+      });
+    }
   }
   
   // דיווחים מ-Reddit (אם יש)
@@ -824,15 +839,30 @@ function formatRedditReports(redditPosts) {
   return reports;
 }
 
-// עיצוב דיווחי פורומים בנפרד - ללא קיצורים
+// עיצוב דיווחי פורומים בנפרד - רק דיונים עם דיווחי משתמשים אמיתיים
 function formatForumReports(forumDiscussions) {
   let reports = '';
+  
+  // סינון דיונים שיש להם דיווחי משתמשים אמיתיים בלבד
+  const discussionsWithRealReports = forumDiscussions.filter(discussion => {
+    return discussion.userReports && 
+           discussion.userReports.length > 0 &&
+           discussion.userReports.some(report => {
+             const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                              report.content.includes('מאמרים וביקורות') ||
+                              report.content.includes('discussions about') ||
+                              report.content.includes('articles and reviews') ||
+                              report.content.length < 30 ||
+                              report.isPlaceholder === true;
+             return !isGeneric;
+           });
+  });
   
   // סינון דיווחים דומים כדי למנוע חזרות
   const uniqueDiscussions = [];
   const seenTitles = new Set();
   
-  for (const discussion of forumDiscussions) {
+  for (const discussion of discussionsWithRealReports) {
     // יצירת מפתח ייחודי בהתבסס על כותרת מקוצרת
     const titleKey = discussion.title.substring(0, 30).toLowerCase();
     if (!seenTitles.has(titleKey)) {
@@ -841,15 +871,26 @@ function formatForumReports(forumDiscussions) {
     }
   }
   
-  // 20 דיווחים ייחודיים מפורומים
+  // 20 דיווחים ייחודיים מפורומים עם דיווחי משתמשים אמיתיים
   uniqueDiscussions.slice(0, 20).forEach(discussion => {
     reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
     reports += `  📍 ${discussion.source}\n`;
     
-    if (discussion.userReports && discussion.userReports.length > 0) {
+    // סינון דיווחים אמיתיים (לא גנריים)
+    const realUserReports = discussion.userReports.filter(report => {
+      const isGeneric = report.content.includes('דיונים קהילתיים') || 
+                       report.content.includes('מאמרים וביקורות') ||
+                       report.content.includes('discussions about') ||
+                       report.content.includes('articles and reviews') ||
+                       report.content.length < 30 ||
+                       report.isPlaceholder === true;
+      return !isGeneric;
+    });
+    
+    if (realUserReports.length > 0) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
       // 1 דיווח פנימי - המידע הכי חשוב
-      discussion.userReports.slice(0, 1).forEach(userReport => {
+      realUserReports.slice(0, 1).forEach(userReport => {
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
         reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
         if (userReport.author) {
@@ -860,15 +901,14 @@ function formatForumReports(forumDiscussions) {
           reports += `\n`;
         }
       });
-    } else {
-      reports += `  📝 <i>אין דיווחי משתמשים ספציפיים</i>\n`;
     }
     
     reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
   });
   
+  // אם אין דיונים עם דיווחים אמיתיים, אל תחזיר תוכן
   if (uniqueDiscussions.length === 0) {
-    reports = `לא נמצאו דיווחי משתמשים ספציפיים לעדכון זה.\nמומלץ לבדוק בפורומים ידנית או להמתין למידע נוסף.\n`;
+    return '';
   }
   
   return reports;
