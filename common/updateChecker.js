@@ -114,7 +114,83 @@ class UpdateChecker {
     }
   }
 
-  // איסוף מידע ממקורות שונים - עודכן לחיפוש אמיתי
+  // פונקציה חדשה שהבוט קורא לה - מתאימה לממשק הנדרש
+  async checkForUpdates(deviceModel, currentVersion) {
+    try {
+      console.log(`🔍 [checkForUpdates] Starting search for ${deviceModel} with ${currentVersion}`);
+      
+      // יצירת אובייקט deviceInfo מהפרמטרים
+      const deviceInfo = this.createDeviceInfo(deviceModel);
+      const parsedQuery = { version: currentVersion };
+      
+      // שימוש בפונקציית החיפוש הקיימת
+      const searchResults = await this.gatherInformation(deviceInfo, parsedQuery);
+      
+      console.log(`✅ [checkForUpdates] Search completed - Reddit: ${searchResults.redditPosts?.length || 0}, Forums: ${searchResults.forumDiscussions?.length || 0}, Official: ${searchResults.officialSources?.length || 0}`);
+      
+      return {
+        searchResults,
+        deviceInfo,
+        lastChecked: new Date(),
+        sources: this.getActiveSources()
+      };
+
+    } catch (error) {
+      console.error(`❌ Error at [checkForUpdates]:`, error?.message || error);
+      return {
+        error: 'Failed to check for updates',
+        searchResults: { redditPosts: [], forumDiscussions: [], officialSources: [] },
+        lastChecked: new Date()
+      };
+    }
+  }
+
+  // פונקציה עזר ליצירת אובייקט deviceInfo
+  createDeviceInfo(deviceModel) {
+    const deviceLower = deviceModel.toLowerCase();
+    
+    let manufacturer = 'Unknown';
+    let manufacturerKey = 'unknown';
+    
+    if (deviceLower.includes('samsung') || deviceLower.includes('galaxy')) {
+      manufacturer = 'Samsung';
+      manufacturerKey = 'samsung';
+    } else if (deviceLower.includes('google') || deviceLower.includes('pixel')) {
+      manufacturer = 'Google';
+      manufacturerKey = 'google';
+    } else if (deviceLower.includes('xiaomi') || deviceLower.includes('redmi') || deviceLower.includes('poco')) {
+      manufacturer = 'Xiaomi';
+      manufacturerKey = 'xiaomi';
+    } else if (deviceLower.includes('oneplus')) {
+      manufacturer = 'OnePlus';
+      manufacturerKey = 'oneplus';
+    } else if (deviceLower.includes('huawei')) {
+      manufacturer = 'Huawei';
+      manufacturerKey = 'huawei';
+    }
+    
+    // חילוץ שנת ייצור משם המכשיר (בערך)
+    let deviceYear = 2023; // ברירת מחדל
+    const yearMatch = deviceModel.match(/(\d{2,4})/);
+    if (yearMatch) {
+      const year = parseInt(yearMatch[1]);
+      if (year > 2000 && year <= new Date().getFullYear()) {
+        deviceYear = year;
+      } else if (year >= 20 && year <= 25) {
+        deviceYear = 2000 + year;
+      }
+    }
+    
+    return {
+      device: deviceModel,
+      manufacturer,
+      manufacturerKey,
+      deviceYear,
+      marketSegment: 'mid-range' // ברירת מחדל
+    };
+  }
+
+  // איסוף מידע ממקורות שונים - עודכן לחיפוש אמיתי עם Google Search API
   async gatherInformation(deviceInfo, parsedQuery) {
     const results = {
       redditPosts: [],
@@ -123,28 +199,172 @@ class UpdateChecker {
     };
 
     try {
-      console.log(`🔄 Starting real search (no more simulated data) for ${deviceInfo.device} ${parsedQuery.version}`);
+      console.log(`🔄 [gatherInformation] Starting comprehensive search for ${deviceInfo.device} ${parsedQuery.version}`);
+      console.log(`🔑 [Google Search API] Checking credentials...`);
       
-      // חיפוש ב-Reddit (אמיתי)
-      const redditResults = await this.searchReddit(deviceInfo, parsedQuery);
-      results.redditPosts = redditResults;
+      // בדיקת מפתחות Google Search API
+      const hasGoogleAPI = process.env.GOOGLE_SEARCH_API_KEY && 
+                          process.env.GOOGLE_SEARCH_ENGINE_ID && 
+                          !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') && 
+                          !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_');
+      
+      if (hasGoogleAPI) {
+        console.log(`✅ [Google Search API] Credentials found - using as primary search engine`);
+      } else {
+        console.log(`⚠️ [Google Search API] Credentials not configured - using fallback methods`);
+      }
+      
+      // חיפוש מקבילי במספר מקורות לביצועים טובים יותר
+      const searchPromises = [];
+      
+      // חיפוש ב-Reddit
+      searchPromises.push(
+        this.searchReddit(deviceInfo, parsedQuery)
+          .then(results => ({ type: 'reddit', results }))
+          .catch(error => {
+            console.error('Reddit search failed:', error?.message);
+            return { type: 'reddit', results: [] };
+          })
+      );
 
-      // חיפוש בפורומים טכניים (אמיתי - לא מדומה יותר)
-      const forumResults = await this.searchTechForums(deviceInfo, parsedQuery);
-      results.forumDiscussions = forumResults;
+      // חיפוש בפורומים טכניים (עם Google API אם זמין)
+      searchPromises.push(
+        this.searchTechForums(deviceInfo, parsedQuery)
+          .then(results => ({ type: 'forums', results }))
+          .catch(error => {
+            console.error('Tech forums search failed:', error?.message);
+            return { type: 'forums', results: [] };
+          })
+      );
 
-      // חיפוש מקורות רשמיים (מורחב)
-      const officialResults = await this.searchOfficialSources(deviceInfo, parsedQuery);
-      results.officialSources = officialResults;
+      // חיפוש מקורות רשמיים
+      searchPromises.push(
+        this.searchOfficialSources(deviceInfo, parsedQuery)
+          .then(results => ({ type: 'official', results }))
+          .catch(error => {
+            console.error('Official sources search failed:', error?.message);
+            return { type: 'official', results: [] };
+          })
+      );
 
-      console.log(`✅ Real search completed: Reddit=${redditResults.length}, Forums=${forumResults.length}, Official=${officialResults.length}`);
+      // אם יש Google API, נוסיף חיפוש כללי נוסף
+      if (hasGoogleAPI) {
+        searchPromises.push(
+          this.performGoogleSearch(deviceInfo, parsedQuery)
+            .then(results => ({ type: 'google_general', results }))
+            .catch(error => {
+              console.error('Google general search failed:', error?.message);
+              return { type: 'google_general', results: [] };
+            })
+        );
+      }
+
+      // המתנה לכל החיפושים
+      const searchResults = await Promise.allSettled(searchPromises);
+      
+      // עיבוד התוצאות
+      searchResults.forEach(result => {
+        if (result.status === 'fulfilled') {
+          const { type, results: searchData } = result.value;
+          
+          switch (type) {
+            case 'reddit':
+              results.redditPosts = searchData || [];
+              break;
+            case 'forums':
+              results.forumDiscussions = searchData || [];
+              break;
+            case 'official':
+              results.officialSources = searchData || [];
+              break;
+            case 'google_general':
+              // מיזוג תוצאות Google כלליות עם פורומים
+              if (searchData && searchData.length > 0) {
+                results.forumDiscussions = [...(results.forumDiscussions || []), ...searchData];
+              }
+              break;
+          }
+        }
+      });
+
+      const totalResults = (results.redditPosts?.length || 0) + 
+                          (results.forumDiscussions?.length || 0) + 
+                          (results.officialSources?.length || 0);
+
+      console.log(`✅ [gatherInformation] Search completed: Reddit=${results.redditPosts?.length || 0}, Forums=${results.forumDiscussions?.length || 0}, Official=${results.officialSources?.length || 0}, Total=${totalResults}`);
+
+      // אם לא נמצאו תוצאות, נוסיף הודעת מידע
+      if (totalResults === 0) {
+        console.log(`⚠️ [gatherInformation] No results found - adding fallback information`);
+        results.forumDiscussions.push({
+          title: `${deviceInfo.device} ${parsedQuery.version} - מידע מוגבל`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(deviceInfo.device + ' ' + parsedQuery.version + ' update review')}`,
+          source: 'Google Search',
+          weight: 0.3,
+          summary: `לא נמצא מידע ספציפי. מומלץ לחפש באופן עצמאי`,
+          date: new Date(),
+          sentiment: 'neutral',
+          userReports: []
+        });
+      }
 
     } catch (error) {
       console.error(`❌ Error at [gatherInformation]:`, error?.message || error);
     }
 
-    console.log(`📄 Finished collecting search results - all real data, no simulations`);
+    console.log(`📄 [gatherInformation] Finished collecting search results with Google Search API integration`);
     return results;
+  }
+
+  // חיפוש כללי עם Google Search API
+  async performGoogleSearch(deviceInfo, parsedQuery) {
+    try {
+      console.log(`🔍 [performGoogleSearch] Starting Google search for ${deviceInfo.device} ${parsedQuery.version}`);
+      
+      // שאילתות חיפוש מותאמות
+      const searchQueries = [
+        `"${deviceInfo.device}" "${parsedQuery.version}" update review problems issues`,
+        `"${deviceInfo.device}" "${parsedQuery.version}" user experience battery performance`,
+        `"${deviceInfo.device}" "${parsedQuery.version}" update bugs stability`
+      ];
+
+      const results = [];
+      
+      // חיפוש עם השאילתה הראשונה (הכי חשובה)
+      try {
+        const googleResults = await this.googleCustomSearch(searchQueries[0]);
+        
+        if (googleResults && googleResults.length > 0) {
+          console.log(`✅ [performGoogleSearch] Found ${googleResults.length} results from Google API`);
+          
+          googleResults.forEach(result => {
+            results.push({
+              title: result.title,
+              url: result.link,
+              source: result.displayLink || 'Google Search',
+              weight: 0.9,
+              summary: result.snippet || `מידע על עדכון ${deviceInfo.device} ל-${parsedQuery.version}`,
+              date: new Date(),
+              sentiment: this.analyzeSentiment(result.title, result.snippet || ''),
+              userReports: [{
+                author: 'Web Source',
+                content: result.snippet || result.title,
+                sentiment: this.analyzeSentiment(result.title, result.snippet || ''),
+                date: new Date()
+              }]
+            });
+          });
+        }
+      } catch (error) {
+        console.error(`❌ [performGoogleSearch] Google API error: ${error.message}`);
+      }
+
+      return results.slice(0, 5); // מגביל ל-5 תוצאות איכותיות
+      
+    } catch (error) {
+      console.error(`❌ Error in performGoogleSearch:`, error?.message);
+      return [];
+    }
   }
 
 
@@ -1341,54 +1561,128 @@ ${resultsText}
     }
   }
 
-  // חיפוש עם Google Custom Search API
+  // חיפוש עם Google Custom Search API - משופר עם לוגים מפורטים
   async googleCustomSearch(query) {
     try {
-      console.log(`🔍 [Google Search API] Searching: "${query}"`);
+      console.log(`🔍 [Google Search API] ===== STARTING SEARCH =====`);
+      console.log(`🔍 [Google Search API] Query: "${query}"`);
       
       const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
       const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
       
-      if (!apiKey || !searchEngineId) {
-        console.log(`❌ [Google Search API] Credentials not configured`);
-        throw new Error('Google Search API credentials not configured');
+      // בדיקת credentials מפורטת
+      if (!apiKey) {
+        console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_API_KEY not found in environment`);
+        throw new Error('Google Search API key not configured');
       }
       
+      if (!searchEngineId) {
+        console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_ENGINE_ID not found in environment`);
+        throw new Error('Google Search Engine ID not configured');
+      }
+      
+      if (apiKey.includes('your_')) {
+        console.log(`❌ [Google Search API] INVALID: API key contains placeholder text`);
+        throw new Error('Google Search API key is placeholder');
+      }
+      
+      if (searchEngineId.includes('your_')) {
+        console.log(`❌ [Google Search API] INVALID: Search Engine ID contains placeholder text`);
+        throw new Error('Google Search Engine ID is placeholder');
+      }
+      
+      console.log(`✅ [Google Search API] Credentials validated`);
+      console.log(`🔑 [Google Search API] API Key: ${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 5)}`);
+      console.log(`🔑 [Google Search API] Engine ID: ${searchEngineId}`);
+      
       const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&num=5`;
+      console.log(`🌐 [Google Search API] Request URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
+      
+      console.log(`📡 [Google Search API] Sending request...`);
+      const startTime = Date.now();
       
       const response = await axios.get(url, {
-        timeout: 8000,
+        timeout: 10000, // הגדלתי timeout ל-10 שניות
         headers: {
           'User-Agent': 'AndroidUpdateBot/1.0'
         }
       });
       
-      if (response.data && response.data.items) {
-        console.log(`✅ [Google Search API] SUCCESS: ${response.data.items.length} results found`);
-        console.log(`📊 [Google Search API] Quota info: ${response.data.searchInformation?.totalResults || 'N/A'} total results available`);
-        return response.data.items.map(item => ({
-          title: item.title,
-          link: item.link,
-          snippet: item.snippet,
-          displayLink: item.displayLink
-        }));
+      const endTime = Date.now();
+      console.log(`⏱️ [Google Search API] Request completed in ${endTime - startTime}ms`);
+      console.log(`📊 [Google Search API] Response status: ${response.status}`);
+      
+      if (response.data) {
+        console.log(`📦 [Google Search API] Response data received`);
+        console.log(`🔍 [Google Search API] Search info: ${JSON.stringify(response.data.searchInformation || {}, null, 2)}`);
+        
+        if (response.data.items && response.data.items.length > 0) {
+          console.log(`✅ [Google Search API] SUCCESS: ${response.data.items.length} results found`);
+          console.log(`📊 [Google Search API] Total results available: ${response.data.searchInformation?.totalResults || 'N/A'}`);
+          console.log(`⏱️ [Google Search API] Search time: ${response.data.searchInformation?.searchTime || 'N/A'} seconds`);
+          
+          // לוג פרטי התוצאות הראשונות
+          response.data.items.slice(0, 3).forEach((item, index) => {
+            console.log(`📄 [Google Search API] Result ${index + 1}: ${item.title} (${item.displayLink})`);
+          });
+          
+          return response.data.items.map(item => ({
+            title: item.title,
+            link: item.link,
+            snippet: item.snippet,
+            displayLink: item.displayLink
+          }));
+        } else {
+          console.log(`⚠️ [Google Search API] No results found in response`);
+          console.log(`📦 [Google Search API] Response structure: ${JSON.stringify(Object.keys(response.data), null, 2)}`);
+        }
+      } else {
+        console.log(`❌ [Google Search API] No data in response`);
       }
       
-      console.log(`⚠️ [Google Search API] No results found`);
       return [];
       
     } catch (error) {
-      // בדיקה אם זו שגיאת מגבלת quota
-      if (error.response && error.response.status === 429) {
-        console.log(`🚫 [Google Search API] QUOTA EXCEEDED - Daily limit reached`);
-        throw new Error('Google Search API quota exceeded');
-      } else if (error.response && error.response.data && error.response.data.error) {
-        console.log(`❌ [Google Search API] ERROR: ${error.response.data.error.message}`);
-        throw new Error(`Google Search API error: ${error.response.data.error.message}`);
-      } else {
-        console.log(`❌ [Google Search API] ERROR: ${error.message}`);
-        throw new Error(`Google Search API error: ${error.message}`);
+      console.log(`❌ [Google Search API] ===== ERROR OCCURRED =====`);
+      
+      // בדיקה מפורטת של סוגי שגיאות
+      if (error.response) {
+        console.log(`📊 [Google Search API] HTTP Status: ${error.response.status}`);
+        console.log(`📊 [Google Search API] Status Text: ${error.response.statusText}`);
+        
+        if (error.response.status === 429) {
+          console.log(`🚫 [Google Search API] QUOTA EXCEEDED - Daily/Monthly limit reached`);
+          console.log(`💡 [Google Search API] Consider upgrading your Google API plan`);
+          throw new Error('Google Search API quota exceeded');
+        } else if (error.response.status === 403) {
+          console.log(`🚫 [Google Search API] FORBIDDEN - Check API key permissions`);
+          console.log(`💡 [Google Search API] Verify API key has Custom Search API enabled`);
+          throw new Error('Google Search API access forbidden');
+        } else if (error.response.status === 400) {
+          console.log(`❌ [Google Search API] BAD REQUEST - Invalid parameters`);
+          if (error.response.data && error.response.data.error) {
+            console.log(`📄 [Google Search API] Error details: ${JSON.stringify(error.response.data.error, null, 2)}`);
+          }
+          throw new Error('Google Search API bad request');
+        }
+        
+        if (error.response.data && error.response.data.error) {
+          console.log(`📄 [Google Search API] API Error: ${error.response.data.error.message}`);
+          console.log(`📄 [Google Search API] Error code: ${error.response.data.error.code}`);
+          throw new Error(`Google Search API error: ${error.response.data.error.message}`);
+        }
+      } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        console.log(`🌐 [Google Search API] NETWORK ERROR: ${error.code}`);
+        console.log(`💡 [Google Search API] Check internet connection`);
+        throw new Error('Google Search API network error');
+      } else if (error.code === 'ETIMEDOUT') {
+        console.log(`⏱️ [Google Search API] TIMEOUT: Request took too long`);
+        throw new Error('Google Search API timeout');
       }
+      
+      console.log(`❌ [Google Search API] UNKNOWN ERROR: ${error.message}`);
+      console.log(`🔍 [Google Search API] Error stack: ${error.stack}`);
+      throw new Error(`Google Search API error: ${error.message}`);
     }
   }
 
