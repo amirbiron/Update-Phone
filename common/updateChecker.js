@@ -372,36 +372,42 @@ class UpdateChecker {
         {
           name: 'Android Police',
           domain: 'androidpolice.com',
-          weight: 0.8
+          weight: 0.8,
+          description: 'ביקורות מקצועיות ומדריכים מפורטים'
         },
         {
           name: 'Android Authority', 
           domain: 'androidauthority.com',
-          weight: 0.8
+          weight: 0.8,
+          description: 'ניתוחים טכניים ובדיקות ביצועים'
         },
         {
           name: '9to5Google',
           domain: '9to5google.com', 
-          weight: 0.7
+          weight: 0.7,
+          description: 'חדשות ועדכונים מהירים'
         }
       ];
 
-      for (const site of techSites) {
+      // הגבלה למקסימום 2 אתרים כדי למנוע חזרות מיותרות
+      const selectedSites = techSites.slice(0, 2);
+
+      for (const site of selectedSites) {
         try {
           const siteSearchUrl = `https://www.google.com/search?q=site:${site.domain}+${encodeURIComponent(searchQuery)}`;
           
           // הוספת תוצאה עם קישור לחיפוש באתר
           results.push({
-            title: `${deviceInfo.device} ${parsedQuery.version} - ${site.name} Coverage`,
+            title: `${deviceInfo.device} ${parsedQuery.version} - ${site.name}`,
             url: `https://${site.domain}/search?q=${encodeURIComponent(searchQuery)}`,
             source: site.name,
             weight: site.weight,
-            summary: `חיפוש ב-${site.name} עבור מידע על העדכון`,
+            summary: `${site.description} - חיפוש עבור ${deviceInfo.device}`,
             date: new Date(),
             sentiment: 'neutral',
             userReports: [{
               author: `${site.name} Editorial`,
-              content: `מאמרים וביקורות על עדכון ${parsedQuery.version} עבור ${deviceInfo.device}`,
+              content: `${site.description} על עדכון ${parsedQuery.version}`,
               sentiment: 'neutral',
               date: new Date()
             }]
