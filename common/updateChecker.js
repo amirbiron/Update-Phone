@@ -152,10 +152,18 @@ class UpdateChecker {
   // חיפוש ב-Reddit
   async searchReddit(deviceInfo, parsedQuery) {
     try {
+      // בדיקה אם יש Reddit API credentials
+      if (!process.env.REDDIT_CLIENT_ID || !process.env.REDDIT_CLIENT_SECRET || 
+          process.env.REDDIT_CLIENT_ID.includes('your_') || 
+          process.env.REDDIT_CLIENT_SECRET.includes('your_')) {
+        console.log('⚠️  Reddit API not configured, skipping Reddit search');
+        return [];
+      }
+
       // קבלת access token
       const accessToken = await this.getRedditToken();
       if (!accessToken) {
-        console.error('❌ Could not obtain Reddit access token');
+        console.log('⚠️  Could not obtain Reddit access token, skipping Reddit search');
         return [];
       }
 
@@ -565,6 +573,12 @@ class UpdateChecker {
   // ניתוח עם Claude
   async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
     try {
+      // בדיקה אם יש Claude API key
+      if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
+        console.log('⚠️  Claude API key not configured, using fallback analysis');
+        return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
+      }
+
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
 
       console.log(`🤖 Sending prompt to Claude...`);
@@ -588,7 +602,8 @@ class UpdateChecker {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(`Claude API error: ${response.status} - ${JSON.stringify(data)}`);
+        console.log(`⚠️  Claude API error: ${response.status}, falling back to basic analysis`);
+        return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
       const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
@@ -597,7 +612,59 @@ class UpdateChecker {
 
     } catch (error) {
       console.error(`❌ Error at [analyzeWithClaude]:`, error?.message || error);
-      return 'אירעה שגיאה בעת ניסיון לנתח את המידע עם Claude.';
+      console.log('🔄 Falling back to basic analysis...');
+      return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
+    }
+  }
+
+  // ניתוח fallback כאשר Claude לא זמין
+  fallbackAnalysis(deviceInfo, parsedQuery, searchResults) {
+    try {
+      const totalSources = (searchResults.redditPosts?.length || 0) + 
+                          (searchResults.forumDiscussions?.length || 0) + 
+                          (searchResults.officialSources?.length || 0);
+
+      const analysis = {
+        stabilityRating: 7, // ברירת מחדל זהירה
+        majorIssues: [],
+        benefits: [],
+        recommendation: "wait",
+        reasoning: `בהתבסס על ${totalSources} מקורות שנמצאו`,
+        specialNotes: "ניתוח זה מבוסס על כלים בסיסיים. לניתוח מתקדם יותר נדרש Claude API."
+      };
+
+      // ניתוח בסיסי של תוצאות החיפוש
+      if (searchResults.forumDiscussions?.length > 0) {
+        analysis.benefits.push("נמצאו דיונים בפורומים טכניים");
+        analysis.stabilityRating += 1;
+      }
+
+      if (searchResults.officialSources?.length > 0) {
+        analysis.benefits.push("זמינים מקורות רשמיים");
+        analysis.stabilityRating += 1;
+        analysis.recommendation = "recommended_with_caution";
+      }
+
+      // התאמה לגיל המכשיר
+      if (deviceInfo.deviceYear && deviceInfo.deviceYear < 2020) {
+        analysis.majorIssues.push("מכשיר ישן יחסית - עלולות להיות בעיות תאימות");
+        analysis.stabilityRating -= 1;
+        analysis.recommendation = "wait";
+      }
+
+      // פורמט JSON
+      return JSON.stringify(analysis, null, 2);
+
+    } catch (error) {
+      console.error('Error in fallback analysis:', error);
+      return JSON.stringify({
+        stabilityRating: 6,
+        majorIssues: ["לא ניתן לנתח את המידע"],
+        benefits: ["מידע בסיסי זמין"],
+        recommendation: "wait",
+        reasoning: "ניתוח מוגבל בשל בעיות טכניות",
+        specialNotes: "מומלץ לבדוק מקורות נוספים באופן עצמאי"
+      }, null, 2);
     }
   }
 
@@ -864,6 +931,63 @@ ${resultsText}
     if (positiveCount > negativeCount) return 'positive';
     if (negativeCount > positiveCount) return 'negative';
     return 'neutral';
+  }
+
+  // חיפוש מידע כללי על מכשיר או עדכון
+  async searchGeneralInfo(queryText) {
+    try {
+      console.log(`🔍 Searching general info for: ${queryText}`);
+      
+      // Extract device info from query text
+      const deviceKeywords = queryText.toLowerCase().match(/samsung|galaxy|s\d+|note|a\d+|huawei|xiaomi|oneplus|pixel|iphone/gi);
+      const versionKeywords = queryText.toLowerCase().match(/android\s*\d+|ios\s*\d+|\d+\.\d+/gi);
+      
+      if (!deviceKeywords && !versionKeywords) {
+        return {
+          success: false,
+          message: 'לא זוהו פרטי מכשיר או גרסה בשאילתה',
+          data: null
+        };
+      }
+      
+      // Create a basic search result
+      const searchResults = {
+        sources: [],
+        userReports: [],
+        summary: `חיפוש מידע כללי עבור: ${queryText}`
+      };
+      
+      // Try to search for general information
+      if (deviceKeywords) {
+        const deviceInfo = deviceKeywords.join(' ');
+        searchResults.summary += `\n📱 מכשיר מזוהה: ${deviceInfo}`;
+      }
+      
+      if (versionKeywords) {
+        const versionInfo = versionKeywords.join(' ');
+        searchResults.summary += `\n🔄 גרסה מזוהה: ${versionInfo}`;
+      }
+      
+      // Add some general advice
+      searchResults.summary += `\n\n💡 לקבלת מידע מדויק יותר, אנא ציינו:
+• דגם מכשיר מדויק (לדוגמה: Samsung Galaxy S10)
+• גרסת אנדרואיד הנוכחית
+• גרסת האנדרואיד שאליה תרצו לעדכן`;
+      
+      return {
+        success: true,
+        data: searchResults,
+        message: 'חיפוש כללי הושלם'
+      };
+      
+    } catch (error) {
+      console.error('Error in searchGeneralInfo:', error?.message || error);
+      return {
+        success: false,
+        message: 'שגיאה בחיפוש מידע כללי',
+        error: error?.message || error
+      };
+    }
   }
 
 
