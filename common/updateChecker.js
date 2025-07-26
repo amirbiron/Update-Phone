@@ -94,7 +94,9 @@ class UpdateChecker {
       console.log(`📱 Checking update for ${deviceInfo.device} - ${parsedQuery.version}`);
       
       const searchResults = await this.gatherInformation(deviceInfo, parsedQuery);
+      console.log(`🔍 [checkUpdate] Starting Claude analysis...`);
       const analysisResult = await this.analyzeWithClaude(deviceInfo, parsedQuery, searchResults);
+      console.log(`✅ [checkUpdate] Claude analysis completed, result length: ${analysisResult?.length || 0}`);
       
       return {
         deviceInfo,
@@ -128,8 +130,14 @@ class UpdateChecker {
       
       console.log(`✅ [checkForUpdates] Search completed - Reddit: ${searchResults.redditPosts?.length || 0}, Forums: ${searchResults.forumDiscussions?.length || 0}, Official: ${searchResults.officialSources?.length || 0}`);
       
+      // ביצוע ניתוח עם Claude
+      console.log(`🧠 [checkForUpdates] Starting analysis...`);
+      const analysisResult = await this.analyzeWithClaude(deviceInfo, parsedQuery, searchResults);
+      console.log(`✅ [checkForUpdates] Analysis completed`);
+      
       return {
         searchResults,
+        analysis: analysisResult,
         deviceInfo,
         lastChecked: new Date(),
         sources: this.getActiveSources()
@@ -140,6 +148,7 @@ class UpdateChecker {
       return {
         error: 'Failed to check for updates',
         searchResults: { redditPosts: [], forumDiscussions: [], officialSources: [] },
+        analysis: null,
         lastChecked: new Date()
       };
     }
@@ -203,15 +212,24 @@ class UpdateChecker {
       console.log(`🔑 [Google Search API] Checking credentials...`);
       
       // בדיקת מפתחות Google Search API
-      const hasGoogleAPI = process.env.GOOGLE_SEARCH_API_KEY && 
-                          process.env.GOOGLE_SEARCH_ENGINE_ID && 
-                          !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') && 
-                          !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_');
+          const hasGoogleAPI = process.env.GOOGLE_SEARCH_API_KEY &&
+                         process.env.GOOGLE_SEARCH_ENGINE_ID &&
+                         !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') &&
+                         !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_');
       
       if (hasGoogleAPI) {
         console.log(`✅ [Google Search API] Credentials found - using as primary search engine`);
       } else {
         console.log(`⚠️ [Google Search API] Credentials not configured - using fallback methods`);
+        console.log(`🔍 [Google Search API] Debug info:`);
+        console.log(`   - GOOGLE_SEARCH_API_KEY: ${process.env.GOOGLE_SEARCH_API_KEY ? 'exists' : 'missing'}`);
+        console.log(`   - GOOGLE_SEARCH_ENGINE_ID: ${process.env.GOOGLE_SEARCH_ENGINE_ID ? 'exists' : 'missing'}`);
+        if (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_API_KEY.includes('your_')) {
+          console.log(`   - GOOGLE_SEARCH_API_KEY contains placeholder text`);
+        }
+        if (process.env.GOOGLE_SEARCH_ENGINE_ID && process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_')) {
+          console.log(`   - GOOGLE_SEARCH_ENGINE_ID contains placeholder text`);
+        }
       }
       
       // חיפוש מקבילי במספר מקורות לביצועים טובים יותר
@@ -792,10 +810,19 @@ class UpdateChecker {
 
   // ניתוח עם Claude
   async analyzeWithClaude(deviceInfo, parsedQuery, searchResults) {
+    console.log(`🧠 [analyzeWithClaude] ===== STARTING CLAUDE ANALYSIS =====`);
+    console.log(`📱 [analyzeWithClaude] Device: ${deviceInfo.device}, Version: ${parsedQuery.version}`);
     try {
       // בדיקה אם יש Claude API key
-      if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
-        console.log('⚠️ [Claude AI] API key not configured, using basic analysis');
+      if (!process.env.CLAUDE_API_KEY) {
+        console.log('❌ [Claude AI] ERROR: CLAUDE_API_KEY not found in environment variables');
+        console.log('🔄 [Claude AI] Falling back to basic analysis...');
+        return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
+      }
+      
+      if (process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
+        console.log('❌ [Claude AI] ERROR: CLAUDE_API_KEY contains placeholder text');
+        console.log('🔄 [Claude AI] Falling back to basic analysis...');
         return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
@@ -831,17 +858,20 @@ class UpdateChecker {
       const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
       console.log(`✅ [Claude AI] SUCCESS: Analysis completed (${result.length} chars)`);
       console.log(`💰 [Claude AI] Token usage: Input ~${prompt.length/4} | Output ~${result.length/4} tokens`);
+      console.log(`🧠 [analyzeWithClaude] ===== CLAUDE ANALYSIS COMPLETED =====`);
       return result;
 
     } catch (error) {
       console.error(`❌ [Claude AI] ERROR: ${error?.message || error}`);
       console.log('🔄 [Claude AI] Falling back to basic analysis...');
+      console.log(`🧠 [analyzeWithClaude] ===== CLAUDE ANALYSIS FAILED - USING FALLBACK =====`);
       return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
     }
   }
 
   // ניתוח fallback כאשר Claude לא זמין
   fallbackAnalysis(deviceInfo, parsedQuery, searchResults) {
+    console.log(`🔧 [fallbackAnalysis] ===== STARTING FALLBACK ANALYSIS =====`);
     try {
       console.log(`🔧 [Basic Analysis] Using fallback analysis engine`);
       console.log(`📊 [Basic Analysis] Processing device: ${deviceInfo.device} for ${parsedQuery.version}`);
@@ -883,10 +913,12 @@ class UpdateChecker {
       // פורמט JSON
       console.log(`✅ [Basic Analysis] SUCCESS: Analysis completed with rating ${analysis.stabilityRating}/10`);
       console.log(`📋 [Basic Analysis] Recommendation: ${analysis.recommendation}`);
+      console.log(`🔧 [fallbackAnalysis] ===== FALLBACK ANALYSIS COMPLETED =====`);
       return JSON.stringify(analysis, null, 2);
 
     } catch (error) {
-      console.error('Error in fallback analysis:', error);
+      console.error('❌ [fallbackAnalysis] Error in fallback analysis:', error);
+      console.log(`🔧 [fallbackAnalysis] ===== FALLBACK ANALYSIS FAILED =====`);
       return JSON.stringify({
         stabilityRating: 6,
         majorIssues: ["לא ניתן לנתח את המידע"],
@@ -1573,11 +1605,13 @@ ${resultsText}
       // בדיקת credentials מפורטת
       if (!apiKey) {
         console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_API_KEY not found in environment`);
+        console.log(`🔍 [Google Search API] Available env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ')}`);
         throw new Error('Google Search API key not configured');
       }
       
       if (!searchEngineId) {
         console.log(`❌ [Google Search API] MISSING: GOOGLE_SEARCH_ENGINE_ID not found in environment`);
+        console.log(`🔍 [Google Search API] Available env vars: ${Object.keys(process.env).filter(key => key.toLowerCase().includes('google')).join(', ')}`);
         throw new Error('Google Search Engine ID not configured');
       }
       

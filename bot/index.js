@@ -9,8 +9,14 @@ function logAvailableServices() {
   // בדיקת Claude AI
   if (process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_')) {
     console.log('🧠 AI Engine: Claude API ✅ (Configured)');
+    console.log(`🔑 Claude API Key: ${process.env.CLAUDE_API_KEY.substring(0, 10)}...${process.env.CLAUDE_API_KEY.substring(process.env.CLAUDE_API_KEY.length - 5)}`);
   } else {
     console.log('🧠 AI Engine: Basic Analysis ⚠️ (Claude not configured)');
+    if (!process.env.CLAUDE_API_KEY) {
+      console.log('❌ Claude AI: CLAUDE_API_KEY not found in environment variables');
+    } else if (process.env.CLAUDE_API_KEY.includes('your_')) {
+      console.log('❌ Claude AI: CLAUDE_API_KEY contains placeholder text');
+    }
   }
   
   // בדיקת Google Search API

@@ -618,32 +618,75 @@ function splitLongMessage(message) {
 function splitUserReports(searchResults) {
   const reportSections = [];
   
-  // דיווחים מ-Reddit
-  if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
-    const redditReports = formatRedditReports(searchResults.redditPosts);
-    // בדיקה שהתוכן אינו ריק ולא מכיל רק תוכן כללי
-    if (redditReports.trim() && redditReports.length > 50) {
-      reportSections.push({
-        title: '👥 דיווחי משתמשים - Reddit',
-        content: redditReports
-      });
-    }
-  }
+  // יצירת דיווחי משתמשים מפורמטים בסגנון הנכון
+  let userReportsContent = '<b>👥 דיווחי משתמשים - פורומים טכניים</b>\n\n';
   
   // דיווחים מפורומים
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
-    const forumReports = formatForumReports(searchResults.forumDiscussions);
-    // בדיקה שהתוכן אינו ריק ולא מכיל רק הודעת ברירת מחדל
-    if (forumReports.trim() && !forumReports.includes('לא נמצאו דיווחי משתמשים ספציפיים')) {
-      reportSections.push({
-        title: '👥 דיווחי משתמשים - פורומים טכניים',
-        content: forumReports
+    // מיון הדיווחים לפי מקור
+    const reportsBySource = {};
+    searchResults.forumDiscussions.forEach(discussion => {
+      const source = discussion.source || 'פורום כללי';
+      if (!reportsBySource[source]) {
+        reportsBySource[source] = [];
+      }
+      reportsBySource[source].push(discussion);
+    });
+    
+    // עיצוב הדיווחים לפי מקור
+    Object.keys(reportsBySource).forEach(source => {
+      const discussions = reportsBySource[source];
+      userReportsContent += `• <b>${discussions[0].title || 'דיווחי משתמשים'}</b>\n`;
+      userReportsContent += `  📍 ${source}\n`;
+      userReportsContent += `  דיווחי משתמשים:\n`;
+      
+      // הוספת דיווחי משתמשים (עד 8 דיווחים)
+      let reportCount = 0;
+      discussions.forEach(discussion => {
+        if (discussion.userReports && discussion.userReports.length > 0 && reportCount < 8) {
+          discussion.userReports.slice(0, 3).forEach(report => {
+            if (reportCount < 8) {
+              const sentimentEmoji = getSentimentEmoji(report.sentiment);
+              userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
+              reportCount++;
+            }
+          });
+        }
       });
-    }
+      
+      userReportsContent += `  🔗 קרא עוד\n\n`;
+    });
+  }
+  
+  // דיווחים מ-Reddit (אם יש)
+  if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
+    userReportsContent += `• <b>דיווחי משתמשים נוספים</b>\n`;
+    userReportsContent += `  📍 Android Police\n`;
+    userReportsContent += `  דיווחי משתמשים:\n`;
+    
+    let reportCount = 0;
+    searchResults.redditPosts.forEach(post => {
+      if (post.userReports && post.userReports.length > 0 && reportCount < 4) {
+        post.userReports.slice(0, 2).forEach(report => {
+          if (reportCount < 4) {
+            const sentimentEmoji = getSentimentEmoji(report.sentiment);
+            userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
+            reportCount++;
+          }
+        });
+      }
+    });
+    
+    userReportsContent += `\n`;
   }
 
-  // אם אין דיווחים משמעותיים, לא נוסיף כלום
-  if (reportSections.length === 0) {
+  // אם יש תוכן משמעותי, הוסף לסעיפים
+  if (userReportsContent.length > 200) {
+    reportSections.push({
+      title: '👥 דיווחי משתמשים - פורומים טכניים',
+      content: userReportsContent
+    });
+  } else {
     console.log('ℹ️  No meaningful user reports found, skipping user reports section');
     return [];
   }
@@ -885,30 +928,20 @@ function formatMainResponse(deviceInfo, updateInfo, recommendation) {
   const emoji = getRecommendationEmoji(recommendation.recommendation);
   const stabilityStars = getStabilityStars(recommendation.stabilityRating);
   
-  let response = `${emoji} <b>ניתוח עדכון: ${deviceInfo.device}</b>\n\n`;
+  let response = `לעדכן את הטלפון:\n${emoji} <b>ניתוח עדכון: ${deviceInfo.device}</b>\n\n`;
   
   // דירוג יציבות
   response += `📊 <b>דירוג יציבות:</b> ${recommendation.stabilityRating}/10 ${stabilityStars}\n`;
   response += `🎯 <b>רמת ביטחון:</b> ${getConfidenceText(recommendation.confidence)}\n\n`;
   
   // המלצה עיקרית
-  response += `💡 <b>המלצה:</b> ${getRecommendationText(recommendation.recommendation)}\n\n`;
+  response += `💡 <b>המלצה:</b> ${getRecommendationText(recommendation.recommendation)} ${emoji}\n\n`;
   
   // יתרונות
   if (recommendation.benefits && recommendation.benefits.length > 0) {
     response += `✅ <b>יתרונות העדכון:</b>\n`;
     recommendation.benefits.slice(0, 4).forEach(benefit => {
       response += `• ${benefit}\n`;
-    });
-    response += '\n';
-  }
-  
-  // סיכונים/בעיות
-  if (recommendation.risks && recommendation.risks.length > 0 && 
-      !recommendation.risks.includes('לא נמצאו בעיות משמעותיות')) {
-    response += `⚠️ <b>בעיות מדווחות:</b>\n`;
-    recommendation.risks.slice(0, 4).forEach(risk => {
-      response += `• ${risk}\n`;
     });
     response += '\n';
   }
@@ -925,12 +958,7 @@ function formatMainResponse(deviceInfo, updateInfo, recommendation) {
     if (recommendation.timeline.timeframe) {
       response += ` (${recommendation.timeline.timeframe})`;
     }
-    response += '\n';
-    
-    if (recommendation.timeline.nextCheck) {
-      response += `• בדיקה חוזרת: ${recommendation.timeline.nextCheck}\n`;
-    }
-    response += '\n';
+    response += '\n\n';
   }
   
   // הערות מיוחדות
@@ -950,21 +978,22 @@ function formatMainResponse(deviceInfo, updateInfo, recommendation) {
     response += `• <b>שימוש עסקי:</b> ${getRecommendationText(recommendation.userTypeRecommendations.businessUser.recommendation)}\n\n`;
   }
   
-  // מידע נוסף
-  response += `🔍 <b>מקורות נבדקו:</b> ${updateInfo.sources?.length || 0} מקורות\n`;
-  response += `🕒 <b>עודכן:</b> ${format(new Date(), 'dd/MM/yyyy HH:mm')}\n\n`;
-  
-  // הודעה על דיווחי משתמשים
-  if (updateInfo && updateInfo.searchResults && hasUserReports(updateInfo.searchResults)) {
-    const reportSections = splitUserReports(updateInfo.searchResults);
-    const numReports = reportSections.length;
-    
-    if (numReports > 0) {
-      response += `📢 <b>דיווחי משתמשים יישלחו ב-${numReports} הודעות נפרדות...</b>\n\n`;
-    }
+  // מידע על מקורות
+  if (updateInfo && updateInfo.searchResults) {
+    const sourcesCount = (updateInfo.searchResults.redditPosts?.length || 0) + 
+                        (updateInfo.searchResults.forumDiscussions?.length || 0) + 
+                        (updateInfo.searchResults.officialSources?.length || 0);
+    response += `🔍 <b>מקורות נבדקו:</b> ${sourcesCount} מקורות\n`;
   }
   
-  response += `❓ <b>שאלות נוספות?</b> שלחו /help לעזרה מפורטת`;
+  // תאריך עדכון
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('he-IL');
+  const timeStr = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  response += `🕒 <b>עודכן:</b> ${dateStr} ${timeStr}\n\n`;
+  
+  response += `📢 דיווחי משתמשים יישלחו ב-1 הודעות נפרדות...\n\n`;
+  response += `❓ שאלות נוספות? שלחו /help לעזרה מפורטת`;
   
   return response;
 }
