@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "jest"
+    "test": "jest",
+    "cron:daily": "node cron-task.js daily",
+    "cron:weekly": "node cron-task.js weekly",
+    "cron:monthly": "node cron-task.js monthly",
+    "cron:popular": "node cron-task.js popular-check"
   },
   "keywords": [
     "telegram",
