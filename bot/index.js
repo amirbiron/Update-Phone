@@ -676,7 +676,22 @@ ${usageEmoji} **שאילתות החודש:**
         
         // סיכום השירותים שהיו בשימוש
         console.log(`\n🔍 === Services Summary ===`);
-        console.log(`🧠 AI Engine: ${process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_') ? 'Claude API' : 'Basic Analysis'}`);
+        
+        // בדיקה אמיתית אם Claude עבד בשאילתה זו
+        const claudeActuallyUsed = updateInfo && updateInfo.analysis && 
+          (typeof updateInfo.analysis === 'string' && !updateInfo.analysis.includes('ניתוח זה מבוסס על כלים בסיסיים')) ||
+          (typeof updateInfo.analysis === 'object' && updateInfo.analysis.analysisMethod === 'claude');
+        
+        const claudeConfigured = process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_');
+        
+        if (claudeConfigured && claudeActuallyUsed) {
+          console.log(`🧠 AI Engine: Claude API ✅ (Used Successfully)`);
+        } else if (claudeConfigured) {
+          console.log(`🧠 AI Engine: Claude API ⚠️ (Configured but Failed/Fallback Used)`);
+        } else {
+          console.log(`🧠 AI Engine: Basic Analysis ❌ (Claude not configured)`);
+        }
+        
         console.log(`🔍 Search: ${process.env.GOOGLE_SEARCH_API_KEY && !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') ? 'Google (Primary) + DuckDuckGo (Fallback)' : 'DuckDuckGo Only'}`);
         console.log(`📱 Reddit: ${process.env.REDDIT_CLIENT_ID && !process.env.REDDIT_CLIENT_ID.includes('your_') ? 'Enabled' : 'Disabled'}`);
         console.log(`===============================\n`);

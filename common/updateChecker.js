@@ -828,8 +828,9 @@ class UpdateChecker {
 
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
 
-      console.log(`🧠 [Claude AI] Sending analysis request to Claude Sonnet 4...`);
+      console.log(`🧠 [Claude AI] Sending analysis request to Claude 3.5 Sonnet...`);
       console.log(`📝 [Claude AI] Analyzing device: ${deviceInfo.device} for ${parsedQuery.version}`);
+      console.log(`🔑 [Claude AI] Using API key: ${process.env.CLAUDE_API_KEY.substring(0, 8)}...`);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: 'POST',
@@ -857,6 +858,7 @@ class UpdateChecker {
 
       const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
       console.log(`✅ [Claude AI] SUCCESS: Analysis completed (${result.length} chars)`);
+      console.log(`📄 [Claude AI] Response preview: ${result.substring(0, 100)}...`);
       console.log(`💰 [Claude AI] Token usage: Input ~${prompt.length/4} | Output ~${result.length/4} tokens`);
       console.log(`🧠 [analyzeWithClaude] ===== CLAUDE ANALYSIS COMPLETED =====`);
       return result;
