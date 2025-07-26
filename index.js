@@ -146,7 +146,7 @@ ${remainingInfo}📝 פורמטים נתמכים לשאלות:
 
 📊 המידע שאני בודק:
 • 👥 דיווחי משתמשים מפורומים
-• 💬 חוות דעת מ-Reddit ואתרי טכנולוגיה
+• 💬 חוות דעת מ-Reddit ופורומים טכניים
 • 📰 ביקורות מאתרים מקצועיים
 • 🏢 נתונים רשמיים מהיצרנים
 • 🔍 מעקב אחר בעיות ידועות
@@ -267,7 +267,7 @@ ${await updateChecker.getServicesStatus()}
       }
       
       // בדיקת מידע על העדכון
-      bot.editMessageText('🔍 אוסף מידע מפורומים ואתרי טכנולוגיה...', {
+      bot.editMessageText('🔍 אוסף מידע מפורומים ו-Reddit...', {
         chat_id: chatId,
         message_id: waitingMsg.message_id
       });
