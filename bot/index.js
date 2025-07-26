@@ -11,8 +11,6 @@ const { parseUserMessage, formatResponseWithUserReports } = require('../common/u
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const port = process.env.PORT || 3000;
-// חשוב: הגדר את המשתנה הזה בסביבת Render לכתובת הציבורית של האפליקציה שלך
-// לדוגמה: https://your-bot-name.onrender.com
 const url = process.env.WEBHOOK_URL; 
 
 if (!token || !url) {
@@ -20,20 +18,16 @@ if (!token || !url) {
     process.exit(1);
 }
 
-// הפסק להשתמש ב-polling
 const bot = new TelegramBot(token);
 const app = express();
 
-// Middleware לקריאת גוף הבקשה כ-JSON
 app.use(express.json());
 
-// נקודת הקצה שה-webhook של טלגרם יפנה אליה
 app.post(`/bot${token}`, (req, res) => {
   bot.processUpdate(req.body);
   res.sendStatus(200);
 });
 
-// הגדרת ה-webhook
 bot.setWebHook(`${url}/bot${token}`)
   .then(() => {
     console.log(`✅ Webhook set successfully to ${url}`);
