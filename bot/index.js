@@ -480,21 +480,21 @@ ${usageEmoji} **שאילתות החודש:**
         let response = '';
         let analysisResult = null;
 
-        if (parsedMessage.deviceModel && parsedMessage.currentVersion) {
+        if (parsedMessage.device && parsedMessage.version) {
           // יש פרטי מכשיר - נתן המלצה מותאמת
           console.log(`\n📊 === Query Processing Started ===`);
           console.log(`👤 User: ${chatId}`);
-          console.log(`📱 Device: ${parsedMessage.deviceModel}`);
-          console.log(`🔄 Version: ${parsedMessage.currentVersion}`);
-          console.log(`🔍 Analyzing device: ${parsedMessage.deviceModel} with Android ${parsedMessage.currentVersion}`);
+          console.log(`📱 Device: ${parsedMessage.device}`);
+          console.log(`🔄 Version: ${parsedMessage.version}`);
+          console.log(`🔍 Analyzing device: ${parsedMessage.device} with Android ${parsedMessage.version}`);
 
           // ניתוח המכשיר
-          const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.deviceModel, parsedMessage.currentVersion);
+          const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.device, parsedMessage.version);
           console.log('📱 Device analysis result:', deviceInfo);
 
           // בדיקת עדכונים עם לוגים מפורטים
-          console.log(`🔍 [Bot] Calling checkForUpdates for: ${parsedMessage.deviceModel} ${parsedMessage.currentVersion}`);
-          const updateInfo = await updateChecker.checkForUpdates(parsedMessage.deviceModel, parsedMessage.currentVersion);
+          console.log(`🔍 [Bot] Calling checkForUpdates for: ${parsedMessage.device} ${parsedMessage.version}`);
+          const updateInfo = await updateChecker.checkForUpdates(parsedMessage.device, parsedMessage.version);
           console.log('🔄 [Bot] Update check result:', {
             hasSearchResults: !!updateInfo.searchResults,
             redditCount: updateInfo.searchResults?.redditPosts?.length || 0,

@@ -928,7 +928,7 @@ function formatMainResponse(deviceInfo, updateInfo, recommendation) {
   const emoji = getRecommendationEmoji(recommendation.recommendation);
   const stabilityStars = getStabilityStars(recommendation.stabilityRating);
   
-  let response = `לעדכן את הטלפון:\n${emoji} <b>ניתוח עדכון: ${deviceInfo.device}</b>\n\n`;
+  let response = `${emoji} <b>ניתוח עדכון: ${deviceInfo.device}</b>\n\n`;
   
   // דירוג יציבות
   response += `📊 <b>דירוג יציבות:</b> ${recommendation.stabilityRating}/10 ${stabilityStars}\n`;
@@ -992,7 +992,7 @@ function formatMainResponse(deviceInfo, updateInfo, recommendation) {
   const timeStr = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   response += `🕒 <b>עודכן:</b> ${dateStr} ${timeStr}\n\n`;
   
-  response += `📢 דיווחי משתמשים יישלחו ב-1 הודעות נפרדות...\n\n`;
+  response += `📢 דיווחי משתמשים יישלחו בהודעות נפרדות...\n\n`;
   response += `❓ שאלות נוספות? שלחו /help לעזרה מפורטת`;
   
   return response;
