@@ -15,27 +15,63 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
 });
 
+// בדיקה אם זה הרצת משימה של cron - אם כן, לא להפעיל את הבוט
+if (process.env.RUN_TASK_NOW === 'true') {
+  console.log('🔧 Running as cron task - bot will not be initialized');
+  process.exit(0);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // מוסיפים את זה רק בסביבת פיתוח (development) לפני יצירת אובייקט הבוט
 async function initializeBot() {
-  if (process.env.NODE_ENV !== 'production') {
-    const tempBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-    await tempBot.deleteWebHook();
-    console.log('🧹 Webhook deleted for development environment');
+  try {
+    if (process.env.NODE_ENV !== 'production') {
+      const tempBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+      await tempBot.deleteWebHook();
+      console.log('🧹 Webhook deleted for development environment');
+    }
+
+    // יצירת הבוט - רק לאחר מחיקת webhook ב-development
+    const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
+      webHook: process.env.NODE_ENV === 'production' ? {
+        port: PORT,
+        host: '0.0.0.0'
+      } : false,
+      polling: process.env.NODE_ENV !== 'production'
+    });
+
+    // הוספת מאזין לשגיאות כדי לזהות קונפליקטים
+    bot.on('error', (error) => {
+      if (error.code === 'ETELEGRAM' && error.response?.body?.description?.includes('conflict')) {
+        console.error('⚠️ Bot conflict detected - another instance might be running!');
+        console.error('🔍 Check if there are multiple bot instances or cron jobs running the main bot code');
+        process.exit(1);
+      } else {
+        console.error('Bot error:', error?.message || error);
+      }
+    });
+
+    bot.on('polling_error', (error) => {
+      if (error.code === 'ETELEGRAM' && error.response?.body?.description?.includes('conflict')) {
+        console.error('⚠️ Polling conflict detected - another bot instance is already running!');
+        console.error('🔍 Make sure only one instance of the bot is running');
+        process.exit(1);
+      } else {
+        console.error('Polling error:', error?.message || error);
+      }
+    });
+
+    return bot;
+  } catch (error) {
+    console.error('❌ Failed to initialize bot:', error?.message || error);
+    if (error.response?.body?.description?.includes('conflict')) {
+      console.error('⚠️ Bot conflict detected during initialization');
+      console.error('🔍 Another instance of the bot might already be running');
+    }
+    throw error;
   }
-
-  // יצירת הבוט - רק לאחר מחיקת webhook ב-development
-  const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
-    webHook: process.env.NODE_ENV === 'production' ? {
-      port: PORT,
-      host: '0.0.0.0'
-    } : false,
-    polling: process.env.NODE_ENV !== 'production'
-  });
-
-  return bot;
 }
 
 // אתחול הבוט
