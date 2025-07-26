@@ -525,6 +525,102 @@ class Database {
     return await this.checkUserQueryLimit(chatId);
   }
 
+  // עדכון מונה השאילתות של המשתמש (alias for incrementUserQueryCount)
+  async updateQueryCount(chatId) {
+    return await this.incrementUserQueryCount(chatId);
+  }
+
+  // קבלת סטטיסטיקות משתמש
+  async getUserStats(chatId) {
+    if (!this.isConnected) {
+      return {
+        questionsAsked: 0,
+        recommendationsReceived: 0,
+        joinDate: new Date()
+      };
+    }
+    
+    try {
+      const userLimit = await UserLimit.findOne({ chatId });
+      const userQueries = await Query.countDocuments({ chatId });
+      
+      return {
+        questionsAsked: userQueries,
+        recommendationsReceived: userQueries, // Same as questions for now
+        joinDate: userLimit?.joinDate || new Date(),
+        totalQueries: userLimit?.totalQueries || 0,
+        monthlyQueries: userLimit?.monthlyQueries || 0
+      };
+    } catch (error) {
+      console.error('Error getting user stats:', error?.message || error);
+      return {
+        questionsAsked: 0,
+        recommendationsReceived: 0,
+        joinDate: new Date()
+      };
+    }
+  }
+
+  // עדכון סטטיסטיקות משתמש
+  async updateUserStats(chatId, statsUpdate) {
+    if (!this.isConnected) return;
+    
+    try {
+      // For now, we'll just log the update since we don't have a specific user stats collection
+      console.log(`📊 User stats update for ${chatId}:`, statsUpdate);
+      
+      // Update the UserLimit record if it exists
+      if (statsUpdate.questionsAsked) {
+        await UserLimit.findOneAndUpdate(
+          { chatId },
+          { 
+            $set: { 
+              totalQueries: statsUpdate.questionsAsked 
+            }
+          },
+          { upsert: true }
+        );
+      }
+    } catch (error) {
+      console.error('Error updating user stats:', error?.message || error);
+    }
+  }
+
+  // קבלת סטטיסטיקות גלובליות
+  async getGlobalStats() {
+    if (!this.isConnected) {
+      return {
+        totalUsers: 0,
+        totalQuestions: 0,
+        updatesCheckedToday: 0
+      };
+    }
+    
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const totalUsers = await UserLimit.countDocuments();
+      const totalQuestions = await Query.countDocuments();
+      const updatesCheckedToday = await Query.countDocuments({
+        timestamp: { $gte: today }
+      });
+      
+      return {
+        totalUsers,
+        totalQuestions,
+        updatesCheckedToday
+      };
+    } catch (error) {
+      console.error('Error getting global stats:', error?.message || error);
+      return {
+        totalUsers: 0,
+        totalQuestions: 0,
+        updatesCheckedToday: 0
+      };
+    }
+  }
+
   // רישום אינטראקציות משתמש
   async logUserInteraction(chatId, interactionType, data = {}) {
     if (!this.isConnected) return;

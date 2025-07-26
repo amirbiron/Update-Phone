@@ -101,6 +101,11 @@ const PORT = process.env.PORT || 3000;
 // מוסיפים את זה רק בסביבת פיתוח (development) לפני יצירת אובייקט הבוט
 async function initializeBot() {
   try {
+    // התחברות למסד הנתונים
+    console.log('🔌 Connecting to database...');
+    await Database.connect();
+    console.log('✅ Database connected successfully');
+    
     if (process.env.NODE_ENV !== 'production') {
       const tempBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
       await tempBot.deleteWebHook();

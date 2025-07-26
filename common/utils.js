@@ -68,6 +68,30 @@ function extractDeviceInfo(deviceText) {
     oneplus: {
       patterns: ['oneplus', 'op', 'nord'],
       devices: ['12', '11', '10', '9', 'nord 3', 'nord 2']
+    },
+    oppo: {
+      patterns: ['oppo', 'find', 'reno'],
+      devices: ['find x5', 'find x6', 'reno 10', 'reno 11']
+    },
+    vivo: {
+      patterns: ['vivo', 'v29', 'v30', 'x90'],
+      devices: ['v29 pro', 'v30 pro', 'x90 pro']
+    },
+    realme: {
+      patterns: ['realme', 'gt'],
+      devices: ['gt neo 5', 'gt 3', 'gt 2']
+    },
+    honor: {
+      patterns: ['honor'],
+      devices: ['90 pro', '80 pro', '70 pro']
+    },
+    nothing: {
+      patterns: ['nothing', 'phone'],
+      devices: ['phone 1', 'phone 2']
+    },
+    sony: {
+      patterns: ['sony', 'xperia'],
+      devices: ['1 v', '5 v', '10 v']
     }
   };
   
@@ -109,20 +133,62 @@ function extractDeviceInfo(deviceText) {
 
 // ניתוח הודעה חופשית
 function parseFreetextMessage(text) {
-  // חיפוש של מילות מפתח
-  const deviceKeywords = ['galaxy', 'pixel', 'redmi', 'poco', 'oneplus', 'tab', 'tablet', 'pad', 'טאבלט'];
-  const versionKeywords = ['android', 'one ui', 'miui', 'oxygen'];
+  // חיפוש של מילות מפתח מורחב
+  const deviceKeywords = [
+    'galaxy', 'pixel', 'redmi', 'poco', 'oneplus', 'tab', 'tablet', 'pad', 'טאבלט',
+    'oppo', 'find', 'reno', 'vivo', 'realme', 'gt', 'honor', 'nothing', 'phone', 'sony', 'xperia'
+  ];
+  const versionKeywords = ['android', 'אנדרואיד', 'one ui', 'miui', 'oxygen', 'coloros', 'funtouch'];
   
   let device = null;
   let version = null;
+  let manufacturer = null;
   
-  // חיפוש מכשיר
-  for (const keyword of deviceKeywords) {
-    if (text.includes(keyword)) {
-      const deviceMatch = text.match(new RegExp(`(${keyword}[\\s\\w]*(?:\\d+|pro|ultra|plus)?)`, 'i'));
-      if (deviceMatch) {
-        device = deviceMatch[1];
-        break;
+  // חיפוש יצרן ומכשיר יחד
+  const devicePatterns = [
+    /oppo\s+(find\s+x\d+|reno\s+\d+)/i,
+    /vivo\s+(v\d+\s*pro?|x\d+\s*pro?)/i,
+    /realme\s+(gt\s+neo\s+\d+|gt\s+\d+)/i,
+    /honor\s+(\d+\s*pro?)/i,
+    /nothing\s+(phone\s+\d+)/i,
+    /sony\s+(xperia\s+\d+\s*[a-z]*)/i,
+    /(galaxy\s+[a-z]\d+|galaxy\s+s\d+|galaxy\s+note\s*\d*)/i,
+    /(pixel\s+\d+[a-z]*)/i,
+    /(redmi\s+note\s+\d+|poco\s+[fx]\d+)/i,
+    /(oneplus\s+\d+|nord\s+\d*)/i
+  ];
+  
+  // חיפוש דפוסים ספציפיים
+  for (const pattern of devicePatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      device = match[0];
+      
+      // זיהוי יצרן לפי הדפוס
+      if (match[0].includes('oppo')) manufacturer = 'oppo';
+      else if (match[0].includes('vivo')) manufacturer = 'vivo';
+      else if (match[0].includes('realme')) manufacturer = 'realme';
+      else if (match[0].includes('honor')) manufacturer = 'honor';
+      else if (match[0].includes('nothing')) manufacturer = 'nothing';
+      else if (match[0].includes('sony') || match[0].includes('xperia')) manufacturer = 'sony';
+      else if (match[0].includes('galaxy')) manufacturer = 'samsung';
+      else if (match[0].includes('pixel')) manufacturer = 'google';
+      else if (match[0].includes('redmi') || match[0].includes('poco')) manufacturer = 'xiaomi';
+      else if (match[0].includes('oneplus') || match[0].includes('nord')) manufacturer = 'oneplus';
+      
+      break;
+    }
+  }
+  
+  // אם לא נמצא דפוס ספציפי, חיפוש כללי
+  if (!device) {
+    for (const keyword of deviceKeywords) {
+      if (text.includes(keyword)) {
+        const deviceMatch = text.match(new RegExp(`(${keyword}[\\s\\w]*(?:\\d+|pro|ultra|plus)?)`, 'i'));
+        if (deviceMatch) {
+          device = deviceMatch[1];
+          break;
+        }
       }
     }
   }
@@ -138,13 +204,17 @@ function parseFreetextMessage(text) {
     }
   }
   
-  const deviceInfo = device ? extractDeviceInfo(device) : { manufacturer: null, device: null, confidence: 0 };
+  // אם לא נמצא יצרן, ננסה לזהות מהמכשיר
+  if (!manufacturer && device) {
+    const deviceInfo = extractDeviceInfo(device);
+    manufacturer = deviceInfo.manufacturer;
+  }
   
   return {
-    manufacturer: deviceInfo.manufacturer,
-    device: deviceInfo.device || device,
+    manufacturer: manufacturer,
+    device: device,
     version: version,
-    confidence: Math.min(deviceInfo.confidence, version ? 0.7 : 0.3),
+    confidence: device && manufacturer ? 0.8 : (device ? 0.5 : 0.1),
     originalText: text
   };
 }
@@ -419,7 +489,7 @@ function formatUserReports(searchResults) {
     const topRedditPosts = searchResults.redditPosts
       .filter(post => post.score > 0) // רק פוסטים עם ציון חיובי
       .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-      .slice(0, 10); // 10 דיווחים מ-Reddit
+      .slice(0, 20); // 20 דיווחים מ-Reddit
     
     topRedditPosts.forEach(post => {
       const sentimentEmoji = getSentimentEmoji(post.sentiment);
@@ -440,14 +510,14 @@ function formatUserReports(searchResults) {
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
     reports += `🔸 <b>מפורומים טכניים:</b>\n`;
     
-    searchResults.forumDiscussions.slice(0, 10).forEach(discussion => { // 10 דיווחים מפורומים
+    searchResults.forumDiscussions.slice(0, 20).forEach(discussion => { // 20 דיווחים מפורומים
       reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
       reports += `  📍 ${discussion.source}\n`;
       
       // הוספת דיווחי המשתמשים הספציפיים
       if (discussion.userReports && discussion.userReports.length > 0) {
         reports += `  <b>דיווחי משתמשים:</b>\n`;
-        discussion.userReports.slice(0, 10).forEach(userReport => { // 10 דיווחים פנימיים
+        discussion.userReports.slice(0, 1).forEach(userReport => { // 1 דיווח פנימי
           const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
           reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
           if (userReport.author) {
@@ -571,7 +641,7 @@ function formatRedditReports(redditPosts) {
   const topRedditPosts = redditPosts
     .filter(post => post.score > 0)
     .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-    .slice(0, 10); // 10 דיווחים מ-Reddit
+    .slice(0, 20); // 20 דיווחים מ-Reddit
   
   topRedditPosts.forEach(post => {
     const sentimentEmoji = getSentimentEmoji(post.sentiment);
@@ -607,15 +677,15 @@ function formatForumReports(forumDiscussions) {
     }
   }
   
-  // 10 דיווחים ייחודיים מפורומים
-  uniqueDiscussions.slice(0, 10).forEach(discussion => {
+  // 20 דיווחים ייחודיים מפורומים
+  uniqueDiscussions.slice(0, 20).forEach(discussion => {
     reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
     reports += `  📍 ${discussion.source}\n`;
     
     if (discussion.userReports && discussion.userReports.length > 0) {
       reports += `  <b>דיווחי משתמשים:</b>\n`;
-      // 10 דיווחים פנימיים - המידע הכי חשוב
-      discussion.userReports.slice(0, 10).forEach(userReport => {
+      // 1 דיווח פנימי - המידע הכי חשוב
+      discussion.userReports.slice(0, 1).forEach(userReport => {
         const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
         reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
         if (userReport.author) {
