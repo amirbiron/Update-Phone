@@ -480,9 +480,16 @@ ${usageEmoji} **שאילתות החודש:**
           const deviceInfo = await deviceAnalyzer.analyzeDevice(parsedMessage.deviceModel, parsedMessage.currentVersion);
           console.log('📱 Device analysis result:', deviceInfo);
 
-          // בדיקת עדכונים
+          // בדיקת עדכונים עם לוגים מפורטים
+          console.log(`🔍 [Bot] Calling checkForUpdates for: ${parsedMessage.deviceModel} ${parsedMessage.currentVersion}`);
           const updateInfo = await updateChecker.checkForUpdates(parsedMessage.deviceModel, parsedMessage.currentVersion);
-          console.log('🔄 Update check result:', updateInfo);
+          console.log('🔄 [Bot] Update check result:', {
+            hasSearchResults: !!updateInfo.searchResults,
+            redditCount: updateInfo.searchResults?.redditPosts?.length || 0,
+            forumsCount: updateInfo.searchResults?.forumDiscussions?.length || 0,
+            officialCount: updateInfo.searchResults?.officialSources?.length || 0,
+            hasError: !!updateInfo.error
+          });
 
           // יצירת המלצה
           analysisResult = await recommendationEngine.generateRecommendation(deviceInfo, updateInfo, parsedMessage);
