@@ -2,6 +2,49 @@ require('dotenv').config();
 
 console.log('🤖 Starting Android Update Advisor Bot...');
 
+// בדיקת תצורת APIs זמינים
+function logAvailableServices() {
+  console.log('\n📊 === תצורת שירותים זמינים ===');
+  
+  // בדיקת Claude AI
+  if (process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_')) {
+    console.log('🧠 AI Engine: Claude API ✅ (Configured)');
+  } else {
+    console.log('🧠 AI Engine: Basic Analysis ⚠️ (Claude not configured)');
+  }
+  
+  // בדיקת Google Search API
+  if (process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID && 
+      !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') && 
+      !process.env.GOOGLE_SEARCH_ENGINE_ID.includes('your_')) {
+    console.log('🔍 Search Engine: Google Custom Search API ✅ (Primary)');
+    console.log('🔄 Fallback: DuckDuckGo API (Free backup)');
+  } else {
+    console.log('🔍 Search Engine: DuckDuckGo API ⚠️ (Google not configured)');
+  }
+  
+  // בדיקת Reddit API
+  if (process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET && 
+      !process.env.REDDIT_CLIENT_ID.includes('your_') && 
+      !process.env.REDDIT_CLIENT_SECRET.includes('your_')) {
+    console.log('📱 Reddit API: ✅ (Configured)');
+  } else {
+    console.log('📱 Reddit API: ⚠️ (Not configured)');
+  }
+  
+  // בדיקת MongoDB
+  if (process.env.MONGODB_URI && !process.env.MONGODB_URI.includes('your_')) {
+    console.log('💾 Database: MongoDB ✅ (Connected)');
+  } else {
+    console.log('💾 Database: ⚠️ (Not configured)');
+  }
+  
+  console.log('=======================================\n');
+}
+
+// הצגת תצורת השירותים בהפעלה
+logAvailableServices();
+
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const DeviceAnalyzer = require('../common/deviceAnalyzer');
@@ -427,6 +470,10 @@ ${usageEmoji} **שאילתות החודש:**
 
         if (parsedMessage.deviceModel && parsedMessage.currentVersion) {
           // יש פרטי מכשיר - נתן המלצה מותאמת
+          console.log(`\n📊 === Query Processing Started ===`);
+          console.log(`👤 User: ${chatId}`);
+          console.log(`📱 Device: ${parsedMessage.deviceModel}`);
+          console.log(`🔄 Version: ${parsedMessage.currentVersion}`);
           console.log(`🔍 Analyzing device: ${parsedMessage.deviceModel} with Android ${parsedMessage.currentVersion}`);
 
           // ניתוח המכשיר
@@ -535,8 +582,13 @@ ${usageEmoji} **שאילתות החודש:**
             // הודעת מידע על שאילתות נותרות
             await sendQueryLimitMessage(chatId, bot);
           }
+          
+          console.log(`✅ === Query Processing Completed ===\n`);
         } else {
           // שאלה כללית - חיפוש מידע רלוונטי
+          console.log(`\n📊 === General Query Processing Started ===`);
+          console.log(`👤 User: ${chatId}`);
+          console.log(`❓ Query: ${messageText}`);
           console.log('❓ Processing general question');
           
           const generalInfo = await updateChecker.searchGeneralInfo(messageText);
@@ -557,10 +609,13 @@ ${usageEmoji} **שאילתות החודש:**
           });
           
           // בדיקה אם התגובה ארוכה מדי לטלגרם
-          const responseWithSplit = formatResponseWithSplit(response);
+          // אם החיפוש החזיר דגל needsSplit, נכפה פיצול גם אם התגובה לא ארוכה מדי
+          const forceSplit = generalInfo && generalInfo.needsSplit;
+          const responseWithSplit = formatResponseWithSplit(response, forceSplit);
           
           if (responseWithSplit.needsSplit) {
-          console.log(`📄 Response is long (${response.length} chars), splitting into ${responseWithSplit.parts.length} parts`);
+          const splitReason = forceSplit ? 'forced split for better readability' : 'length exceeded limit';
+          console.log(`📄 Response splitting (${response.length} chars, ${splitReason}), splitting into ${responseWithSplit.parts.length} parts`);
           
           // מחיקת הודעת ההמתנה לפני שליחת החלקים
           await bot.deleteMessage(chatId, waitingMsg.message_id);
@@ -594,9 +649,18 @@ ${usageEmoji} **שאילתות החודש:**
           
           // הודעת מידע על שאילתות נותרות (גם לשאלות כלליות)
           await sendQueryLimitMessage(chatId, bot);
+          
+          console.log(`✅ === General Query Processing Completed ===\n`);
         }
 
         console.log('✅ Response sent successfully');
+        
+        // סיכום השירותים שהיו בשימוש
+        console.log(`\n🔍 === Services Summary ===`);
+        console.log(`🧠 AI Engine: ${process.env.CLAUDE_API_KEY && !process.env.CLAUDE_API_KEY.includes('your_') ? 'Claude API' : 'Basic Analysis'}`);
+        console.log(`🔍 Search: ${process.env.GOOGLE_SEARCH_API_KEY && !process.env.GOOGLE_SEARCH_API_KEY.includes('your_') ? 'Google (Primary) + DuckDuckGo (Fallback)' : 'DuckDuckGo Only'}`);
+        console.log(`📱 Reddit: ${process.env.REDDIT_CLIENT_ID && !process.env.REDDIT_CLIENT_ID.includes('your_') ? 'Enabled' : 'Disabled'}`);
+        console.log(`===============================\n`);
 
         // עדכון מונה השאלות והודעת מידע נוספת
         try {

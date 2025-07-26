@@ -575,13 +575,14 @@ class UpdateChecker {
     try {
       // בדיקה אם יש Claude API key
       if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_') || process.env.CLAUDE_API_KEY === 'test_token_placeholder') {
-        console.log('⚠️  Claude API key not configured, using fallback analysis');
+        console.log('⚠️ [Claude AI] API key not configured, using basic analysis');
         return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
       const prompt = this.buildAnalysisPrompt(deviceInfo, parsedQuery, searchResults);
 
-      console.log(`🤖 Sending prompt to Claude...`);
+      console.log(`🧠 [Claude AI] Sending analysis request to Claude Sonnet 4...`);
+      console.log(`📝 [Claude AI] Analyzing device: ${deviceInfo.device} for ${parsedQuery.version}`);
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: 'POST',
@@ -602,17 +603,19 @@ class UpdateChecker {
       const data = await response.json();
 
       if (!response.ok) {
-        console.log(`⚠️  Claude API error: ${response.status}, falling back to basic analysis`);
+        console.log(`❌ [Claude AI] API error: ${response.status} - ${data?.error?.message || 'Unknown error'}`);
+        console.log(`🔄 [Claude AI] Falling back to basic analysis...`);
         return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
       }
 
       const result = data?.content?.[0]?.text || 'לא התקבלה תגובה מ-Claude.';
-      console.log(`✅ Received response from Claude`);
+      console.log(`✅ [Claude AI] SUCCESS: Analysis completed (${result.length} chars)`);
+      console.log(`💰 [Claude AI] Token usage: Input ~${prompt.length/4} | Output ~${result.length/4} tokens`);
       return result;
 
     } catch (error) {
-      console.error(`❌ Error at [analyzeWithClaude]:`, error?.message || error);
-      console.log('🔄 Falling back to basic analysis...');
+      console.error(`❌ [Claude AI] ERROR: ${error?.message || error}`);
+      console.log('🔄 [Claude AI] Falling back to basic analysis...');
       return this.fallbackAnalysis(deviceInfo, parsedQuery, searchResults);
     }
   }
@@ -620,9 +623,14 @@ class UpdateChecker {
   // ניתוח fallback כאשר Claude לא זמין
   fallbackAnalysis(deviceInfo, parsedQuery, searchResults) {
     try {
+      console.log(`🔧 [Basic Analysis] Using fallback analysis engine`);
+      console.log(`📊 [Basic Analysis] Processing device: ${deviceInfo.device} for ${parsedQuery.version}`);
+      
       const totalSources = (searchResults.redditPosts?.length || 0) + 
                           (searchResults.forumDiscussions?.length || 0) + 
                           (searchResults.officialSources?.length || 0);
+
+      console.log(`📝 [Basic Analysis] Analyzing ${totalSources} sources found`);
 
       const analysis = {
         stabilityRating: 7, // ברירת מחדל זהירה
@@ -653,6 +661,8 @@ class UpdateChecker {
       }
 
       // פורמט JSON
+      console.log(`✅ [Basic Analysis] SUCCESS: Analysis completed with rating ${analysis.stabilityRating}/10`);
+      console.log(`📋 [Basic Analysis] Recommendation: ${analysis.recommendation}`);
       return JSON.stringify(analysis, null, 2);
 
     } catch (error) {
@@ -968,59 +978,122 @@ ${resultsText}
       if (deviceModel && androidVersion) {
         console.log(`🔍 Searching for specific info: ${deviceModel} ${androidVersion}`);
         
-                 try {
-           // Try to search Reddit for real information
-           const mockDeviceInfo = {
-             device: deviceModel,
-             manufacturerKey: deviceModel.toLowerCase().includes('samsung') ? 'samsung' : 'unknown'
-           };
-           const mockParsedQuery = {
-             version: androidVersion
-           };
-           
-           const redditResults = await this.searchReddit(mockDeviceInfo, mockParsedQuery);
-           
-           if (redditResults && redditResults.length > 0) {
-            let summary = `🔍 **מידע על עדכון ${deviceModel} ל-${androidVersion}:**\n\n`;
-            
-            // Add findings from Reddit
-            const relevantPosts = redditResults.slice(0, 3);
-                         relevantPosts.forEach((post, index) => {
-               summary += `📱 **דיווח ${index + 1}:**\n`;
-               summary += `• ${post.title}\n`;
-               if (post.selftext && post.selftext.length > 0) {
-                 const shortText = post.selftext.length > 200 ? 
-                   post.selftext.substring(0, 200) + '...' : 
-                   post.selftext;
-                 summary += `• ${shortText}\n`;
-               }
-               if (post.url) {
-                 summary += `🔗 [קישור לדיון](${post.url})\n\n`;
-               } else {
-                 summary += `\n`;
-               }
-             });
-            
-            summary += `💡 **המלצה כללית:**\n`;
-            summary += `• בדקו דיווחים נוספים לפני העדכון\n`;
-            summary += `• גבו את המכשיר לפני העדכון\n`;
-            summary += `• המתינו מספר ימים אחרי שחרור העדכון\n`;
-            summary += `• לחצו על הקישורים למידע נוסף\n\n`;
-            summary += `🔄 **לקבלת המלצה מדויקת יותר, שלחו:**\n`;
-            summary += `"${deviceModel}, Android [גרסה נוכחית], רוצה לעדכן ל-${androidVersion}"`;
-            
-            return {
-              success: true,
-              data: { summary },
-              message: 'נמצא מידע רלוונטי'
-            };
+        try {
+          // Create mock device info for comprehensive search
+          const mockDeviceInfo = {
+            device: deviceModel,
+            manufacturer: deviceModel.toLowerCase().includes('samsung') ? 'Samsung' : 
+                         deviceModel.toLowerCase().includes('google') ? 'Google' :
+                         deviceModel.toLowerCase().includes('xiaomi') ? 'Xiaomi' : 'Unknown',
+            manufacturerKey: deviceModel.toLowerCase().includes('samsung') ? 'samsung' : 
+                           deviceModel.toLowerCase().includes('google') ? 'google' :
+                           deviceModel.toLowerCase().includes('xiaomi') ? 'xiaomi' : 'unknown'
+          };
+          const mockParsedQuery = {
+            version: androidVersion
+          };
+          
+                     // Try multiple search methods in parallel for better results
+           const [redditResults, webSearchResults, officialResults, samsungCommunityResults] = await Promise.allSettled([
+             this.searchReddit(mockDeviceInfo, mockParsedQuery),
+             this.searchWebSources(deviceModel, androidVersion),
+             this.searchOfficialSources(mockDeviceInfo, mockParsedQuery),
+             this.searchSamsungCommunity(deviceModel, androidVersion)
+           ]);
+          
+          let foundResults = false;
+          let summary = `🔍 **מידע על עדכון ${deviceModel} ל-${androidVersion}:**\n\n`;
+          
+          // Process Reddit results
+          if (redditResults.status === 'fulfilled' && redditResults.value && redditResults.value.length > 0) {
+            foundResults = true;
+            const relevantPosts = redditResults.value.slice(0, 3);
+            summary += `📱 **דיווחי משתמשים מ-Reddit:**\n`;
+            relevantPosts.forEach((post, index) => {
+              summary += `• **${post.title}**\n`;
+              if (post.selftext && post.selftext.length > 0) {
+                const shortText = post.selftext.length > 150 ? 
+                  post.selftext.substring(0, 150) + '...' : 
+                  post.selftext;
+                summary += `  ${shortText}\n`;
+              }
+              if (post.url) {
+                summary += `  🔗 [קישור לדיון](${post.url})\n`;
+              }
+              summary += `\n`;
+            });
           }
+          
+          // Process web search results
+          if (webSearchResults.status === 'fulfilled' && webSearchResults.value && webSearchResults.value.length > 0) {
+            foundResults = true;
+            summary += `🌐 **מידע ממקורות נוספים:**\n`;
+            webSearchResults.value.slice(0, 3).forEach((result, index) => {
+              summary += `• **${result.title}**\n`;
+              if (result.summary) {
+                summary += `  ${result.summary}\n`;
+              }
+              if (result.url) {
+                summary += `  🔗 [קישור למאמר](${result.url})\n`;
+              }
+              summary += `\n`;
+            });
+          }
+          
+                     // Process official sources
+           if (officialResults.status === 'fulfilled' && officialResults.value && officialResults.value.length > 0) {
+             foundResults = true;
+             summary += `🏢 **מקורות רשמיים:**\n`;
+             officialResults.value.slice(0, 2).forEach((result, index) => {
+               summary += `• **${result.title}**\n`;
+               if (result.summary) {
+                 summary += `  ${result.summary}\n`;
+               }
+               if (result.url) {
+                 summary += `  🔗 [קישור רשמי](${result.url})\n`;
+               }
+               summary += `\n`;
+             });
+           }
+           
+           // Process Samsung Community results
+           if (samsungCommunityResults.status === 'fulfilled' && samsungCommunityResults.value && samsungCommunityResults.value.length > 0) {
+             foundResults = true;
+             summary += `👥 **קהילות Samsung:**\n`;
+             samsungCommunityResults.value.slice(0, 3).forEach((result, index) => {
+               summary += `• **${result.title}**\n`;
+               if (result.summary) {
+                 summary += `  ${result.summary}\n`;
+               }
+               if (result.url) {
+                 summary += `  🔗 [קישור לקהילה](${result.url})\n`;
+               }
+               summary += `\n`;
+             });
+           }
+          
+                     if (foundResults) {
+             summary += `💡 **המלצות כלליות:**\n`;
+             summary += `• 🔍 קראו דיווחי משתמשים נוספים לפני העדכון\n`;
+             summary += `• 💾 גבו את המכשיר לפני העדכון\n`;
+             summary += `• ⏰ המתינו מספר ימים אחרי שחרור העדכון\n`;
+             summary += `• 🔗 לחצו על הקישורים למידע מפורט\n\n`;
+             summary += `🎯 **לקבלת המלצה מדויקת יותר, שלחו:**\n`;
+             summary += `"${deviceModel}, Android [גרסה נוכחית], רוצה לעדכן ל-${androidVersion}"`;
+             
+             return {
+               success: true,
+               data: { summary },
+               message: 'נמצא מידע רלוונטי',
+               needsSplit: summary.length > 3000 // מסמן שהתשובה צריכה פיצול
+             };
+           }
         } catch (searchError) {
           console.error('Error searching for specific info:', searchError?.message || searchError);
         }
       }
       
-      // Fallback to basic response if no specific info found
+      // Fallback to enhanced response with helpful links
       const searchResults = {
         sources: [],
         userReports: [],
@@ -1038,6 +1111,22 @@ ${resultsText}
       if (deviceModel && androidVersion) {
         searchResults.summary += `\n🔍 **מחפש מידע על העדכון...**\n`;
         searchResults.summary += `למרות שזיהיתי את המכשיר והגרסה, לא מצאתי מידע ספציפי כרגע.\n\n`;
+        
+        // הוספת קישורים מועילים לחיפוש עצמאי
+        searchResults.summary += `🔗 **קישורים מועילים לחיפוש עצמי:**\n`;
+        searchResults.summary += `• [חיפוש ב-Reddit](https://www.reddit.com/search/?q=${encodeURIComponent(deviceModel + ' ' + androidVersion + ' update')})\n`;
+        searchResults.summary += `• [Samsung Community](https://us.community.samsung.com/t5/forums/searchpage/tab/message?filter=location&q=${encodeURIComponent(deviceModel + ' ' + androidVersion)})\n`;
+        searchResults.summary += `• [XDA Developers](https://www.xda-developers.com/?s=${encodeURIComponent(deviceModel + ' ' + androidVersion)})\n`;
+        searchResults.summary += `• [חיפוש Google](https://www.google.com/search?q=${encodeURIComponent(deviceModel + ' ' + androidVersion + ' update review problems')})\n\n`;
+        
+        // המלצות כלליות בהתבסס על המכשיר
+        if (deviceModel.toLowerCase().includes('samsung')) {
+          searchResults.summary += `📋 **המלצות כלליות עבור מכשירי Samsung:**\n`;
+          searchResults.summary += `• בדקו באפליקציית Samsung Members אם יש עדכון זמין\n`;
+          searchResults.summary += `• עקבו אחר Samsung Newsroom לעדכונים רשמיים\n`;
+          searchResults.summary += `• המתינו מספר ימים אחרי שחרור העדכון לראות דיווחים\n`;
+          searchResults.summary += `• גבו את המכשיר לפני כל עדכון מערכת הפעלה\n\n`;
+        }
       }
       
       searchResults.summary += `💡 **לקבלת המלצה מדויקת יותר, אנא ציינו:**\n`;
@@ -1050,7 +1139,7 @@ ${resultsText}
       return {
         success: true,
         data: searchResults,
-        message: 'חיפוש כללי הושלם'
+        message: 'חיפוש כללי הושלם עם קישורים מועילים'
       };
       
     } catch (error) {
@@ -1060,6 +1149,298 @@ ${resultsText}
         message: 'שגיאה בחיפוש מידע כללי',
         error: error?.message || error
       };
+    }
+  }
+
+  // חיפוש במקורות אינטרנט נוספים עם Google Search API
+  async searchWebSources(deviceModel, androidVersion) {
+    const results = [];
+    
+    try {
+      console.log(`🌐 Searching web sources for ${deviceModel} ${androidVersion}...`);
+      
+      // ניסיון חיפוש עם Google Search API תחילה
+      try {
+        const techSites = [
+          'androidpolice.com',
+          'androidauthority.com', 
+          'gsmarena.com',
+          'sammobile.com',
+          'xda-developers.com',
+          '9to5google.com'
+        ];
+        
+        const siteQuery = techSites.map(site => `site:${site}`).join(' OR ');
+        const googleQuery = `(${siteQuery}) "${deviceModel}" "${androidVersion}" (update OR review OR problems OR issues)`;
+        
+        const googleResults = await this.googleCustomSearch(googleQuery);
+        
+        if (googleResults && googleResults.length > 0) {
+          console.log(`✅ Google Search found ${googleResults.length} tech site results`);
+          return googleResults.slice(0, 5).map(result => ({
+            title: result.title,
+            url: result.link,
+            summary: result.snippet || `מידע על עדכון ${deviceModel} ל-${androidVersion}`,
+            source: result.displayLink,
+            weight: 0.9
+          }));
+        }
+      } catch (googleError) {
+        console.log(`⚠️ Google Search failed for web sources: ${googleError.message}, using fallback method`);
+        
+        // Fallback - חיפוש באתרים ספציפיים עם DuckDuckGo
+        const techSites = [
+          'androidpolice.com',
+          'androidauthority.com', 
+          'sammobile.com'
+        ];
+        
+        const searchQueries = [
+          `"${deviceModel}" "${androidVersion}" update review`,
+          `"${deviceModel}" "${androidVersion}" problems issues`,
+          `"${deviceModel}" "${androidVersion}" release date`
+        ];
+        
+        // חיפוש מקבילי במספר מקורות
+        const searchPromises = [];
+        
+        for (let i = 0; i < Math.min(techSites.length, 3); i++) {
+          const site = techSites[i];
+          const query = searchQueries[i % searchQueries.length];
+          
+          searchPromises.push(
+            this.searchSpecificSite(site, query, deviceModel, androidVersion)
+              .catch(error => {
+                console.error(`Error searching ${site}:`, error?.message);
+                return null;
+              })
+          );
+        }
+        
+        const searchResults = await Promise.allSettled(searchPromises);
+        
+        searchResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value) {
+            results.push(...result.value);
+          }
+        });
+      }
+      
+      // אם לא נמצאו תוצאות, נוסיף קישורי חיפוש כלליים
+      if (results.length === 0) {
+        results.push({
+          title: `${deviceModel} ${androidVersion} - חיפוש כללי`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(deviceModel + ' ' + androidVersion + ' update review')}`,
+          summary: `חיפוש כללי בגוגל עבור מידע על העדכון`,
+          source: 'Google Search',
+          weight: 0.3
+        });
+        
+        results.push({
+          title: `${deviceModel} ${androidVersion} - דיווחי בעיות`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(deviceModel + ' ' + androidVersion + ' problems issues bugs')}`,
+          summary: `חיפוש דיווחי בעיות ותקלות`,
+          source: 'Google Search',
+          weight: 0.3
+        });
+      }
+      
+      console.log(`✅ Found ${results.length} web source results`);
+      return results.slice(0, 5); // מגביל ל-5 תוצאות איכותיות
+      
+    } catch (error) {
+      console.error('Error in searchWebSources:', error?.message || error);
+      return [];
+    }
+  }
+
+  // חיפוש באתר ספציפי עם Google Search API כ-primary
+  async searchSpecificSite(site, query, deviceModel, androidVersion) {
+    try {
+      // יצירת URL חיפוש מותאם לאתר
+      let searchUrl = '';
+      
+      if (site.includes('sammobile.com')) {
+        searchUrl = `https://www.sammobile.com/?s=${encodeURIComponent(deviceModel + ' ' + androidVersion)}`;
+      } else if (site.includes('androidpolice.com')) {
+        searchUrl = `https://www.androidpolice.com/?s=${encodeURIComponent(deviceModel + ' ' + androidVersion)}`;
+      } else if (site.includes('androidauthority.com')) {
+        searchUrl = `https://www.androidauthority.com/?s=${encodeURIComponent(deviceModel + ' ' + androidVersion)}`;
+      } else {
+        // חיפוש כללי בגוגל מוגבל לאתר ספציפי
+        searchUrl = `https://www.google.com/search?q=site:${site} "${deviceModel}" "${androidVersion}"`;
+      }
+      
+      // ניסיון חיפוש עם Google Search API כ-primary
+      try {
+        const googleResults = await this.googleCustomSearch(`site:${site} "${deviceModel}" "${androidVersion}" update`);
+        if (googleResults && googleResults.length > 0) {
+          console.log(`✅ Google Search API success for ${site}`);
+          return googleResults.slice(0, 2).map(result => ({
+            title: result.title,
+            url: result.link,
+            summary: result.snippet || `מידע מ-${site} על עדכון ${deviceModel} ל-${androidVersion}`,
+            source: site,
+            weight: 0.9 // משקל גבוה יותר לתוצאות Google
+          }));
+        }
+      } catch (googleError) {
+        console.log(`⚠️ Google Search API failed for ${site}: ${googleError.message}, falling back to DuckDuckGo`);
+        
+                 // Fallback ל-DuckDuckGo API
+         try {
+           const searchQuery = `site:${site} "${deviceModel}" "${androidVersion}" update`;
+           console.log(`🔄 [DuckDuckGo API] FALLBACK: Searching "${searchQuery}"`);
+           const duckDuckGoUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&no_html=1&skip_disambig=1`;
+           
+           const response = await axios.get(duckDuckGoUrl, {
+             timeout: 5000,
+             headers: {
+               'User-Agent': 'AndroidUpdateBot/1.0'
+             }
+           });
+           
+           if (response.data && response.data.RelatedTopics && response.data.RelatedTopics.length > 0) {
+             const results = [];
+             
+             response.data.RelatedTopics.slice(0, 2).forEach(topic => {
+               if (topic.Text && topic.FirstURL) {
+                 results.push({
+                   title: topic.Text.substring(0, 100) + (topic.Text.length > 100 ? '...' : ''),
+                   url: topic.FirstURL,
+                   summary: topic.Text.substring(0, 200) + (topic.Text.length > 200 ? '...' : ''),
+                   source: site,
+                   weight: 0.7
+                 });
+               }
+             });
+             
+             if (results.length > 0) {
+               console.log(`✅ [DuckDuckGo API] FALLBACK SUCCESS: ${results.length} results for ${site}`);
+               return results;
+             }
+           }
+           console.log(`⚠️ [DuckDuckGo API] No results found for ${site}`);
+         } catch (duckDuckGoError) {
+           console.log(`❌ [DuckDuckGo API] FALLBACK FAILED for ${site}: ${duckDuckGoError.message}`);
+         }
+      }
+      
+      // מחזיר תוצאות fallback עם קישורים מועילים
+      return [{
+        title: `${deviceModel} ${androidVersion} Update Info - ${site}`,
+        url: searchUrl,
+        summary: `מידע מ-${site} על עדכון ${deviceModel} ל-${androidVersion}`,
+        source: site,
+        weight: 0.6
+      }];
+      
+    } catch (error) {
+      console.error(`Error searching ${site}:`, error?.message);
+      return [];
+    }
+  }
+
+  // חיפוש עם Google Custom Search API
+  async googleCustomSearch(query) {
+    try {
+      console.log(`🔍 [Google Search API] Searching: "${query}"`);
+      
+      const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+      const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+      
+      if (!apiKey || !searchEngineId) {
+        console.log(`❌ [Google Search API] Credentials not configured`);
+        throw new Error('Google Search API credentials not configured');
+      }
+      
+      const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&num=5`;
+      
+      const response = await axios.get(url, {
+        timeout: 8000,
+        headers: {
+          'User-Agent': 'AndroidUpdateBot/1.0'
+        }
+      });
+      
+      if (response.data && response.data.items) {
+        console.log(`✅ [Google Search API] SUCCESS: ${response.data.items.length} results found`);
+        console.log(`📊 [Google Search API] Quota info: ${response.data.searchInformation?.totalResults || 'N/A'} total results available`);
+        return response.data.items.map(item => ({
+          title: item.title,
+          link: item.link,
+          snippet: item.snippet,
+          displayLink: item.displayLink
+        }));
+      }
+      
+      console.log(`⚠️ [Google Search API] No results found`);
+      return [];
+      
+    } catch (error) {
+      // בדיקה אם זו שגיאת מגבלת quota
+      if (error.response && error.response.status === 429) {
+        console.log(`🚫 [Google Search API] QUOTA EXCEEDED - Daily limit reached`);
+        throw new Error('Google Search API quota exceeded');
+      } else if (error.response && error.response.data && error.response.data.error) {
+        console.log(`❌ [Google Search API] ERROR: ${error.response.data.error.message}`);
+        throw new Error(`Google Search API error: ${error.response.data.error.message}`);
+      } else {
+        console.log(`❌ [Google Search API] ERROR: ${error.message}`);
+        throw new Error(`Google Search API error: ${error.message}`);
+      }
+    }
+  }
+
+  // חיפוש בקהילות Samsung ופורומים מיוחדים
+  async searchSamsungCommunity(deviceModel, androidVersion) {
+    const results = [];
+    
+    try {
+      console.log(`🏢 Searching Samsung Community for ${deviceModel} ${androidVersion}...`);
+      
+      // ניסיון חיפוש עם Google Search API תחילה
+      try {
+        const googleQuery = `site:us.community.samsung.com OR site:r2.community.samsung.com OR site:eu.community.samsung.com "${deviceModel}" "${androidVersion}"`;
+        const googleResults = await this.googleCustomSearch(googleQuery);
+        
+        if (googleResults && googleResults.length > 0) {
+          console.log(`✅ Google Search found ${googleResults.length} Samsung Community results`);
+          return googleResults.slice(0, 3).map(result => ({
+            title: result.title,
+            url: result.link,
+            summary: result.snippet || `דיון בקהילת Samsung על עדכון ${deviceModel} ל-${androidVersion}`,
+            source: `Samsung Community (${result.displayLink})`,
+            weight: 0.9
+          }));
+        }
+      } catch (googleError) {
+        console.log(`⚠️ Google Search failed for Samsung Community: ${googleError.message}, using fallback URLs`);
+      }
+      
+      // Fallback - Samsung Community URLs ידניים
+      const communityUrls = [
+        `https://us.community.samsung.com/t5/forums/searchpage/tab/message?filter=location&q=${encodeURIComponent(deviceModel + ' ' + androidVersion)}`,
+        `https://r2.community.samsung.com/t5/forums/searchpage/tab/message?filter=location&q=${encodeURIComponent(deviceModel + ' ' + androidVersion)}`,
+        `https://eu.community.samsung.com/t5/forums/searchpage/tab/message?filter=location&q=${encodeURIComponent(deviceModel + ' ' + androidVersion)}`
+      ];
+      
+      communityUrls.forEach((url, index) => {
+        const regions = ['US', 'Global', 'EU'];
+        results.push({
+          title: `Samsung Community ${regions[index]} - ${deviceModel} ${androidVersion}`,
+          url: url,
+          summary: `דיונים בקהילת Samsung ${regions[index]} על עדכון ${deviceModel} ל-${androidVersion}`,
+          source: `Samsung Community ${regions[index]}`,
+          weight: 0.8
+        });
+      });
+      
+      return results;
+      
+    } catch (error) {
+      console.error('Error searching Samsung Community:', error?.message);
+      return [];
     }
   }
 

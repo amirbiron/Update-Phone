@@ -573,9 +573,28 @@ function splitLongMessage(message) {
   let currentMessage = '';
   const lines = message.split('\n');
   
-  for (const line of lines) {
-    // אם הוספת השורה הנוכחית תחרוג מהמגבלה
-    if ((currentMessage + '\n' + line).length > TELEGRAM_MESSAGE_LIMIT) {
+  // זיהוי כותרות סעיפים לפיצול חכם יותר
+  const sectionHeaders = [
+    '📱 **דיווחי משתמשים מ-Reddit:**',
+    '🌐 **מידע ממקורות נוספים:**', 
+    '🏢 **מקורות רשמיים:**',
+    '👥 **קהילות Samsung:**',
+    '💡 **המלצות כלליות:**',
+    '🔗 **קישורים מועילים לחיפוש עצמי:**',
+    '📋 **המלצות כלליות עבור מכשירי Samsung:**'
+  ];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const nextMessage = currentMessage + (currentMessage ? '\n' : '') + line;
+    
+    // בדיקה אם זו כותרת סעיף חדש והודעה הנוכחית לא ריקה
+    const isNewSection = sectionHeaders.some(header => line.includes(header));
+    
+    // אם הוספת השורה תחרוג מהמגבלה, או שזה סעיף חדש והודעה הנוכחית ארוכה מספיק
+    if (nextMessage.length > TELEGRAM_MESSAGE_LIMIT || 
+        (isNewSection && currentMessage.trim() && currentMessage.length > 1000)) {
+      
       // שמור את ההודעה הנוכחית ותתחיל חדשה
       if (currentMessage.trim()) {
         messages.push(currentMessage.trim());
@@ -583,7 +602,7 @@ function splitLongMessage(message) {
       currentMessage = line;
     } else {
       // הוסף את השורה להודעה הנוכחית
-      currentMessage += (currentMessage ? '\n' : '') + line;
+      currentMessage = nextMessage;
     }
   }
   
@@ -835,7 +854,7 @@ function formatResponseWithUserReports(deviceInfo, updateInfo, recommendation) {
 }
 
 // פונקציה לפיצול הודעות רגילות (עבור תאימות לאחור)
-function formatResponseWithSplit(response) {
+function formatResponseWithSplit(response, forceSplit = false) {
   const TELEGRAM_LIMIT = 4096;
   
   // וידוא שהתגובה היא מחרוזת
@@ -844,19 +863,20 @@ function formatResponseWithSplit(response) {
     response = String(response || 'שגיאה בעיצוב התגובה');
   }
   
-  if (response.length <= TELEGRAM_LIMIT) {
+  // אם נדרש פיצול כפוי או שההודעה ארוכה מדי
+  if (forceSplit || response.length > TELEGRAM_LIMIT) {
+    // פיצול ההודעה לחלקים
+    const parts = splitLongMessage(response);
+    
     return {
-      needsSplit: false,
-      parts: [response]
+      needsSplit: true,
+      parts: parts
     };
   }
   
-  // פיצול ההודעה לחלקים
-  const parts = splitLongMessage(response);
-  
   return {
-    needsSplit: true,
-    parts: parts
+    needsSplit: false,
+    parts: [response]
   };
 }
 
