@@ -10,6 +10,83 @@ const RecommendationEngine = require('../common/recommendationEngine');
 const Database = require('../common/database');
 const { formatResponse, formatResponseWithSplit, formatResponseWithUserReports, parseUserMessage, logMessageSplit } = require('../common/utils');
 
+// פונקציה לשליחת הודעת מידע על שאילתות נותרות
+async function sendQueryLimitMessage(chatId, bot) {
+  try {
+    // המתנה קצרה לפני שליחת הודעת המידע
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const queryLimitInfo = await Database.checkQueryLimit(chatId);
+    
+    // בחירת אימוג'י ומסר לפי כמות השאילתות הנותרות
+    let statusEmoji = '📊';
+    let statusText = '';
+    let extraTip = '';
+    
+    if (queryLimitInfo.remaining === 0) {
+      statusEmoji = '🚫';
+      statusText = ' (הגעתם למגבלה)';
+      extraTip = '\n🔄 **המגבלה תתאפס בתחילת החודש הבא**';
+    } else if (queryLimitInfo.remaining <= 3) {
+      statusEmoji = '🔴';
+      statusText = ' (אחרונות!)';
+      extraTip = '\n⚡ **השתמשו בחכמה - נותרו מעט שאילתות**';
+    } else if (queryLimitInfo.remaining <= 5) {
+      statusEmoji = '⚠️';
+      statusText = ' (נותרו מעט!)';
+      extraTip = '\n💡 **שמרו שאילתות לעדכונים חשובים**';
+    } else if (queryLimitInfo.remaining <= 10) {
+      statusEmoji = '📉';
+      statusText = ' (בדרך לסיום)';
+    } else if (queryLimitInfo.remaining >= 25) {
+      statusEmoji = '✅';
+      statusText = ' (הרבה נותרו)';
+      extraTip = '\n🎉 **אתם יכולים לשאול בחופשיות!**';
+    }
+    
+    const limitMessage = `
+${statusEmoji} **שאילתות החודש:** ${queryLimitInfo.remaining}/${queryLimitInfo.limit}${statusText}${extraTip}
+
+💡 **טיפ:** השתמשו בפקודה /stats לסטטיסטיקות מפורטות
+    `.trim();
+    
+    await bot.sendMessage(chatId, limitMessage, { parse_mode: 'Markdown' });
+    console.log(`📊 Sent query limit info: ${queryLimitInfo.remaining}/${queryLimitInfo.limit}`);
+    
+    // הודעות מיוחדות במילים עגולים
+    const usedQueries = queryLimitInfo.limit - queryLimitInfo.remaining;
+    const usagePercentage = (usedQueries / queryLimitInfo.limit) * 100;
+    
+    // הודעה כשמגיעים ל-50% מהשאילתות
+    if (usedQueries === Math.floor(queryLimitInfo.limit * 0.5)) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await bot.sendMessage(chatId, `
+🎯 **הגעתם לחצי הדרך!**
+
+השתמשתם ב-${usedQueries} שאילתות מתוך ${queryLimitInfo.limit} 📈
+
+💪 **המשיכו לשאול - עוד הרבה מקום!**
+      `.trim(), { parse_mode: 'Markdown' });
+    }
+    
+    // הודעה כשמגיעים ל-75% מהשאילתות
+    if (usedQueries === Math.floor(queryLimitInfo.limit * 0.75)) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await bot.sendMessage(chatId, `
+🔥 **75% מהשאילתות נוצלו!**
+
+נותרו ${queryLimitInfo.remaining} שאילתות החודש 📊
+
+⚡ **השתמשו בהן בחכמה לעדכונים החשובים ביותר**
+      `.trim(), { parse_mode: 'Markdown' });
+    }
+    
+  } catch (error) {
+    console.error('Error sending query limit message:', error?.message || error);
+    // לא עוצרים את התהליך אם הודעת המידע נכשלה
+  }
+}
+
 // טיפול גלובלי בחריגות בלתי מטופלות
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error?.message || error);
@@ -152,19 +229,39 @@ async function initializeBot() {
         const stats = await Database.getUserStats(chatId);
         const globalStats = await Database.getGlobalStats();
         
+        // בדיקת מגבלת שאילתות
+        const queryLimitInfo = await Database.checkQueryLimit(chatId);
+        const usedQueries = queryLimitInfo.limit - queryLimitInfo.remaining;
+        const usagePercentage = Math.round((usedQueries / queryLimitInfo.limit) * 100);
+        
+        // אימוג'י לפי אחוז השימוש
+        let usageEmoji = '📊';
+        if (usagePercentage >= 90) usageEmoji = '🔴';
+        else if (usagePercentage >= 75) usageEmoji = '🟠';
+        else if (usagePercentage >= 50) usageEmoji = '🟡';
+        else if (usagePercentage >= 25) usageEmoji = '🟢';
+        else usageEmoji = '✅';
+        
         const statsMessage = `
-📊 הסטטיסטיקות שלכם:
+📊 **הסטטיסטיקות שלכם:**
+
+👤 **פעילות אישית:**
 • שאלות שנשאלו: ${stats.questionsAsked || 0}
 • המלצות שהתקבלו: ${stats.recommendationsReceived || 0}
 • תאריך הצטרפות: ${stats.joinDate ? new Date(stats.joinDate).toLocaleDateString('he-IL') : 'לא זמין'}
 
-🌍 סטטיסטיקות כלליות:
+${usageEmoji} **שאילתות החודש:**
+• נוצלו: ${usedQueries}/${queryLimitInfo.limit} (${usagePercentage}%)
+• נותרו: ${queryLimitInfo.remaining}
+• מתאפס ב: ${new Date(queryLimitInfo.resetDate).toLocaleDateString('he-IL')}
+
+🌍 **סטטיסטיקות כלליות:**
 • סה"כ משתמשים: ${globalStats.totalUsers || 0}
 • סה"כ שאלות: ${globalStats.totalQuestions || 0}
 • עדכונים נבדקו היום: ${globalStats.updatesCheckedToday || 0}
         `;
         
-        bot.sendMessage(chatId, statsMessage);
+        bot.sendMessage(chatId, statsMessage, { parse_mode: 'Markdown' });
       } catch (error) {
         console.error('Error getting stats:', error?.message || error);
         bot.sendMessage(chatId, '❌ שגיאה בקבלת הסטטיסטיקות. נסו שוב מאוחר יותר.');
@@ -379,6 +476,9 @@ async function initializeBot() {
             
             console.log(`✅ Sent ${messagesArray.length} messages with user reports`);
             
+            // הודעת מידע על שאילתות נותרות
+            await sendQueryLimitMessage(chatId, bot);
+            
           } else {
             // אין דיווחי משתמשים - שימוש בפונקציה הרגילה
             response = formatResponse(analysisResult);
@@ -426,6 +526,9 @@ async function initializeBot() {
                 parse_mode: 'HTML'
               });
             }
+            
+            // הודעת מידע על שאילתות נותרות
+            await sendQueryLimitMessage(chatId, bot);
           }
         } else {
           // שאלה כללית - חיפוש מידע רלוונטי
@@ -469,14 +572,17 @@ async function initializeBot() {
               await new Promise(resolve => setTimeout(resolve, 1500));
             }
           }
-        } else {
-          // תגובה רגילה - עריכת הודעת ההמתנה
-          await bot.editMessageText(response, {
-            chat_id: chatId,
-            message_id: waitingMsg.message_id,
-            parse_mode: 'HTML'
-          });
-        }
+                            } else {
+            // תגובה רגילה - עריכת הודעת ההמתנה
+            await bot.editMessageText(response, {
+              chat_id: chatId,
+              message_id: waitingMsg.message_id,
+              parse_mode: 'HTML'
+            });
+          }
+          
+          // הודעת מידע על שאילתות נותרות (גם לשאלות כלליות)
+          await sendQueryLimitMessage(chatId, bot);
         }
 
         console.log('✅ Response sent successfully');
