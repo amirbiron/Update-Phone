@@ -2,10 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const TelegramBot = require('node-telegram-bot-api');
-const { handleUpdate, handleCallbackQuery, handleMyDeviceInfo } = require('./handlers/messageHandler');
-const { handleStart, handleDeviceCommand } = require('./handlers/commandHandler');
-const { initializeDatabase } = require('./common/database');
-const Scheduler = require('./scheduler');
+const { handleUpdate, handleCallbackQuery, handleMyDeviceInfo } = require('./bot/messageHandler');
+const { handleStart, handleDeviceCommand } = require('./bot/commandHandler');
+const database = require('./common/database');
+const Scheduler = require('./scheduler/index');
 const { getRecommendation } = require('./common/recommendationEngine');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 
 async function main() {
   try {
-    await initializeDatabase();
+    await database.connect();
     console.log('Database initialized successfully.');
 
     if (process.env.NODE_ENV === 'production' && url) {
