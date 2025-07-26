@@ -552,7 +552,7 @@ ${usageEmoji} **שאילתות החודש:**
             
           } else {
             // אין דיווחי משתמשים - שימוש בפונקציה הרגילה
-            response = formatResponse(analysisResult);
+            response = formatResponse(deviceInfo, updateInfo, analysisResult);
             
             // רישום האינטראקציה
             await Database.logUserInteraction(chatId, 'question', {
