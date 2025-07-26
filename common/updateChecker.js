@@ -442,32 +442,23 @@ class UpdateChecker {
           if (response.data && response.data.data && response.data.data.children) {
             const posts = [];
             for (const child of response.data.data.children) {
-              // חילוץ דיווחי משתמשים אמיתיים מהפוסט
-              const postText = `${child.data.title} ${child.data.selftext || ''}`;
-              let userReports = this.extractUserReportsFromText(postText);
-              
-              // תרגום דיווחי משתמשים לעברית
-              if (userReports.length > 0) {
-                userReports = await this.translateUserReportsToHebrew(userReports);
-              }
-              
-              posts.push({
-                title: child.data.title,
-                url: `https://reddit.com${child.data.permalink}`,
-                score: child.data.score,
-                numComments: child.data.num_comments,
-                created: new Date(child.data.created_utc * 1000),
-                subreddit: child.data.subreddit,
-                author: child.data.author,
-                selftext: child.data.selftext || '',
-                source: 'reddit',
-                relevance: this.calculateRelevance(child.data.title, searchQuery),
-                // הוספת מידע נוסף לדיווחי משתמשים
-                userExperience: this.extractUserExperience(child.data.title, child.data.selftext),
-                sentiment: this.analyzeSentiment(child.data.title, child.data.selftext),
-                isUserReport: this.isUserReport(child.data.title, child.data.selftext),
-                userReports: userReports // דיווחי משתמשים מתורגמים לעברית!
-              });
+      // חילוץ דיווחי משתמשים אמיתיים מהפוסט
+      const postText = `${child.data.title} ${child.data.selftext || ''}`;
+      let userReports = this.extractUserReportsFromText(postText);
+      
+      posts.push({
+        title: child.data.title,
+        url: `https://reddit.com${child.data.permalink}`,
+        score: child.data.score,
+        numComments: child.data.num_comments,
+        created: new Date(child.data.created_utc * 1000),
+        subreddit: child.data.subreddit,
+        author: child.data.author,
+        selftext: child.data.selftext || '',
+        source: 'reddit',
+        relevance: this.calculateRelevance(child.data.title, searchQuery),
+        userReports: userReports.slice(0, 2) // מגבלת slice מקורית
+      });
             }
 
             results.push(...posts);
@@ -498,7 +489,7 @@ class UpdateChecker {
           // אחר כך לפי relevance ו-score
           return (b.relevance * b.score) - (a.relevance * a.score);
         })
-        .slice(0, 8); // הקטנתי ל-8 תוצאות איכותיות
+        .slice(0, 5); // מגבלת slice מקורית - 5 תוצאות
     } catch (error) {
       console.error(`❌ Error at [searchReddit]:`, error?.message || error);
       return [];
@@ -1876,11 +1867,9 @@ ${resultsText}
     }
   }
 
-  // חילוץ דיווחי משתמשים אמיתיים מטקסט
+  // חילוץ דיווחי משתמשים אמיתיים מטקסט - גרסה פשוטה
   extractUserReportsFromText(text, title = '') {
     if (!text) return [];
-    
-    console.log(`🔍 [extractUserReports] Analyzing text: "${text.substring(0, 100)}..."`);
     
     const userReports = [];
     const fullText = `${title} ${text}`.toLowerCase();
@@ -1917,7 +1906,7 @@ ${resultsText}
     
     const allPatterns = [...userReportPatterns, ...hebrewPatterns];
     
-    // חיפוש דפוסים בטקסט
+    // חיפוש דפוסים בטקסט - גרסה פשוטה ומוגבלת
     allPatterns.forEach(pattern => {
       const matches = text.match(pattern);
       if (matches) {
@@ -1925,58 +1914,21 @@ ${resultsText}
           // ניקוי הטקסט שנמצא
           let cleanedReport = match.replace(/^\W+|\W+$/g, '').trim();
           
-          // וידוא שהדיווח לא קצר מדי או ארוך מדי
-          if (cleanedReport.length >= 20 && cleanedReport.length <= 200) {
-            // בדיקה שזה לא טקסט גנרי
-            if (!this.isGenericText(cleanedReport)) {
-              userReports.push({
-                author: 'Forum User',
-                content: cleanedReport,
-                sentiment: this.analyzeSentiment('', cleanedReport),
-                date: new Date(),
-                isExtracted: true
-              });
-            }
+          // מגבלות אורך מקוריות - מחמירות יותר
+          if (cleanedReport.length >= 30 && cleanedReport.length <= 100) {
+            userReports.push({
+              author: 'User',
+              content: cleanedReport,
+              sentiment: 'neutral',
+              date: new Date()
+            });
           }
         });
       }
     });
     
-    // אם לא נמצאו דפוסים ספציפיים, ננסה לזהות דיווחי משתמשים בצורה פשוטה יותר
-    if (userReports.length === 0) {
-      // בדיקה פשוטה לטקסט בעברית שמכיל מילות מפתח
-      const hebrewKeywords = ['עדכון', 'אנדרואיד', 'סוללה', 'ביצועים', 'בעיות', 'עובד', 'מומלץ'];
-      const englishKeywords = ['update', 'android', 'battery', 'performance', 'experience', 'after'];
-      
-      const hasHebrewKeywords = hebrewKeywords.some(keyword => text.includes(keyword));
-      const hasEnglishKeywords = englishKeywords.some(keyword => fullText.includes(keyword));
-      
-      if ((hasHebrewKeywords || hasEnglishKeywords) && text.length >= 30 && text.length <= 200) {
-        if (!this.isGenericText(text)) {
-          userReports.push({
-            author: 'Forum User',
-            content: text.trim(),
-            sentiment: this.analyzeSentiment('', text),
-            date: new Date(),
-            isExtracted: true
-          });
-        }
-      }
-    }
-    
-    // אם לא נמצאו דיווחים ספציפיים, נחזיר ריק במקום תוכן גנרי
-    if (userReports.length === 0) {
-      console.log(`ℹ️  [extractUserReports] No specific user reports found in text: "${text.substring(0, 100)}..."`);
-      return [];
-    }
-    
-    console.log(`✅ [extractUserReports] Found ${userReports.length} user reports`);
-    userReports.forEach((report, index) => {
-      console.log(`   Report ${index + 1}: "${report.content.substring(0, 50)}..."`);
-    });
-    
-    // הגבלה למקסימום 3 דיווחים איכותיים
-    return userReports.slice(0, 3);
+    // מגבלת slice מקורית - רק 2 דיווחים
+    return userReports.slice(0, 2);
   }
 
   // בדיקה אם הטקסט גנרי ולא דיווח אמיתי
@@ -1998,110 +1950,16 @@ ${resultsText}
     return genericPhrases.some(phrase => textLower.includes(phrase.toLowerCase()));
   }
 
-  // תרגום דיווחי משתמשים לעברית באמצעות Claude
+  // תרגום דיווחי משתמשים לעברית - גרסה פשוטה
   async translateUserReportsToHebrew(userReports) {
-    if (!userReports || userReports.length === 0) return userReports;
-    
-    // בדיקה אם יש Claude API key
-    if (!process.env.CLAUDE_API_KEY || process.env.CLAUDE_API_KEY.includes('your_')) {
-      console.log('⚠️ [Translation] Claude API not available, keeping original text');
-      return userReports;
-    }
-    
-    try {
-      // איסוף כל הטקסטים לתרגום
-      const textsToTranslate = userReports
-        .filter(report => report.content && !this.isHebrewText(report.content))
-        .map(report => report.content);
-      
-      if (textsToTranslate.length === 0) {
-        console.log('ℹ️ [Translation] No English texts to translate');
-        return userReports;
-      }
-      
-      console.log(`🌐 [Translation] Translating ${textsToTranslate.length} user reports to Hebrew...`);
-      
-      const prompt = `תרגם את דיווחי המשתמשים הבאים לעברית טבעית וזורמת. 
-שמור על המשמעות המדויקת והטון של הדיווח המקורי.
-החזר רק את התרגומים, כל אחד בשורה נפרדת, ללא מספור או הסברים.
-
-דיווחי משתמשים לתרגום:
-${textsToTranslate.map((text, index) => `${index + 1}. ${text}`).join('\n')}`;
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: process.env.CLAUDE_MODEL || 'claude-3-5-sonnet-20241022',
-          max_tokens: 800,
-          messages: [
-            { role: 'user', content: prompt }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        console.log(`❌ [Translation] Claude API error: ${response.status}`);
-        return userReports;
-      }
-
-      const data = await response.json();
-      const translatedText = data?.content?.[0]?.text || '';
-      
-      if (!translatedText) {
-        console.log('❌ [Translation] No translation received from Claude');
-        return userReports;
-      }
-      
-      // פיצול התרגומים לשורות
-      const translations = translatedText.trim().split('\n')
-        .map(line => line.replace(/^\d+\.\s*/, '').trim())
-        .filter(line => line.length > 0);
-      
-      console.log(`✅ [Translation] Successfully translated ${translations.length} reports`);
-      
-      // החלפת הטקסטים המתורגמים
-      let translationIndex = 0;
-      const translatedReports = userReports.map(report => {
-        if (report.content && !this.isHebrewText(report.content)) {
-          if (translationIndex < translations.length) {
-            const originalContent = report.content;
-            const translatedContent = translations[translationIndex];
-            translationIndex++;
-            
-            console.log(`🔄 [Translation] "${originalContent.substring(0, 50)}..." → "${translatedContent.substring(0, 50)}..."`);
-            
-            return {
-              ...report,
-              content: translatedContent,
-              originalContent: originalContent // שמירת הטקסט המקורי
-            };
-          }
-        }
-        return report;
-      });
-      
-      return translatedReports;
-      
-    } catch (error) {
-      console.error('❌ [Translation] Error translating user reports:', error?.message);
-      return userReports; // החזרת הדיווחים המקוריים במקרה של שגיאה
-    }
+    // גרסה פשוטה - מחזיר את הדיווחים כמו שהם
+    return userReports;
   }
   
-  // בדיקה אם הטקסט כבר בעברית
+  // בדיקה אם הטקסט כבר בעברית - גרסה פשוטה
   isHebrewText(text) {
     if (!text) return false;
-    
-    // בדיקה פשוטה - אם יש יותר מ-30% תווים עבריים
-    const hebrewChars = text.match(/[\u0590-\u05FF]/g) || [];
-    const totalChars = text.replace(/\s/g, '').length;
-    
-    return totalChars > 0 && (hebrewChars.length / totalChars) > 0.3;
+    return text.match(/[\u0590-\u05FF]/);
   }
 }
 

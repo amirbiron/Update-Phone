@@ -483,13 +483,8 @@ function hasUserReports(searchResults) {
   return hasRedditReports || hasForumReports;
 }
 
-// עיצוב דיווחי משתמשים - ללא קיצורים
+// עיצוב דיווחי משתמשים - גרסה פשוטה עם מגבלות מקוריות
 function formatUserReports(searchResults) {
-  console.log('🔍 [formatUserReports] ===== STARTING USER REPORTS FORMATTING =====');
-  console.log('📊 [formatUserReports] Input data:');
-  console.log(`   - Reddit posts: ${searchResults.redditPosts?.length || 0}`);
-  console.log(`   - Forum discussions: ${searchResults.forumDiscussions?.length || 0}`);
-  
   let reports = '';
   
   // דיווחים מ-Reddit
@@ -500,41 +495,23 @@ function formatUserReports(searchResults) {
     const topRedditPosts = searchResults.redditPosts
       .filter(post => post.score > 0) // רק פוסטים עם ציון חיובי
       .sort((a, b) => (b.relevance * b.score) - (a.relevance * a.score))
-      .slice(0, 20); // 20 דיווחים מ-Reddit
+      .slice(0, 5); // מגבלת slice מקורית - 5 דיווחים מ-Reddit
     
     topRedditPosts.forEach(post => {
       const sentimentEmoji = getSentimentEmoji(post.sentiment);
-      reports += `• ${sentimentEmoji} <b>"${post.title}"</b>\n`; // ללא קיצור כותרת
+      reports += `• ${sentimentEmoji} <b>"${truncateText(post.title, 60)}"</b>\n`; // מגבלת אורך מקורית
       
-      // הצגת דיווחי משתמשים אמיתיים אם יש
+      // הצגת דיווח משתמש פשוט
       if (post.userReports && post.userReports.length > 0) {
-        const realUserReports = post.userReports.filter(report => {
-          const isGeneric = report.content.includes('דיונים קהילתיים') || 
-                           report.content.includes('discussions about') ||
-                           report.content.length < 30 ||
-                           report.isPlaceholder === true;
-          return !isGeneric;
-        });
-        
-        if (realUserReports.length > 0) {
-          reports += `  <b>דיווחי משתמשים:</b>\n`;
-          realUserReports.slice(0, 2).forEach(userReport => {
-            const userSentimentEmoji = getSentimentEmoji(userReport.sentiment);
-            let reportText = `    ${userSentimentEmoji} <i>"${userReport.content}"</i>`;
-            
-            // הוספת סימון תרגום אם רלוונטי
-            if (userReport.originalContent && userReport.originalContent !== userReport.content) {
-              reportText += ` <i>(מתורגם)</i>`;
-            }
-            
-            reports += reportText + `\n`;
-          });
+        const report = post.userReports[0]; // רק דיווח אחד
+        if (report.content && report.content.length >= 20) {
+          reports += `  📝 ${truncateText(report.content, 80)}\n`; // מגבלת אורך מקורית
         }
       } else if (post.selftext && post.selftext.trim().length > 0) {
-        // אם אין userReports, השתמש ב-selftext המקורי
-        const cleanedText = cleanText(post.selftext);
+        // אם אין userReports, השתמש ב-selftext המקורי עם מגבלת אורך
+        const cleanedText = truncateText(cleanText(post.selftext), 100); // מגבלת אורך מקורית
         if (cleanedText.length > 0) {
-          reports += `  📝 ${cleanedText}\n`; // ללא קיצור תוכן
+          reports += `  📝 ${cleanedText}\n`;
         }
       }
       
@@ -546,48 +523,27 @@ function formatUserReports(searchResults) {
   if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
     reports += `🔸 <b>מפורומים טכניים:</b>\n`;
     
-    searchResults.forumDiscussions.slice(0, 20).forEach(discussion => { // 20 דיווחים מפורומים
-      reports += `• <b>${discussion.title}</b>\n`; // ללא קיצור כותרת
+    searchResults.forumDiscussions.slice(0, 5).forEach(discussion => { // מגבלת slice מקורית - 5 דיווחים מפורומים
+      reports += `• <b>${truncateText(discussion.title, 60)}</b>\n`; // מגבלת אורך מקורית לכותרת
       reports += `  📍 ${discussion.source}\n`;
       
-      // הוספת דיווחי המשתמשים הספציפיים - רק אם הם אמיתיים
+      // הוספת דיווחי המשתמשים הספציפיים - גרסה פשוטה
       if (discussion.userReports && discussion.userReports.length > 0) {
-        // סינון דיווחים אמיתיים (לא גנריים)
-        const realUserReports = discussion.userReports.filter(report => {
-          // בדיקה שהדיווח לא גנרי
-          const isGeneric = report.content.includes('דיונים קהילתיים') || 
-                           report.content.includes('מאמרים וביקורות') ||
-                           report.content.includes('discussions about') ||
-                           report.content.length < 30 ||
-                           report.isPlaceholder === true;
-          
-          return !isGeneric;
-        });
+        // סינון פשוט - רק לפי אורך מינימלי
+        const validReports = discussion.userReports.filter(report => 
+          report.content && report.content.length >= 20 && report.content.length <= 120
+        );
         
-        if (realUserReports.length > 0) {
-          reports += `  <b>דיווחי משתמשים:</b>\n`;
-          realUserReports.slice(0, 2).forEach(userReport => { // עד 2 דיווחים אמיתיים
-            const sentimentEmoji = getSentimentEmoji(userReport.sentiment);
-            reports += `    ${sentimentEmoji} <i>"${userReport.content}"</i>\n`; // ללא קיצור תוכן
-            if (userReport.author && !userReport.author.includes('Editorial')) {
-              reports += `    👤 ${userReport.author}`;
-              if (userReport.date && !userReport.isExtracted) {
-                reports += ` | ${timeAgo(userReport.date)}`;
-              }
-              // הוספת סימון אם הדיווח תורגם
-              if (userReport.originalContent && userReport.originalContent !== userReport.content) {
-                reports += ` | מתורגם`;
-              }
-              reports += `\n`;
-            }
-          });
+        if (validReports.length > 0) {
+          reports += `  <b>דיווח משתמש:</b>\n`;
+          const report = validReports[0]; // רק דיווח אחד
+          const sentimentEmoji = getSentimentEmoji(report.sentiment);
+          reports += `    ${sentimentEmoji} <i>"${truncateText(report.content, 80)}"</i>\n`; // מגבלת אורך מקורית
         } else {
-          // אם אין דיווחים אמיתיים, נציין זאת
-          reports += `  <i>לא נמצאו דיווחי משתמשים ספציפיים</i>\n`;
+          reports += `  <i>אין דיווחי משתמשים</i>\n`;
         }
       } else {
-        // אם אין userReports בכלל
-        reports += `  <i>לא נמצאו דיווחי משתמשים ספציפיים</i>\n`;
+        reports += `  <i>אין דיווחי משתמשים</i>\n`;
       }
       
       reports += `  🔗 <a href="${discussion.url}">קרא עוד</a>\n\n`;
@@ -674,127 +630,62 @@ function splitLongMessage(message) {
   return messages;
 }
 
-// פיצול דיווחי משתמשים לחלקים קטנים יותר
+// פיצול דיווחי משתמשים לחלקים קטנים יותר - גרסה פשוטה
 function splitUserReports(searchResults) {
   try {
-    console.log('🔍 splitUserReports called with:', {
-      hasForums: !!searchResults?.forumDiscussions,
-      forumsLength: searchResults?.forumDiscussions?.length || 0,
-      hasReddit: !!searchResults?.redditPosts,
-      redditLength: searchResults?.redditPosts?.length || 0
-    });
+    // גרסה פשוטה - פשוט מחזיר דיווח אחד קצר
+    if (!searchResults || (!searchResults.forumDiscussions && !searchResults.redditPosts)) {
+      return [];
+    }
     
-    const reportSections = [];
+    let content = '<b>👥 דיווחי משתמשים</b>\n\n';
+    let hasContent = false;
     
-    // יצירת דיווחי משתמשים מפורמטים בסגנון הנכון
-    let userReportsContent = '<b>👥 דיווחי משתמשים - פורומים טכניים</b>\n\n';
-  
-  // דיווחים מפורומים
-  if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
-    // מיון הדיווחים לפי מקור
-    const reportsBySource = {};
-    searchResults.forumDiscussions.forEach(discussion => {
-      const source = discussion.source || 'פורום כללי';
-      if (!reportsBySource[source]) {
-        reportsBySource[source] = [];
-      }
-      reportsBySource[source].push(discussion);
-    });
-    
-    // עיצוב הדיווחים לפי מקור
-    Object.keys(reportsBySource).forEach(source => {
-      const discussions = reportsBySource[source];
-      userReportsContent += `• <b>${discussions[0].title || 'samsung galaxy a54 אנדרואיד 15'}</b>\n`;
-      userReportsContent += `  📍 ${source}\n`;
-      userReportsContent += `  דיווחי משתמשים:\n`;
+    // דיווח אחד מפורומים
+    if (searchResults.forumDiscussions && searchResults.forumDiscussions.length > 0) {
+      const discussion = searchResults.forumDiscussions[0];
+      content += `• <b>${truncateText(discussion.title || 'דיון טכני', 50)}</b>\n`;
+      content += `  📍 ${discussion.source || 'פורום טכני'}\n`;
       
-      // הוספת דיווחי משתמשים (עד 8 דיווחים)
-      let reportCount = 0;
-      discussions.forEach(discussion => {
-        // בדיקה אם יש userReports אמיתיים
-        if (discussion.userReports && discussion.userReports.length > 0 && reportCount < 8) {
-          // סינון דיווחים אמיתיים בלבד
-          const realReports = discussion.userReports.filter(report => {
-            const isGeneric = report.content.includes('דיונים קהילתיים') || 
-                             report.content.includes('מאמרים וביקורות') ||
-                             report.content.includes('discussions about') ||
-                             report.content.length < 30 ||
-                             report.isPlaceholder === true;
-            return !isGeneric;
-          });
-          
-          if (realReports.length > 0) {
-            realReports.slice(0, 3).forEach(report => {
-              if (reportCount < 8) {
-                const sentimentEmoji = getSentimentEmoji(report.sentiment);
-                let reportText = `    ${sentimentEmoji} "${report.content}"`;
-                
-                // הוספת סימון תרגום אם רלוונטי
-                if (report.originalContent && report.originalContent !== report.content) {
-                  reportText += ` (מתורגם)`;
-                }
-                
-                userReportsContent += reportText + `\n`;
-                reportCount++;
-              }
-            });
-          } else if (discussion.snippet && reportCount < 8 && discussion.snippet.length > 30) {
-            // אם אין userReports אמיתיים, השתמש ב-snippet רק אם הוא משמעותי
-            const sentimentEmoji = '😐';
-            userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
-            reportCount++;
-          }
-        } else if (discussion.snippet && reportCount < 8 && discussion.snippet.length > 30) {
-          // אם אין userReports, השתמש ב-snippet רק אם הוא משמעותי
-          const sentimentEmoji = '😐';
-          userReportsContent += `    ${sentimentEmoji} "${discussion.snippet}"\n`;
-          reportCount++;
+      if (discussion.userReports && discussion.userReports.length > 0) {
+        const report = discussion.userReports[0];
+        if (report.content && report.content.length >= 20) {
+          content += `  💬 "${truncateText(report.content, 100)}"\n`;
+          hasContent = true;
         }
-      });
-      
-      userReportsContent += `  🔗 קרא עוד\n\n`;
-    });
-  }
-  
-  // דיווחים מ-Reddit (אם יש)
-  if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
-    userReportsContent += `• <b>דיווחי משתמשים נוספים</b>\n`;
-    userReportsContent += `  📍 Android Police\n`;
-    userReportsContent += `  דיווחי משתמשים:\n`;
-    
-    let reportCount = 0;
-    searchResults.redditPosts.forEach(post => {
-      if (post.userReports && post.userReports.length > 0 && reportCount < 4) {
-        post.userReports.slice(0, 2).forEach(report => {
-          if (reportCount < 4) {
-            const sentimentEmoji = getSentimentEmoji(report.sentiment);
-            userReportsContent += `    ${sentimentEmoji} "${report.content}"\n`;
-            reportCount++;
-          }
-        });
       }
-    });
+      content += '\n';
+    }
     
-    userReportsContent += `\n`;
-  }
-
-  // אם יש תוכן משמעותי, הוסף לסעיפים
-  if (userReportsContent.length > 200) {
-    reportSections.push({
-      title: '👥 דיווחי משתמשים - פורומים טכניים',
-      content: userReportsContent
-    });
-  } else {
-    console.log('ℹ️  No meaningful user reports found, skipping user reports section');
+    // דיווח אחד מ-Reddit
+    if (searchResults.redditPosts && searchResults.redditPosts.length > 0) {
+      const post = searchResults.redditPosts[0];
+      content += `• <b>${truncateText(post.title || 'דיון ברדיט', 50)}</b>\n`;
+      content += `  📍 Reddit\n`;
+      
+      if (post.userReports && post.userReports.length > 0) {
+        const report = post.userReports[0];
+        if (report.content && report.content.length >= 20) {
+          content += `  💬 "${truncateText(report.content, 100)}"\n`;
+          hasContent = true;
+        }
+      } else if (post.selftext && post.selftext.length > 20) {
+        content += `  💬 "${truncateText(post.selftext, 100)}"\n`;
+        hasContent = true;
+      }
+    }
+    
+    if (hasContent) {
+      return [{
+        title: '👥 דיווחי משתמשים',
+        content: content
+      }];
+    }
+    
     return [];
-  }
-
-    // החזרת כל החלקים - ללא הגבלה, נפצל להודעות נפרדות
-    console.log(`📊 Found ${reportSections.length} user report sections, will send as separate messages`);
-    return reportSections;
   } catch (error) {
     console.error('❌ Error in splitUserReports:', error);
-    return []; // החזר מערך ריק במקרה של שגיאה
+    return [];
   }
 }
 
