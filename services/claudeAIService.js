@@ -40,7 +40,8 @@ ${contentForAnalysis}
 
   try {
     const response = await anthropic.messages.create({
-      model: "claude-3-haiku-20240307",
+      // --- THIS IS THE FIX YOU CORRECTLY IDENTIFIED ---
+      model: "claude-3-5-sonnet-20240620", 
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });
@@ -55,10 +56,8 @@ ${contentForAnalysis}
 
   } catch (error) {
     console.error("❌ Error calling Claude API:", error);
-    // Return a user-friendly message instead of throwing an error that crashes the bot
     return "הייתה בעיה בניתוח המידע מול שירות הבינה המלאכותית. נסו שוב בעוד מספר דקות.";
   }
 }
 
-// This is the corrected export. It makes the function available to other files.
 module.exports = { analyzeTextWithClaude };
