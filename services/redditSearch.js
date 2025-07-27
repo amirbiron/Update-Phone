@@ -4,6 +4,7 @@ let accessToken = null;
 let tokenExpiresAt = 0;
 
 async function getRedditAccessToken() {
+    // ... (This function remains unchanged)
     const clientId = process.env.REDDIT_CLIENT_ID;
     const clientSecret = process.env.REDDIT_CLIENT_SECRET;
 
@@ -41,24 +42,24 @@ async function searchReddit(query) {
     try {
         const token = await getRedditAccessToken();
         const url = `https://oauth.reddit.com/search.json`;
-        const focusedQuery = `"${query}" update OR oneui OR android`;
+        // שאילתה מאוזנת לרדיט
+        const focusedQuery = `"${query}" (update OR oneui OR android OR experience OR issue)`;
 
         const params = {
             q: focusedQuery,
-            limit: 20,
+            limit: 12, // בקשת 12 תוצאות כפי שביקשת
             sort: 'relevance',
             t: 'all',
             restrict_sr: false
         };
 
-        console.log(`Searching Reddit with focused query: ${focusedQuery}`);
+        console.log(`Searching Reddit with balanced query: ${focusedQuery}`);
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${token}` },
             params
         });
 
         if (response.data && response.data.data && response.data.data.children) {
-            // החזרת אובייקט מובנה
             return response.data.data.children
                 .map(post => ({
                     title: post.data.title,
