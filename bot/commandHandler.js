@@ -1,23 +1,18 @@
 const User = require('../models/user');
 const { searchGoogle } = require('../services/googleSearch');
 const { searchReddit } = require('../services/redditSearch');
-const { analyzeDeviceData, extractDeviceName } = require('../services/claudeAIService');
+const { analyzeDeviceData } = require('../services/claudeAIService');
 
 async function findOrCreateUser(msg) {
     const { id: chatId, username } = msg.chat;
     let user = await User.findOne({ chatId });
-
-    if (!user) {
-        user = new User({ chatId, username });
-    }
-    
+    if (!user) user = new User({ chatId, username });
     user.resetQueriesIfNeeded();
     await user.save();
     return user;
 }
 
 function splitMessage(text, maxLength = 4096) {
-    // ... (This function remains unchanged)
     const chunks = [];
     if (!text) return chunks;
     let currentChunk = '';
@@ -29,9 +24,7 @@ function splitMessage(text, maxLength = 4096) {
         }
         currentChunk += line + '\n';
     }
-    if (currentChunk) {
-        chunks.push(currentChunk);
-    }
+    if (currentChunk) chunks.push(currentChunk);
     return chunks;
 }
 
@@ -45,65 +38,44 @@ async function handleStart(bot, msg) {
 אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
 
 📱 *איך זה עובד:*
-1. שלחו לי שאלה חופשית על המכשיר והעדכון.
-2. אני אנתח את שאלתכם ואחפש דיווחים עדכניים.
+1. שלחו לי שאלה על המכשיר והעדכון.
+2. אני אנתח דיווחים עדכניים מהרשת.
 3. אתן לכם המלצה מפורטת ומבוססת נתונים.
-4. 👥 אציג לכם ציטוטים וקישורים למקורות!
-
-⭐ *מה מיוחד בבוט:*
-• ניתוח מבוסס AI של דיווחים מפורומים ומרדיט.
-• ציטוטים ישירים מחוות דעת של משתמשים אחרים.
-• קישורים למקורות כדי שתוכלו לקרוא עוד.
 
 💬 *דוגמאות לשאלות:*
-• "כדאי לעדכן את ה-Galaxy S23 ל-One UI 6.1?"
-• "מה המצב עם אנדרואיד 15 ב-Pixel 8?"
-• "A54 עדכון חדש"
-
-🔢 *הגבלות שימוש:*
-• כל משתמש זכאי ל-30 שאילתות בחודש.
-• המכסה מתאפסת אוטומטית בתחילת כל חודש.
-
-📞 *פקודות נוספות:*
-/start - הודעת פתיחה ויתרת שאילתות
+• "Galaxy S24 Android 15 feedback"
+• "Pixel 8 update experience"
+• "מה דעתכם על העדכון ל-A54?"
 
 בואו נתחיל! שאלו אותי על העדכון שלכם 🚀
     `;
     bot.sendMessage(user.chatId, welcomeMessage, { parse_mode: 'Markdown' });
 }
 
-async function handleDeviceCommand(bot, msg, match) {
+async function handleDeviceQuery(bot, msg) {
     const chatId = msg.chat.id;
-    const userQuery = match[1].trim(); // השאילתה המלאה של המשתמש
+    const userQuery = msg.text.trim();
+
+    // התעלם מפקודות ידועות
+    if (userQuery.startsWith('/')) return;
 
     try {
         const user = await findOrCreateUser(msg);
-
         if (user.queriesLeft <= 0) {
             bot.sendMessage(chatId, "מצטער, ניצלת את כל השאילתות שלך לחודש זה.");
             return;
         }
 
-        bot.sendMessage(chatId, `קיבלתי. מנתח את שאלתך ומכין דוח עבור *"${userQuery}"*... 🕵️\nזה עשוי לקחת דקה או שתיים, תודה על הסבלנות.`, { parse_mode: 'Markdown' });
-
-        // --- שלב 1: חילוץ שם המכשיר באמצעות AI ---
-        const deviceName = await extractDeviceName(userQuery);
-        if (!deviceName) {
-            bot.sendMessage(chatId, "לא הצלחתי להבין על איזה מכשיר שאלת. אנא נסה לנסח את השאלה בצורה ברורה יותר, למשל: 'עדכון ל-Galaxy S24'.");
-            return;
-        }
-        console.log(`Extracted device name: "${deviceName}" from query: "${userQuery}"`);
-        bot.sendMessage(chatId, `מבצע חיפוש עבור: *${deviceName}*`, { parse_mode: 'Markdown' });
-
-        // --- שלב 2: חיפוש מידע עם שם המכשיר הנקי ---
+        bot.sendMessage(chatId, `קיבלתי. מחפש מידע עדכני עבור *"${userQuery}"*... 🕵️\nזה עשוי לקחת רגע.`, { parse_mode: 'Markdown' });
+        
         const [googleResults, redditResults] = await Promise.all([
-            searchGoogle(deviceName, userQuery), // שלח גם את השאילתה המקורית למיקוד
-            searchReddit(deviceName, userQuery)
+            searchGoogle(userQuery),
+            searchReddit(userQuery)
         ]);
+        
         console.log(`Found ${googleResults.length} Google results and ${redditResults.length} Reddit results.`);
 
-        // --- שלב 3: ניתוח סופי והפקדת דוח ---
-        const analysis = await analyzeDeviceData(deviceName, googleResults, redditResults);
+        const analysis = await analyzeDeviceData(userQuery, googleResults, redditResults);
 
         const separator = '---- מפוצל ל2 הודעות----';
         const parts = analysis.split(separator);
@@ -120,7 +92,6 @@ async function handleDeviceCommand(bot, msg, match) {
         
         user.queriesLeft -= 1;
         await user.save();
-
         await bot.sendMessage(chatId, `✅ דוח הושלם. נותרו לך *${user.queriesLeft}* שאילתות לחודש זה.`, { parse_mode: 'Markdown' });
 
     } catch (error) {
@@ -131,5 +102,5 @@ async function handleDeviceCommand(bot, msg, match) {
 
 module.exports = {
     handleStart,
-    handleDeviceCommand,
+    handleDeviceQuery,
 };
