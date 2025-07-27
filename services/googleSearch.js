@@ -10,50 +10,78 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 /**
- * Executes the definitive, language-corrected search query.
- * @param {string} userQuery - The user's query, potentially in Hebrew.
- * @returns {Promise<Array<object>>} A list of relevant search results.
+ * Extracts the specific device model from the user query.
+ * E.g., "samsung galaxy a54 android 15" -> "a54"
+ * @param {string} query The user query.
+ * @returns {string|null} The extracted model or null.
+ */
+function extractModelFromQuery(query) {
+    const lowerCaseQuery = query.toLowerCase();
+    // Find a word that contains both letters and numbers, a common pattern for device models.
+    const words = lowerCaseQuery.split(' ');
+    const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
+    return model || null;
+}
+
+/**
+ * Fetches up to 30 results using pagination and performs strict filtering.
+ * @param {string} userQuery - The user's query.
+ * @returns {Promise<Array<object>>} A large, filtered list of relevant search results.
  */
 async function searchGoogle(userQuery) {
-    // --- THE REAL FIX: TRANSLATE HEBREW TO ENGLISH ---
-    // The bug was searching for Hebrew words ("אנדרואיד") while demanding English-only results (lr: 'lang_en').
-    // This created a contradiction. The solution is to search for English terms in English pages.
-    const englishQuery = userQuery
-        .replace(/אנדרואיד/g, 'Android')
-        .replace(/\?/g, '');
-
+    const englishQuery = userQuery.replace(/אנדרואיד/g, 'Android').replace(/\?/g, '');
     const finalQuery = `${englishQuery} review feedback experience thoughts issues problems bugs after update`;
+    
+    const model = extractModelFromQuery(englishQuery);
+    if (!model) {
+        console.warn("Could not extract a specific model from the query for filtering. Results may be less focused.");
+    }
 
-    console.log(`🔎 Executing TRANSLATED search: "${finalQuery}"`);
+    console.log(`🚀 Initiating paginated search for up to 30 results...`);
 
-    try {
-        const response = await axios.get(googleApiUrl, {
+    const searchPromises = [1, 11, 21].map(start => {
+        return axios.get(googleApiUrl, {
             params: {
                 key: GOOGLE_API_KEY,
                 cx: GOOGLE_CSE_ID,
                 q: finalQuery,
                 num: 10,
+                start: start,
                 dateRestrict: 'm3',
                 lr: 'lang_en'
             }
         });
+    });
 
-        if (response.data.items && response.data.items.length > 0) {
-            const results = response.data.items.map(item => ({
-                title: item.title,
-                link: item.link,
-                snippet: item.snippet
-            }));
-            console.log(`✅ Google Search: Found ${results.length} relevant English results.`);
-            return results;
-        } else {
-            console.log('⚠️ Google Search: No relevant results found in the last 3 months.');
-            return [];
-        }
+    try {
+        const responses = await Promise.all(searchPromises);
+        let allResults = [];
+        responses.forEach(response => {
+            if (response.data.items) {
+                allResults = allResults.concat(response.data.items);
+            }
+        });
+
+        console.log(`✅ Collected ${allResults.length} raw results from Google.`);
+
+        if (!model) return allResults.map(item => ({ title: item.title, link: item.link, snippet: item.snippet }));
+
+        // Strict filtering based on the extracted model
+        const filteredResults = allResults.filter(item => 
+            item.title && item.title.toLowerCase().includes(model)
+        );
+
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}".`);
+
+        return filteredResults.map(item => ({
+            title: item.title,
+            link: item.link,
+            snippet: item.snippet
+        }));
 
     } catch (error) {
         const errorDetails = error.response ? JSON.stringify(error.response.data, null, 2) : error.message;
-        console.error('❌ Error fetching Google Search results:', errorDetails);
+        console.error('❌ Error during paginated Google Search:', errorDetails);
         return [];
     }
 }
