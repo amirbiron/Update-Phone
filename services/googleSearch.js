@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-async function searchGoogle(deviceName, originalQuery) {
+async function searchGoogle(userQuery) {
     console.log("▶️ Google Search: Initializing search...");
     const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
     const engineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
@@ -10,19 +10,21 @@ async function searchGoogle(deviceName, originalQuery) {
         return [];
     }
 
-    // שאילתה פשוטה ויעילה יותר: שם המכשיר + השאילתה המקורית + מילות מפתח
-    const focusedQuery = `"${deviceName}" ${originalQuery} update review issues battery`;
+    // שאילתה מאוזנת המבוססת על העקרונות הנכונים
+    const balancedQuery = `${userQuery} update feedback experience review thoughts user reports`;
 
     const url = `https://www.googleapis.com/customsearch/v1`;
     const params = {
         key: apiKey,
         cx: engineId,
-        q: focusedQuery,
-        num: 10
+        q: balancedQuery,
+        num: 10,
+        dateRestrict: 'm6', // הגבלת החיפוש לחצי השנה האחרונה
+        lr: 'lang_en|lang_he' // העדפה לאנגלית ועברית
     };
 
     try {
-        console.log(`🔍 Google Search: Searching with simplified query: ${focusedQuery}`);
+        console.log(`🔍 Google Search: Searching with balanced query: ${balancedQuery}`);
         const response = await axios.get(url, { params });
         const resultsCount = response.data.items ? response.data.items.length : 0;
         console.log(`✅ Google Search: Found ${resultsCount} results.`);
