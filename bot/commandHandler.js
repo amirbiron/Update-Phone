@@ -2,7 +2,8 @@ const User = require('../models/user');
 const { searchGoogle } = require('../services/googleSearch');
 const { searchReddit } = require('../services/redditSearch');
 const { analyzeDeviceData } = require('../services/claudeAIService');
-const { getSupportedModels } = require('../common/utils');
+
+// --- פונקציות עזר ---
 
 async function findOrCreateUser(msg) {
     const { id: chatId, username } = msg.chat;
@@ -17,21 +18,66 @@ async function findOrCreateUser(msg) {
     return user;
 }
 
+// פונקציה לפיצול הודעות ארוכות, למקרה שהדיווחים רבים מדי
+function splitMessage(text, maxLength = 4096) {
+    const chunks = [];
+    if (!text) return chunks;
+
+    let currentChunk = '';
+    const lines = text.split('\n');
+
+    for (const line of lines) {
+        if (currentChunk.length + line.length + 1 > maxLength) {
+            chunks.push(currentChunk);
+            currentChunk = '';
+        }
+        currentChunk += line + '\n';
+    }
+    if (currentChunk) {
+        chunks.push(currentChunk);
+    }
+    return chunks;
+}
+
+
+// --- טיפול בפקודות ---
+
 async function handleStart(bot, msg) {
     const user = await findOrCreateUser(msg);
     const welcomeMessage = `
-ברוך הבא לבוט ניתוח עדכוני מכשירים! 👋
-אני כאן כדי לעזור לך להחליט אם כדאי לעדכן את המכשיר שלך.
+🤖 ברוכים הבאים לבוט יועץ עדכוני אנדרואיד!
 
-השתמש בפקודה \`/device\` ואחריה שם הדגם.
-לדוגמה: \`/device Galaxy S24 Ultra\`
+📊 *שאילתות נותרות החודש: ${user.queriesLeft}/30*
 
-הבוט יאסוף דיווחי משתמשים עדכניים, ינתח אותם ויפיק דוח מפורט.
+אני כאן כדי לעזור לכם להחליט אם כדאי לעדכן את מכשיר האנדרואיד שלכם.
 
-*שים לב: השימוש מוגבל ל-30 שאילתות בחודש.*
-כרגע נותרו לך *${user.queriesLeft}* שאילתות.
+📱 *איך זה עובד:*
+1. שלחו לי את שם המכשיר וגרסת העדכון (אם ידועה).
+2. אני אבדוק דיווחי משתמשים עדכניים.
+3. אתן לכם המלצה מפורטת ומבוססת נתונים.
+4. 👥 אציג לכם ציטוטים וקישורים למקורות!
 
-בהצלחה!
+⭐ *מה מיוחד בבוט:*
+• ניתוח מבוסס AI של דיווחים מפורומים ומרדיט.
+• ציטוטים ישירים מחוות דעת של משתמשים אחרים.
+• קישורים למקורות כדי שתוכלו לקרוא עוד.
+• חיפוש מידע לכל דגם מכשיר!
+
+💬 *דוגמאות לשאלות:*
+• \`/device Galaxy S23 One UI 6.1\`
+• \`/device Pixel 8 android 14 issues\`
+• \`/device A54\`
+
+🔢 *הגבלות שימוש:*
+• כל משתמש זכאי ל-30 שאילתות בחודש.
+• המכסה מתאפסת אוטומטית בתחילת כל חודש.
+
+📞 *פקודות נוספות:*
+/start - הודעת פתיחה ויתרת שאילתות
+/help - עזרה (בקרוב)
+/status - סטטוס המערכת (בקרוב)
+
+בואו נתחיל! שאלו אותי על העדכון שלכם 🚀
     `;
     bot.sendMessage(user.chatId, welcomeMessage, { parse_mode: 'Markdown' });
 }
@@ -43,12 +89,13 @@ async function handleDeviceCommand(bot, msg, match) {
     try {
         const user = await findOrCreateUser(msg);
 
+        // בדיקת המגבלה - זה כבר היה קיים ועובד!
         if (user.queriesLeft <= 0) {
             bot.sendMessage(chatId, "מצטער, ניצלת את כל השאילתות שלך לחודש זה. המכסה תתאפס בתחילת החודש הבא.");
             return;
         }
 
-        bot.sendMessage(chatId, `קיבלתי. אוסף נתונים ומכין דוח ניתוח עדכונים עבור *${modelName}*... 🕵️\nזה עשוי לקחת דקה או שתיים.`, { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, `קיבלתי. אוסף נתונים ומכין דוח ניתוח עדכונים עבור *${modelName}*... 🕵️\nזה עשוי לקחת דקה או שתיים, תודה על הסבלנות.`, { parse_mode: 'Markdown' });
 
         console.log(`Starting update analysis for ${modelName}...`);
         const [googleResults, redditResults] = await Promise.all([
@@ -59,19 +106,21 @@ async function handleDeviceCommand(bot, msg, match) {
 
         const analysis = await analyzeDeviceData(modelName, googleResults, redditResults);
 
-        // לוגיקה חדשה לפיצול ההודעה
         const separator = '---- מפוצל ל2 הודעות----';
         const parts = analysis.split(separator);
 
         const mainReport = parts[0].trim();
-        await bot.sendMessage(chatId, mainReport);
+        await bot.sendMessage(chatId, mainReport, { parse_mode: 'Markdown' });
 
         if (parts.length > 1 && parts[1].trim()) {
-            const userReports = parts[1].trim();
-            // שליחת החלק השני ללא עיצוב מיוחד, כי העיצוב כבר בטקסט
-            await bot.sendMessage(chatId, userReports, { parse_mode: 'HTML' }); // שימוש ב-HTML מאפשר גמישות רבה יותר עם קישורים
+            const userReportsPart = parts[1].trim();
+            // פיצול חלק דיווחי המשתמשים אם הוא ארוך מדי
+            const reportChunks = splitMessage(userReportsPart);
+            for (const chunk of reportChunks) {
+                await bot.sendMessage(chatId, chunk, { parse_mode: 'Markdown', disable_web_page_preview: true });
+            }
         }
-
+        
         user.queriesLeft -= 1;
         await user.save();
 
