@@ -10,25 +10,18 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 /**
- * Executes a single, powerful search query across all desired sites.
- * @param {string} query - The user's clean query (e.g., "Galaxy A54 Android 15").
+ * Executes a clean, balanced search query, relying COMPLETELY on the user's CSE configuration.
+ * @param {string} query - The user's query.
  * @returns {Promise<Array<object>>} A list of relevant search results.
  */
-async function searchGoogle(query) {
-    // Combine all desired sites into one powerful "OR" operator
-    const targetSites = [
-        'site:reddit.com',
-        'site:xda-developers.com',
-        'site:androidpolice.com',
-        'site:androidcentral.com',
-        'site:sammobile.com',
-        'site:gsmarena.com' // Added another popular site for good measure
-    ].join(' OR ');
+async function searchGoogle(userQuery) {
+    // 1. Clean the user's query from problematic characters like '?'
+    const cleanedQuery = userQuery.replace(/\?/g, '');
 
-    // Create the final, balanced query
-    const finalQuery = `${query} review feedback experience user reports thoughts (${targetSites})`;
+    // 2. Create the balanced search term, without any 'site:' operators.
+    const finalQuery = `${cleanedQuery} review feedback experience user reports thoughts`;
 
-    console.log(`🔎 Executing single, powerful search: "${finalQuery}"`);
+    console.log(`🔎 Executing CLEAN search, trusting the CSE config: "${finalQuery}"`);
 
     try {
         const response = await axios.get(googleApiUrl, {
@@ -36,8 +29,7 @@ async function searchGoogle(query) {
                 key: GOOGLE_API_KEY,
                 cx: GOOGLE_CSE_ID,
                 q: finalQuery,
-                num: 10, // Get the max number of results
-                dateRestrict: 'm3', // Limit to the last 3 months
+                num: 10, // Request the maximum allowed results.
             }
         });
 
@@ -47,10 +39,10 @@ async function searchGoogle(query) {
                 link: item.link,
                 snippet: item.snippet
             }));
-            console.log(`✅ Google Search: Found ${results.length} results from a single powerful query.`);
+            console.log(`✅ Google Search: Found ${results.length} results by trusting the CSE.`);
             return results;
         } else {
-            console.log('⚠️ Google Search: No results found for the combined query.');
+            console.log('⚠️ Google Search: No results found. Check your CSE configuration and the query.');
             return [];
         }
 
