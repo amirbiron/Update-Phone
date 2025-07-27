@@ -39,13 +39,13 @@ async function analyzeTextWithClaude(query, searchResults) {
   const prompt = `You are an expert technology analyst specializing in Android device updates. Your task is to analyze search results for the query: "${query}" and provide a comprehensive Hebrew report.
 
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
-1. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
-2. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-3. **QUOTE FORMAT:** Use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
-4. **NO FORCED NUMBERS:** If you find only 3 positive quotes and 7 negative quotes, report exactly that. Do not try to balance or reach specific numbers.
-5. **BE HONEST ABOUT LIMITATIONS:** If there's insufficient data, clearly state that in your analysis.
-6. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
-7. **TRANSPARENCY:** If search results are limited or unclear, mention this in your recommendation.
+1. **TARGET 20 REAL QUOTES:** Try to find up to 20 actual user quotes from the search results (aim for 10 positive + 10 negative if possible).
+2. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
+3. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
+4. **QUOTE FORMAT:** Use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+5. **BE HONEST ABOUT ACTUAL NUMBERS:** If you find only 7 positive quotes and 5 negative quotes, report exactly that. State clearly how many you actually found.
+6. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the target of 10 per category.
+7. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
 8. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
 
 **SEARCH RESULTS TO ANALYZE:**
@@ -67,22 +67,26 @@ Provide your analysis in Hebrew using this EXACT format:
 **הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. אם לא נמצאו מספיק דיווחים, יוצגו רק אלה שנמצאו בפועל.
 
 ### ✅ **חוויות חיוביות**
-*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים חיוביים ספציפיים בתוצאות החיפוש". 
+*חפש עד 10 ציטוטים חיוביים אמיתיים מתוצאות החיפוש. אם מצאת פחות - כתוב בסוף הסעיף כמה בפועל נמצאו.*
 
 פורמט לכל ציטוט:
-**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]*
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
 דוגמה:
 **משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
 
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים מתוך יעד של 10*
+
 ### ❌ **חוויות שליליות**
-*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים שליליים ספציפיים בתוצאות החיפוש".
+*חפש עד 10 ציטוטים שליליים אמיתיים מתוצאות החיפוש. אם מצאת פחות - כתוב בסוף הסעיף כמה בפועל נמצאו.*
 
 פורמט לכל ציטוט:
-**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]*
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
 דוגמה:
 **משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
+
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים מתוך יעד של 10*
 
 ---
 
@@ -120,8 +124,9 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 📈 **סיכום נתונים**
 - **סה"כ מקורות נותחו:** ${searchResults.length}
-- **דיווחים חיוביים שנמצאו:** [מספר אמיתי]
-- **דיווחים שליליים שנמצאו:** [מספר אמיתי]
+- **דיווחים חיוביים שנמצאו:** [מספר אמיתי] מתוך יעד של 10
+- **דיווחים שליליים שנמצאו:** [מספר אמיתי] מתוך יעד של 10
+- **סה"כ ציטוטים אמיתיים:** [סכום] מתוך יעד של 20
 - **אמינות הניתוח:** גבוהה/בינונית/נמוכה (בהתאם לכמות ואיכות הנתונים)
 
 ---
