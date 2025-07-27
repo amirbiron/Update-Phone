@@ -1,10 +1,9 @@
 const axios = require('axios');
 
+// ... (getRedditAccessToken function remains unchanged)
 let accessToken = null;
 let tokenExpiresAt = 0;
-
 async function getRedditAccessToken() {
-    // ... (This function remains unchanged)
     const clientId = process.env.REDDIT_CLIENT_ID;
     const clientSecret = process.env.REDDIT_CLIENT_SECRET;
     if (!clientId || !clientSecret) throw new Error('Reddit API credentials are not defined.');
@@ -23,37 +22,35 @@ async function getRedditAccessToken() {
     }
 }
 
-async function searchReddit(deviceName, originalQuery) {
+
+async function searchReddit(userQuery) {
     console.log("▶️ Reddit Search: Initializing search...");
     try {
         const token = await getRedditAccessToken();
         const url = `https://oauth.reddit.com/search.json`;
         
-        // שאילתה פשוטה ויעילה לרדיט
-        const focusedQuery = `"${deviceName}" ${originalQuery.replace(/"/g, '')} (update OR oneui OR issue OR battery)`;
+        const balancedQuery = `${userQuery} (feedback OR experience OR review OR thoughts)`;
 
         const params = {
-            q: focusedQuery,
-            limit: 12,
+            q: balancedQuery,
+            limit: 15,
             sort: 'relevance',
-            t: 'year', // חפש בשנה האחרונה כדי לקבל תוצאות רלוונטיות יותר
+            t: 'year',
             restrict_sr: false
         };
 
-        console.log(`🔍 Reddit Search: Searching with simplified query: ${focusedQuery}`);
+        console.log(`🔍 Reddit Search: Searching with balanced query: ${balancedQuery}`);
         const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` }, params });
         const resultsCount = response.data?.data?.children?.length || 0;
         console.log(`✅ Reddit Search: Found ${resultsCount} results.`);
 
         if (resultsCount > 0) {
-            return response.data.data.children
-                .map(post => ({
-                    title: post.data.title,
-                    link: `https://www.reddit.com${post.data.permalink}`,
-                    text: post.data.selftext || '',
-                    source: `Reddit (r/${post.data.subreddit})`
-                }))
-                .filter(item => item.title || item.text);
+            return response.data.data.children.map(post => ({
+                title: post.data.title,
+                link: `https://www.reddit.com${post.data.permalink}`,
+                text: post.data.selftext || '',
+                source: `Reddit (r/${post.data.subreddit})`
+            })).filter(item => item.title || item.text);
         }
         return [];
     } catch (error) {
