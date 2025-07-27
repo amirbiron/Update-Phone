@@ -12,52 +12,49 @@ const anthropic = new Anthropic({
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Analyzes search results by categorizing ALL findings, based on the user's "show me everything" philosophy.
+ * Analyzes a curated sample of search results with a highly refined and decisive prompt.
  * @param {string} query - The original user query.
- * @param {Array<object>} searchResults - The array of search results from Google.
- * @returns {Promise<string>} The detailed analysis from Claude.
+ * @param {Array<object>} searchResults - The array of 10 search results from Google.
+ * @returns {Promise<string>} The detailed and decisive analysis from Claude.
  */
 async function analyzeTextWithClaude(query, searchResults) {
   const contentForAnalysis = searchResults
     .map((item, index) => `Result #${index + 1}\nTitle: ${item.title}\nSnippet: ${item.snippet}\nLink: ${item.link}`)
     .join('\n\n---\n\n');
 
-  // New prompt based on the "validation through repetition" philosophy.
-  const prompt = `You are a meticulous tech analyst. Your task is to analyze the following user search results for the query: "${query}".
-Your analysis MUST focus exclusively on the specific device model from the query.
+  // V3 Prompt: Be decisive, analyze the sample, and provide translated evidence.
+  const prompt = `You are a decisive tech analyst. Your task is to analyze this curated sample of the 10 most relevant search results for the query: "${query}".
+Your entire analysis must be based ONLY on this provided sample. Do not apologize for the sample size or mention that information is "limited". Be confident in your analysis of the data you have.
 
-Your goal is to categorize EVERY relevant piece of information you find. Repetition is not noise; it is validation. Group similar reports together.
 Provide a detailed analysis in Hebrew, structured EXACTLY as follows:
 
-1.  **תמצית מנהלים:** A one-paragraph summary of the main themes found across all results.
+1.  **תמצית מנהלים:** A one-paragraph summary of the main themes found in the provided results.
 
 2.  **ממצאים מפורטים (Detailed Findings):**
-    *   **👍 דיווחים חיוביים (Positive Reports):** Create a bullet point for each positive theme (e.g., Performance, New Features). Under each bullet, list the titles of the results that support this theme.
+    *   **👍 דיווחים חיוביים (Positive Reports):** Group similar positive reports. For each theme, provide a bullet point with a direct quote or a specific summary translated into Hebrew.
         *   לדוגמה:
         *   **ביצועים משופרים:**
-            *   "Result #2: A54 feels snappier after update"
-            *   "Result #7: One UI 7 benchmark improvements"
-    *   **👎 דיווחים שליליים (Negative Reports):** Create a bullet point for each negative theme (e.g., Battery Drain, App Crashes). Under each bullet, list the titles of the results that support this theme.
+            *   "משתמש ב-Reddit מציין שהמכשיר מרגיש 'מהיר וחלק יותר באופן משמעותי' (מתוך תוצאה #2)."
+            *   "כתבה ב-XDA מדווחת על 'שיפור של 15% במבחני הביצועים' (מתוך תוצאה #7)."
+    *   **👎 דיווחים שליליים (Negative Reports):** Group similar negative reports. For each theme, provide a bullet point with a direct quote or a specific summary translated into Hebrew.
         *   לדוגמה:
         *   **צריכת סוללה מוגברת:**
-            *   "Result #1: My battery is draining so fast on A54 with Android 15"
-            *   "Result #4: A54 Battery life discussion thread"
-            *   "Result #9: Anyone else have bad battery after update?"
+            *   "משתמש מתלונן: 'הסוללה שלי נגמרת ב-30% מהר יותר אחרי העדכון' (מתוך תוצאה #1)."
+            *   "שרשור ב-Reddit מראה מספר משתמשים המאשרים 'בעיות סוללה חמורות' (מתוך תוצאה #4)."
 
-3.  **המלצה מבוססת נתונים (Data-Driven Recommendation):** Based on the *balance* of positive vs. negative reports you found, provide a clear "Yes", "No", or "Wait" recommendation. Justify it with the data (e.g., "Wait. While 2 reports praise performance, 4 separate reports indicate a significant battery drain issue.").
+3.  **המלצה מבוססת נתונים (Data-Driven Recommendation):** Based on the balance of positive vs. negative reports in the sample, provide a clear and decisive "מומלץ לעדכן", "לא מומלץ לעדכן", or "מומלץ להמתין". Justify your recommendation with the evidence you found.
 
-Do not invent information. Your entire analysis must be based ONLY on the provided text.
-Here are the search results:\n---\n${contentForAnalysis}\n---`;
+Here are the 10 search results:\n---\n${contentForAnalysis}\n---`;
 
   const maxRetries = 3;
   let lastError = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Claude API call: Attempt #${attempt} with new "Show Everything" prompt.`);
+      console.log(`Claude API call: Attempt #${attempt} with new V3 Decisive Prompt.`);
       const response = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
-        max_tokens: 2500, // Increased tokens for the detailed, structured response
+        max_tokens: 2500,
         messages: [{ role: "user", content: prompt }],
       });
 
