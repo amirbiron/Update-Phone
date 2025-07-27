@@ -10,18 +10,15 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 /**
- * Executes a powerful, combined search query, trusting the user's CSE configuration.
+ * Executes the definitive, most precise search query.
  * @param {string} userQuery - The user's query.
  * @returns {Promise<Array<object>>} A list of relevant search results.
  */
 async function searchGoogle(userQuery) {
-    // 1. Clean the user's query from problematic characters like '?'
     const cleanedQuery = userQuery.replace(/\?/g, '');
-
-    // 2. --- YOUR IDEA --- Create the ultimate query combining neutral and problem-focused keywords.
     const finalQuery = `${cleanedQuery} review feedback experience thoughts issues problems bugs after update`;
 
-    console.log(`🔎 Executing ULTIMATE search query: "${finalQuery}"`);
+    console.log(`🔎 Executing DEFINITIVE search: "${finalQuery}"`);
 
     try {
         const response = await axios.get(googleApiUrl, {
@@ -29,7 +26,10 @@ async function searchGoogle(userQuery) {
                 key: GOOGLE_API_KEY,
                 cx: GOOGLE_CSE_ID,
                 q: finalQuery,
-                num: 10, // Request the maximum allowed results.
+                num: 10,
+                // --- YOUR SUGGESTIONS, FINALLY IMPLEMENTED CORRECTLY ---
+                dateRestrict: 'm3', // Results from the last 3 months
+                lr: 'lang_en'      // English language results only
             }
         });
 
@@ -39,10 +39,10 @@ async function searchGoogle(userQuery) {
                 link: item.link,
                 snippet: item.snippet
             }));
-            console.log(`✅ Google Search: Found ${results.length} results with the ultimate query.`);
+            console.log(`✅ Google Search: Found ${results.length} highly relevant results.`);
             return results;
         } else {
-            console.log('⚠️ Google Search: No results found. The query might be too specific for current search results.');
+            console.log('⚠️ Google Search: No relevant results found in the last 3 months.');
             return [];
         }
 
