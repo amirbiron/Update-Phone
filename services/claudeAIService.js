@@ -42,7 +42,9 @@ async function analyzeTextWithClaude(query, searchResults) {
 1. **TARGET 20 REAL QUOTES:** Try to find up to 20 actual user quotes from the search results (aim for 10 positive + 10 negative if possible).
 2. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
 3. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-4. **QUOTE FORMAT:** Use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+4. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+   - NO quote should appear without its corresponding link
+   - The link must be the exact URL from the search results provided
 5. **BE HONEST ABOUT ACTUAL NUMBERS:** If you find only 7 positive quotes and 5 negative quotes, report exactly that. State clearly how many you actually found.
 6. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the target of 10 per category.
 7. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
@@ -69,22 +71,26 @@ Provide your analysis in Hebrew using this EXACT format:
 ### ✅ **חוויות חיוביות**
 *חפש עד 10 ציטוטים חיוביים אמיתיים מתוצאות החיפוש. אם מצאת פחות - כתוב בסוף הסעיף כמה בפועל נמצאו.*
 
-פורמט לכל ציטוט:
+פורמט חובה לכל ציטוט (כולל קישור!):
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
 דוגמה:
 **משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
+
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
 
 *📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים מתוך יעד של 10*
 
 ### ❌ **חוויות שליליות**
 *חפש עד 10 ציטוטים שליליים אמיתיים מתוצאות החיפוש. אם מצאת פחות - כתוב בסוף הסעיף כמה בפועל נמצאו.*
 
-פורמט לכל ציטוט:
+פורמט חובה לכל ציטוט (כולל קישור!):
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
 דוגמה:
 **משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
+
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
 
 *📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים מתוך יעד של 10*
 
