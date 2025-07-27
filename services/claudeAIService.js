@@ -4,54 +4,31 @@ const anthropic = new Anthropic({
     apiKey: process.env.CLAUDE_API_KEY,
 });
 
-/**
- * Extracts a clean, searchable device name from a user's natural language query.
- * @param {string} userQuery - The user's full query.
- * @returns {Promise<string|null>} The clean device name or null if not found.
- */
 async function extractDeviceName(userQuery) {
+    // ... (This function remains unchanged)
     console.log("▶️ Claude AI (Extract): Initializing device name extraction...");
-    const model = 'claude-3-haiku-20240307'; // Use a fast model for this simple task
-
-    const prompt = `From the following user query, extract only the specific, clean, and searchable device model name.
-- Do not include the OS version (like "Android 15" or "One UI 6.1").
-- Do not include words like "update", "problems", "issue".
-- Return ONLY the device name. For example, for "what about android 15 on samsung a54", you should return "Samsung A54". For "pixel 8 pro", return "Google Pixel 8 Pro".
-
-User query: "${userQuery}"
-
-Extracted device name:`;
-
+    const model = 'claude-3-haiku-20240307';
+    const prompt = `From the following user query, extract only the specific, clean, and searchable device model name. Do not include the OS version or words like "update". Return ONLY the device name. For "what about android 15 on samsung a54", you should return "Samsung A54".\n\nUser query: "${userQuery}"\n\nExtracted device name:`;
     try {
-        const response = await anthropic.messages.create({
-            model: model,
-            max_tokens: 50,
-            messages: [{ role: 'user', content: prompt }],
-        });
+        const response = await anthropic.messages.create({ model, max_tokens: 50, messages: [{ role: 'user', content: prompt }] });
         const extractedName = response.content[0].text.trim();
         console.log(`✅ Claude AI (Extract): Extracted "${extractedName}"`);
         return extractedName;
     } catch (error) {
         console.error('❌ Claude AI (Extract) Error:', error);
-        return null; // Return null on error
+        return null;
     }
 }
 
-// ... formatSourcesForPrompt function remains unchanged ...
 function formatSourcesForPrompt(googleResults, redditResults) {
+    // ... (This function remains unchanged)
     let prompt = 'Google Search Results:\n';
-    googleResults.forEach((r, i) => {
-        prompt += `[Source G${i+1}: ${r.source}]\nTitle: ${r.title}\nSnippet: ${r.snippet}\nLink: ${r.link}\n\n`;
-    });
-
+    googleResults.forEach((r, i) => { prompt += `[Source G${i+1}: ${r.source}]\nTitle: ${r.title}\nSnippet: ${r.snippet}\nLink: ${r.link}\n\n`; });
     prompt += 'Reddit Search Results:\n';
-    redditResults.forEach((r, i) => {
-        prompt += `[Source R${i+1}: ${r.source}]\nTitle: ${r.title}\nContent: ${r.text}\nLink: ${r.link}\n\n`;
-    });
+    redditResults.forEach((r, i) => { prompt += `[Source R${i+1}: ${r.source}]\nTitle: ${r.title}\nContent: ${r.text}\nLink: ${r.link}\n\n`; });
     return prompt;
 }
 
-// ... analyzeDeviceData function remains unchanged ...
 async function analyzeDeviceData(deviceName, googleResults, redditResults) {
     console.log("▶️ Claude AI (Analyze): Initializing full analysis...");
     const model = process.env.CLAUDE_MODEL || 'claude-3-sonnet-20240229';
@@ -68,10 +45,9 @@ async function analyzeDeviceData(deviceName, googleResults, redditResults) {
     recheckDate.setMonth(recheckDate.getMonth() + 1);
     const formattedRecheckDate = recheckDate.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    const userPrompt = `
-You are an expert AI analyst for a Telegram bot that provides reports on Android software updates.
-Your task is to generate a detailed, structured report in Hebrew based *only* on the provided search results.
-You MUST follow the specified two-part format exactly. The two parts must be separated by the exact string "---- מפוצל ל2 הודעות----".
+    // הנחיה נקייה ללא הערות באנגלית
+    const userPrompt = `You are an expert AI analyst for a Telegram bot. Your task is to generate a detailed, structured report in Hebrew based *only* on the provided search results.
+You MUST follow the specified two-part format exactly, separated by "---- מפוצל ל2 הודעות----".
 
 **Device:** ${deviceName}
 **Search Results:**
@@ -135,12 +111,7 @@ Analyze the search results and generate the report using the following template.
     
     try {
         console.log("🧠 Claude AI (Analyze): Sending data for analysis...");
-        const response = await anthropic.messages.create({
-            model: model,
-            max_tokens: 4000,
-            messages: [{ role: 'user', content: userPrompt }],
-            system: "You are an AI assistant that generates structured reports about Android updates in Hebrew based on provided text and a strict template."
-        });
+        const response = await anthropic.messages.create({ model, max_tokens: 4000, messages: [{ role: 'user', content: userPrompt }], system: "You are an AI assistant that generates structured reports about Android updates in Hebrew based on provided text and a strict template." });
         console.log("✅ Claude AI (Analyze): Analysis received successfully.");
         return response.content[0].text;
     } catch (error) {
