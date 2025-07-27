@@ -41,14 +41,17 @@ async function analyzeTextWithClaude(query, searchResults) {
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
 1. **TARGET 20 REAL QUOTES:** Try to find up to 20 actual user quotes from the search results (aim for 10 positive + 10 negative if possible).
 2. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
-3. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-4. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+3. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
+4. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
+5. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
    - NO quote should appear without its corresponding link
    - The link must be the exact URL from the search results provided
-5. **BE HONEST ABOUT ACTUAL NUMBERS:** If you find only 7 positive quotes and 5 negative quotes, report exactly that. State clearly how many you actually found.
-6. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the target of 10 per category.
-7. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
-8. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
+   - If you can't find the exact URL for a quote, don't include that quote
+6. **BE HONEST ABOUT ACTUAL NUMBERS:** If you find only 7 positive quotes and 5 negative quotes, report exactly that. State clearly how many you actually found.
+7. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the target of 10 per category.
+8. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
+9. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
+10. **NO QUOTE WITHOUT LINK:** If you cannot provide a direct link to the source of a quote, do not include that quote in your analysis.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}

@@ -17,7 +17,7 @@ function extractModelFromQuery(query) {
 }
 
 /**
- * Fetches up to 60 results with enhanced search queries and performs intelligent filtering.
+ * Fetches up to 100 results with enhanced search queries and performs intelligent filtering.
  * @param {string} userQuery - The user's query.
  * @returns {Promise<Array<object>>} A comprehensive, well-filtered list of relevant search results.
  */
@@ -39,29 +39,33 @@ async function searchGoogle(userQuery) {
         console.warn("Could not extract a specific model from the query for filtering. Results may be less focused.");
     }
 
-    console.log(`🚀 Initiating enhanced paginated search for up to 60 results with ${searchQueries.length} different search strategies...`);
+    console.log(`🚀 Initiating enhanced paginated search for up to 100 results with ${searchQueries.length} different search strategies...`);
 
-    // יצירת חיפושים מקבילים - 10 תוצאות לכל חיפוש, 6 דפים לכל חיפוש
+    // יצירת חיפושים מקבילים - עד 100 תוצאות סה"כ
     const allSearchPromises = [];
     
-    for (const query of searchQueries) {
-        // עבור כל שאילתה, נבצע חיפוש של 10 תוצאות
-        allSearchPromises.push(
-            axios.get(googleApiUrl, {
-                params: { 
-                    key: GOOGLE_API_KEY, 
-                    cx: GOOGLE_CSE_ID, 
-                    q: query, 
-                    num: 10, 
-                    start: 1, 
-                    dateRestrict: 'm6', // הרחבה ל-6 חודשים לכיסוי טוב יותר
-                    lr: 'lang_en' 
-                }
-            }).catch(error => {
-                console.warn(`Search failed for query: ${query}`, error.message);
-                return { data: { items: [] } };
-            })
-        );
+    for (let i = 0; i < searchQueries.length; i++) {
+        const query = searchQueries[i];
+        // עבור כל שאילתה, נבצע 2 חיפושים של 10 תוצאות (20 לכל שאילתה)
+        // סה"כ: 6 שאילתות * 20 תוצאות = 120, אבל נגביל ל-100
+        for (let page = 0; page < 2; page++) {
+            allSearchPromises.push(
+                axios.get(googleApiUrl, {
+                    params: { 
+                        key: GOOGLE_API_KEY, 
+                        cx: GOOGLE_CSE_ID, 
+                        q: query, 
+                        num: 10, 
+                        start: (page * 10) + 1, 
+                        dateRestrict: 'm6', // הרחבה ל-6 חודשים לכיסוי טוב יותר
+                        lr: 'lang_en' 
+                    }
+                }).catch(error => {
+                    console.warn(`Search failed for query: ${query}, page: ${page + 1}`, error.message);
+                    return { data: { items: [] } };
+                })
+            );
+        }
     }
 
     try {
@@ -88,7 +92,7 @@ async function searchGoogle(userQuery) {
 
         if (!model) {
             return allResults
-                .slice(0, 60) // הגבלה ל-60 תוצאות
+                .slice(0, 100) // הגבלה ל-100 תוצאות
                 .map(item => ({ 
                     title: item.title, 
                     link: item.link, 
@@ -116,7 +120,7 @@ async function searchGoogle(userQuery) {
         });
 
         return sortedResults
-            .slice(0, 60) // הגבלה ל-60 תוצאות הטובות ביותר
+            .slice(0, 100) // הגבלה ל-100 תוצאות הטובות ביותר
             .map(item => ({ 
                 title: item.title, 
                 link: item.link, 
