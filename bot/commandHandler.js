@@ -1,6 +1,7 @@
 const { getOrCreateUser, updateUserQueries } = require('../services/userService');
 const { searchGoogle } = require('../services/googleSearch');
 const { analyzeTextWithClaude } = require('../services/claudeAIService');
+const { sendLongMessage } = require('../common/utils');
 
 async function handleStart(bot, msg) {
     const chatId = msg.chat.id;
@@ -59,7 +60,9 @@ async function handleStart(bot, msg) {
 
 **🔥 בואו נתחיל! שאלו אותי על העדכון שלכם ותקבלו ניתוח מקצועי ומקיף!**
     `;
-    bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
+    
+    // Use sendLongMessage instead of bot.sendMessage for the welcome message
+    await sendLongMessage(bot, chatId, welcomeMessage, { parse_mode: 'Markdown' });
 }
 
 async function handleDeviceQuery(bot, msg, query) {
@@ -103,7 +106,9 @@ async function handleDeviceQuery(bot, msg, query) {
         const queriesLeft = 30 - (user.monthlyQueryCount + 1);
 
         const finalMessage = `${analysis}\n\n---\n📊 שאילתות נותרות: ${queriesLeft}/30`;
-        bot.sendMessage(chatId, finalMessage);
+        
+        // Use sendLongMessage instead of bot.sendMessage for the analysis result
+        await sendLongMessage(bot, chatId, finalMessage);
 
     } catch (error) {
         console.error('Error in handleDeviceQuery:', error);
