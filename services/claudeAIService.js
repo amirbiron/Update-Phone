@@ -40,11 +40,13 @@ async function analyzeTextWithClaude(query, searchResults) {
 
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
 1. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
-2. **SOURCE ATTRIBUTION:** Every quote must include the source (website name, forum name, etc.) where it was found.
-3. **NO FORCED NUMBERS:** If you find only 3 positive quotes and 7 negative quotes, report exactly that. Do not try to balance or reach specific numbers.
-4. **BE HONEST ABOUT LIMITATIONS:** If there's insufficient data, clearly state that in your analysis.
-5. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
-6. **TRANSPARENCY:** If search results are limited or unclear, mention this in your recommendation.
+2. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
+3. **QUOTE FORMAT:** Use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+4. **NO FORCED NUMBERS:** If you find only 3 positive quotes and 7 negative quotes, report exactly that. Do not try to balance or reach specific numbers.
+5. **BE HONEST ABOUT LIMITATIONS:** If there's insufficient data, clearly state that in your analysis.
+6. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
+7. **TRANSPARENCY:** If search results are limited or unclear, mention this in your recommendation.
+8. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -65,10 +67,22 @@ Provide your analysis in Hebrew using this EXACT format:
 **הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. אם לא נמצאו מספיק דיווחים, יוצגו רק אלה שנמצאו בפועל.
 
 ### ✅ **חוויות חיוביות**
-*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים חיוביים ספציפיים בתוצאות החיפוש". כל ציטוט חייב לכלול את המקור (שם האתר או הפורום).*
+*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים חיוביים ספציפיים בתוצאות החיפוש". 
+
+פורמט לכל ציטוט:
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]*
+
+דוגמה:
+**משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
 
 ### ❌ **חוויות שליליות**
-*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים שליליים ספציפיים בתוצאות החיפוש". כל ציטוט חייב לכלול את המקור (שם האתר או הפורום).*
+*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים שליליים ספציפיים בתוצאות החיפוש".
+
+פורמט לכל ציטוט:
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]*
+
+דוגמה:
+**משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
 
 ---
 
@@ -112,7 +126,9 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ---
 
-*הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי. כל הציטוטים והדיווחים מבוססים על מקורות אמיתיים שנמצאו בחיפוש.*`;
+*הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי. כל הציטוטים והדיווחים מבוססים על מקורות אמיתיים שנמצאו בחיפוש. 
+
+💡 **המלצה:** לחצו על הקישורים כדי לקרוא את ההקשר המלא של כל ציטוט ולוודא שהוא רלוונטי למכשיר שלכם.*`;
 
   const maxRetries = 3;
   let lastError = null;
