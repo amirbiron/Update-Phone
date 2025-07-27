@@ -1,20 +1,38 @@
-const mongoose = require('mongoose');
+const { MongoClient, ServerApiVersion } = require('mongodb');
+
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+    throw new Error('FATAL: MONGODB_URI is not defined in environment variables.');
+}
+
+const client = new MongoClient(uri, {
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    }
+});
+
+let db; // This variable will hold the database connection instance
 
 async function connectToDB() {
-    const mongoURI = process.env.MONGODB_URI;
-    if (!mongoURI) {
-        throw new Error('💥 MONGODB_URI is not defined in environment variables!');
-    }
-
     try {
-        // Mongoose 6+ doesn't require the old options object
-        await mongoose.connect(mongoURI);
-        console.log('✅ Successfully connected to MongoDB.');
-    } catch (error) {
-        console.error('💥 FATAL: Failed to connect to MongoDB:', error.message);
-        // זרוק את השגיאה כדי שהאפליקציה הראשית תתפוס אותה ותיעצר
-        throw error;
+        await client.connect();
+        db = client.db("telegram_bot_db"); // Make sure this is your database name
+        console.log("✅ Successfully connected to MongoDB!");
+    } catch (err) {
+        console.error("💥 Failed to connect to MongoDB", err);
+        process.exit(1); // Exit the process with an error code
     }
 }
 
-module.exports = { connectToDB };
+// --- THIS IS THE MISSING FUNCTION ---
+function getDB() {
+    if (!db) {
+        throw new Error('Database not initialized. Call connectToDB first.');
+    }
+    return db;
+}
+
+// --- AND THIS IS THE CORRECTED EXPORT ---
+module.exports = { connectToDB, getDB };
