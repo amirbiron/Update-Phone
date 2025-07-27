@@ -1,6 +1,6 @@
 const { getOrCreateUser, updateUserQueries } = require('../services/userService');
 const { searchGoogle } = require('../services/googleSearch');
-const { analyzeTextWithClaude } = require('../services/claudeAIService'); // <-- התיקון כאן
+const { analyzeTextWithClaude } = require('../services/claudeAIService');
 
 async function handleStart(bot, msg) {
     const chatId = msg.chat.id;
@@ -41,14 +41,24 @@ async function handleDeviceQuery(bot, msg, query) {
     try {
         await bot.sendMessage(chatId, '🔎 אני בודק את הנושא, זה עשוי לקחת כדקה...');
         
-        const searchResults = await searchGoogle(query);
+        // מנקים את השאילתה ממילות שאלה כדי להתמקד במכשיר ובגרסה
+        const cleanedQuery = query
+            .replace(/כדאי לעדכן/gi, '')
+            .replace(/should i update/gi, '')
+            .replace(/feedback/gi, '')
+            .replace(/experience/gi, '')
+            .replace(/מה דעתכם על העדכון ל/gi, '')
+            .replace(/ל/g, '') // מסירים את האות "ל"
+            .trim(); // מנקים רווחים מההתחלה והסוף
+
+        const searchResults = await searchGoogle(cleanedQuery);
 
         if (!searchResults || searchResults.length === 0) {
-            bot.sendMessage(chatId, `לא מצאתי דיווחים עדכניים על עדכוני תוכנה עבור השאילתה "${query}". נסו לנסח את השאלה באופן כללי יותר, או שייתכן שאין בעיות מיוחדות שדווחו.`);
+            bot.sendMessage(chatId, `לא מצאתי דיווחים עדכניים על עדכוני תוכנה עבור השאילתה "${cleanedQuery}". נסו לנסח את השאלה באופן כללי יותר, או שייתכן שאין בעיות מיוחדות שדווחו.`);
             return;
         }
 
-        const analysis = await analyzeTextWithClaude(query, searchResults); // <-- והתיקון כאן
+        const analysis = await analyzeTextWithClaude(cleanedQuery, searchResults);
         await updateUserQueries(user.telegramId, user.monthlyQueryCount + 1);
         const queriesLeft = 30 - (user.monthlyQueryCount + 1);
 
