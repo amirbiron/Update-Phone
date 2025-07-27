@@ -9,24 +9,17 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
-/**
- * Extracts the specific device model from the user query.
- * E.g., "samsung galaxy a54 android 15" -> "a54"
- * @param {string} query The user query.
- * @returns {string|null} The extracted model or null.
- */
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
-    // Find a word that contains both letters and numbers, a common pattern for device models.
     const words = lowerCaseQuery.split(' ');
     const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
     return model || null;
 }
 
 /**
- * Fetches up to 30 results using pagination and performs strict filtering.
+ * Fetches up to 30 results and performs intelligent filtering on title OR snippet.
  * @param {string} userQuery - The user's query.
- * @returns {Promise<Array<object>>} A large, filtered list of relevant search results.
+ * @returns {Promise<Array<object>>} A large, well-filtered list of relevant search results.
  */
 async function searchGoogle(userQuery) {
     const englishQuery = userQuery.replace(/אנדרואיד/g, 'Android').replace(/\?/g, '');
@@ -41,15 +34,7 @@ async function searchGoogle(userQuery) {
 
     const searchPromises = [1, 11, 21].map(start => {
         return axios.get(googleApiUrl, {
-            params: {
-                key: GOOGLE_API_KEY,
-                cx: GOOGLE_CSE_ID,
-                q: finalQuery,
-                num: 10,
-                start: start,
-                dateRestrict: 'm3',
-                lr: 'lang_en'
-            }
+            params: { key: GOOGLE_API_KEY, cx: GOOGLE_CSE_ID, q: finalQuery, num: 10, start: start, dateRestrict: 'm3', lr: 'lang_en' }
         });
     });
 
@@ -66,18 +51,15 @@ async function searchGoogle(userQuery) {
 
         if (!model) return allResults.map(item => ({ title: item.title, link: item.link, snippet: item.snippet }));
 
-        // Strict filtering based on the extracted model
+        // **THE KEY FIX**: Filter if model appears in title OR snippet.
         const filteredResults = allResults.filter(item => 
-            item.title && item.title.toLowerCase().includes(model)
+            (item.title && item.title.toLowerCase().includes(model)) ||
+            (item.snippet && item.snippet.toLowerCase().includes(model))
         );
 
-        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}".`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title or snippet.`);
 
-        return filteredResults.map(item => ({
-            title: item.title,
-            link: item.link,
-            snippet: item.snippet
-        }));
+        return filteredResults.map(item => ({ title: item.title, link: item.link, snippet: item.snippet }));
 
     } catch (error) {
         const errorDetails = error.response ? JSON.stringify(error.response.data, null, 2) : error.message;
