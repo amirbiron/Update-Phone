@@ -1,4 +1,5 @@
 const { getDeviceDetails } = require('../common/utils');
+const { sendLongMessage } = require('../common/utils');
 
 function handleUpdate(bot, msg) {
     const chatId = msg.chat.id;
@@ -14,7 +15,7 @@ function handleCallbackQuery(bot, callbackQuery) {
     bot.sendMessage(chatId, `בחרת: ${data}`);
 }
 
-function handleMyDeviceInfo(bot, msg) {
+async function handleMyDeviceInfo(bot, msg) {
     const chatId = msg.chat.id;
     const defaultDevice = "iPhone 14 Pro"; // Example
     const deviceDetails = getDeviceDetails(defaultDevice);
@@ -25,7 +26,8 @@ function handleMyDeviceInfo(bot, msg) {
 *המלצה:*
 ${deviceDetails.recommendation}
         `;
-        bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        // Use sendLongMessage instead of bot.sendMessage for device info
+        await sendLongMessage(bot, chatId, message, { parse_mode: 'Markdown' });
     }
 }
 
