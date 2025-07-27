@@ -4,6 +4,40 @@ const anthropic = new Anthropic({
     apiKey: process.env.CLAUDE_API_KEY,
 });
 
+/**
+ * Extracts a clean, searchable device name from a user's natural language query.
+ * @param {string} userQuery - The user's full query.
+ * @returns {Promise<string|null>} The clean device name or null if not found.
+ */
+async function extractDeviceName(userQuery) {
+    console.log("▶️ Claude AI (Extract): Initializing device name extraction...");
+    const model = 'claude-3-haiku-20240307'; // Use a fast model for this simple task
+
+    const prompt = `From the following user query, extract only the specific, clean, and searchable device model name.
+- Do not include the OS version (like "Android 15" or "One UI 6.1").
+- Do not include words like "update", "problems", "issue".
+- Return ONLY the device name. For example, for "what about android 15 on samsung a54", you should return "Samsung A54". For "pixel 8 pro", return "Google Pixel 8 Pro".
+
+User query: "${userQuery}"
+
+Extracted device name:`;
+
+    try {
+        const response = await anthropic.messages.create({
+            model: model,
+            max_tokens: 50,
+            messages: [{ role: 'user', content: prompt }],
+        });
+        const extractedName = response.content[0].text.trim();
+        console.log(`✅ Claude AI (Extract): Extracted "${extractedName}"`);
+        return extractedName;
+    } catch (error) {
+        console.error('❌ Claude AI (Extract) Error:', error);
+        return null; // Return null on error
+    }
+}
+
+// ... formatSourcesForPrompt function remains unchanged ...
 function formatSourcesForPrompt(googleResults, redditResults) {
     let prompt = 'Google Search Results:\n';
     googleResults.forEach((r, i) => {
@@ -17,13 +51,14 @@ function formatSourcesForPrompt(googleResults, redditResults) {
     return prompt;
 }
 
+// ... analyzeDeviceData function remains unchanged ...
 async function analyzeDeviceData(deviceName, googleResults, redditResults) {
-    console.log("▶️ Claude AI: Initializing analysis...");
+    console.log("▶️ Claude AI (Analyze): Initializing full analysis...");
     const model = process.env.CLAUDE_MODEL || 'claude-3-sonnet-20240229';
     const allSources = [...googleResults, ...redditResults];
 
     if (allSources.length === 0) {
-        return `לא מצאתי דיווחים עדכניים על עדכוני תוכנה עבור המכשיר "${deviceName}". ייתכן שאין בעיות מיוחדות או שטרם דווחו.`;
+        return `לא מצאתי דיווחים עדכניים על עדכוני תוכנה עבור המכשיר "${deviceName}". נסה לנסח את השאלה באופן כללי יותר, או שייתכן שאין בעיות מיוחדות שדווחו.`;
     }
 
     const sourcesForPrompt = formatSourcesForPrompt(googleResults, redditResults);
@@ -97,21 +132,24 @@ Analyze the search results and generate the report using the following template.
 
 [Repeat for 1-2 more sources.]
 `;
-
+    
     try {
-        console.log("🧠 Claude AI: Sending data for analysis...");
+        console.log("🧠 Claude AI (Analyze): Sending data for analysis...");
         const response = await anthropic.messages.create({
             model: model,
             max_tokens: 4000,
             messages: [{ role: 'user', content: userPrompt }],
             system: "You are an AI assistant that generates structured reports about Android updates in Hebrew based on provided text and a strict template."
         });
-        console.log("✅ Claude AI: Analysis received successfully.");
+        console.log("✅ Claude AI (Analyze): Analysis received successfully.");
         return response.content[0].text;
     } catch (error) {
-        console.error('❌ Claude AI Error:', error);
+        console.error('❌ Claude AI (Analyze) Error:', error);
         return 'הייתה שגיאה בניתוח המידע. אנא נסה שוב מאוחר יותר.';
     }
 }
 
-module.exports = { analyzeDeviceData };
+module.exports = {
+    extractDeviceName,
+    analyzeDeviceData
+};
