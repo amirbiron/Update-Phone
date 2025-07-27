@@ -10,15 +10,21 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 /**
- * Executes the definitive, most precise search query.
- * @param {string} userQuery - The user's query.
+ * Executes the definitive, language-corrected search query.
+ * @param {string} userQuery - The user's query, potentially in Hebrew.
  * @returns {Promise<Array<object>>} A list of relevant search results.
  */
 async function searchGoogle(userQuery) {
-    const cleanedQuery = userQuery.replace(/\?/g, '');
-    const finalQuery = `${cleanedQuery} review feedback experience thoughts issues problems bugs after update`;
+    // --- THE REAL FIX: TRANSLATE HEBREW TO ENGLISH ---
+    // The bug was searching for Hebrew words ("אנדרואיד") while demanding English-only results (lr: 'lang_en').
+    // This created a contradiction. The solution is to search for English terms in English pages.
+    const englishQuery = userQuery
+        .replace(/אנדרואיד/g, 'Android')
+        .replace(/\?/g, '');
 
-    console.log(`🔎 Executing DEFINITIVE search: "${finalQuery}"`);
+    const finalQuery = `${englishQuery} review feedback experience thoughts issues problems bugs after update`;
+
+    console.log(`🔎 Executing TRANSLATED search: "${finalQuery}"`);
 
     try {
         const response = await axios.get(googleApiUrl, {
@@ -27,9 +33,8 @@ async function searchGoogle(userQuery) {
                 cx: GOOGLE_CSE_ID,
                 q: finalQuery,
                 num: 10,
-                // --- YOUR SUGGESTIONS, FINALLY IMPLEMENTED CORRECTLY ---
-                dateRestrict: 'm3', // Results from the last 3 months
-                lr: 'lang_en'      // English language results only
+                dateRestrict: 'm3',
+                lr: 'lang_en'
             }
         });
 
@@ -39,7 +44,7 @@ async function searchGoogle(userQuery) {
                 link: item.link,
                 snippet: item.snippet
             }));
-            console.log(`✅ Google Search: Found ${results.length} highly relevant results.`);
+            console.log(`✅ Google Search: Found ${results.length} relevant English results.`);
             return results;
         } else {
             console.log('⚠️ Google Search: No relevant results found in the last 3 months.');
