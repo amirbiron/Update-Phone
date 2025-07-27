@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-async function searchGoogle(query) {
+async function searchGoogle(deviceName, originalQuery) {
     console.log("▶️ Google Search: Initializing search...");
     const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
     const engineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
@@ -10,8 +10,10 @@ async function searchGoogle(query) {
         return [];
     }
 
-    // שאילתה ממוקדת יותר עם העדפה לאתרים ספציפיים
-    const focusedQuery = `"${query}" (update OR review OR issues) (site:reddit.com OR site:xda-developers.com OR site:android-israel.co.il)`;
+    // שלב 1: חיפוש רחב עם השאילתה המקורית כדי לתפוס את ההקשר
+    // שלב 2: הוספת שם המכשיר הנקי כדי להבטיח רלוונטיות
+    // שלב 3: הוספת מילות מפתח קבועות למיקוד בנושאי עדכונים
+    const focusedQuery = `"${deviceName}" AND (${originalQuery}) (update OR review OR issues OR battery)`;
 
     const url = `https://www.googleapis.com/customsearch/v1`;
     const params = {
@@ -24,8 +26,10 @@ async function searchGoogle(query) {
     try {
         console.log(`🔍 Google Search: Searching with query: ${focusedQuery}`);
         const response = await axios.get(url, { params });
-        console.log(`✅ Google Search: Found ${response.data.items ? response.data.items.length : 0} results.`);
-        if (response.data.items) {
+        const resultsCount = response.data.items ? response.data.items.length : 0;
+        console.log(`✅ Google Search: Found ${resultsCount} results.`);
+        
+        if (resultsCount > 0) {
             return response.data.items.map(item => ({
                 title: item.title,
                 link: item.link,
