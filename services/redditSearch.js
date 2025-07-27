@@ -38,28 +38,32 @@ async function getRedditAccessToken() {
     }
 }
 
-async function searchReddit(query) {
+async function searchReddit(deviceName, originalQuery) {
+    console.log("▶️ Reddit Search: Initializing search...");
     try {
         const token = await getRedditAccessToken();
         const url = `https://oauth.reddit.com/search.json`;
-        // שאילתה מאוזנת לרדיט
-        const focusedQuery = `"${query}" (update OR oneui OR android OR experience OR issue)`;
+        
+        const focusedQuery = `"${deviceName}" AND (${originalQuery.replace(/"/g, '')})`;
 
         const params = {
             q: focusedQuery,
-            limit: 12, // בקשת 12 תוצאות כפי שביקשת
+            limit: 12,
             sort: 'relevance',
             t: 'all',
             restrict_sr: false
         };
 
-        console.log(`Searching Reddit with balanced query: ${focusedQuery}`);
+        console.log(`🔍 Reddit Search: Searching with query: ${focusedQuery}`);
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${token}` },
             params
         });
 
-        if (response.data && response.data.data && response.data.data.children) {
+        const resultsCount = response.data?.data?.children?.length || 0;
+        console.log(`✅ Reddit Search: Found ${resultsCount} results.`);
+
+        if (resultsCount > 0) {
             return response.data.data.children
                 .map(post => ({
                     title: post.data.title,
@@ -71,7 +75,7 @@ async function searchReddit(query) {
         }
         return [];
     } catch (error) {
-        console.error('Error fetching data from Reddit:', error.response ? error.response.data : error.message);
+        console.error('❌ Reddit Search Error:', error.response ? error.response.data : error.message);
         return [];
     }
 }
