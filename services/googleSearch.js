@@ -10,18 +10,18 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 /**
- * Executes a clean, balanced search query, relying COMPLETELY on the user's CSE configuration.
- * @param {string} query - The user's query.
+ * Executes a powerful, combined search query, trusting the user's CSE configuration.
+ * @param {string} userQuery - The user's query.
  * @returns {Promise<Array<object>>} A list of relevant search results.
  */
 async function searchGoogle(userQuery) {
     // 1. Clean the user's query from problematic characters like '?'
     const cleanedQuery = userQuery.replace(/\?/g, '');
 
-    // 2. Create the balanced search term, without any 'site:' operators.
-    const finalQuery = `${cleanedQuery} review feedback experience user reports thoughts`;
+    // 2. --- YOUR IDEA --- Create the ultimate query combining neutral and problem-focused keywords.
+    const finalQuery = `${cleanedQuery} review feedback experience thoughts issues problems bugs after update`;
 
-    console.log(`🔎 Executing CLEAN search, trusting the CSE config: "${finalQuery}"`);
+    console.log(`🔎 Executing ULTIMATE search query: "${finalQuery}"`);
 
     try {
         const response = await axios.get(googleApiUrl, {
@@ -39,10 +39,10 @@ async function searchGoogle(userQuery) {
                 link: item.link,
                 snippet: item.snippet
             }));
-            console.log(`✅ Google Search: Found ${results.length} results by trusting the CSE.`);
+            console.log(`✅ Google Search: Found ${results.length} results with the ultimate query.`);
             return results;
         } else {
-            console.log('⚠️ Google Search: No results found. Check your CSE configuration and the query.');
+            console.log('⚠️ Google Search: No results found. The query might be too specific for current search results.');
             return [];
         }
 
