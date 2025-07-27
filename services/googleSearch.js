@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 async function searchGoogle(query) {
+    console.log("▶️ Google Search: Initializing search...");
     const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
     const engineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
 
@@ -9,20 +10,21 @@ async function searchGoogle(query) {
         return [];
     }
 
-    // שאילתה מאוזנת יותר - כוללת בעיות, חוויות ותכונות
-    const focusedQuery = `"${query}" (software update OR android update OR one ui update) (experience OR review OR problems OR features OR battery)`;
+    // שאילתה ממוקדת יותר עם העדפה לאתרים ספציפיים
+    const focusedQuery = `"${query}" (update OR review OR issues) (site:reddit.com OR site:xda-developers.com OR site:android-israel.co.il)`;
 
     const url = `https://www.googleapis.com/customsearch/v1`;
     const params = {
         key: apiKey,
         cx: engineId,
         q: focusedQuery,
-        num: 10 // ה-API מגביל לעד 10 תוצאות
+        num: 10
     };
 
     try {
-        console.log(`Searching Google with balanced query: ${focusedQuery}`);
+        console.log(`🔍 Google Search: Searching with query: ${focusedQuery}`);
         const response = await axios.get(url, { params });
+        console.log(`✅ Google Search: Found ${response.data.items ? response.data.items.length : 0} results.`);
         if (response.data.items) {
             return response.data.items.map(item => ({
                 title: item.title,
@@ -33,7 +35,7 @@ async function searchGoogle(query) {
         }
         return [];
     } catch (error) {
-        console.error('Error fetching data from Google Search:', error.response ? error.response.data : error.message);
+        console.error('❌ Google Search Error:', error.response ? error.response.data : error.message);
         return [];
     }
 }
