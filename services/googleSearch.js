@@ -9,22 +9,21 @@ async function searchGoogle(query) {
         return [];
     }
 
-    // שאילתה ממוקדת יותר בנושאי עדכונים ובעיות
-    const focusedQuery = `"${query}" software update OR "android update" problems OR "one ui update" issues OR battery drain after update`;
+    // שאילתה מאוזנת יותר - כוללת בעיות, חוויות ותכונות
+    const focusedQuery = `"${query}" (software update OR android update OR one ui update) (experience OR review OR problems OR features OR battery)`;
 
     const url = `https://www.googleapis.com/customsearch/v1`;
     const params = {
         key: apiKey,
         cx: engineId,
         q: focusedQuery,
-        num: 10
+        num: 10 // ה-API מגביל לעד 10 תוצאות
     };
 
     try {
-        console.log(`Searching Google with focused query: ${focusedQuery}`);
+        console.log(`Searching Google with balanced query: ${focusedQuery}`);
         const response = await axios.get(url, { params });
         if (response.data.items) {
-            // החזרת אובייקט מובנה במקום רק טקסט
             return response.data.items.map(item => ({
                 title: item.title,
                 link: item.link,
