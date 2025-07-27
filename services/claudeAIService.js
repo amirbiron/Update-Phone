@@ -35,14 +35,16 @@ async function analyzeTextWithClaude(query, searchResults) {
     .map((item, index) => `Source #${index + 1}\nTitle: ${item.title}\nURL: ${item.link}\nSnippet: ${item.snippet}\nQuery Type: ${item.queryType || 'general'}`)
     .join('\n\n---\n\n');
 
-  // Enhanced Prompt for better user quotes extraction and design
+  // Enhanced Prompt for authentic analysis based only on real data
   const prompt = `You are an expert technology analyst specializing in Android device updates. Your task is to analyze search results for the query: "${query}" and provide a comprehensive Hebrew report.
 
-**CRITICAL REQUIREMENTS:**
-1. **EXTRACT 20 USER REPORTS TOTAL:** Find exactly 20 specific user experiences - 10 positive and 10 negative. These should be ACTUAL user quotes translated to Hebrew, not generic summaries.
-2. **QUOTE REAL USERS:** Look for phrases like "I updated", "after the update", "my experience", "I noticed", etc. Translate these to Hebrew while maintaining the personal tone.
-3. **BE SPECIFIC:** Include specific details like battery percentages, performance metrics, specific features mentioned.
-4. **COMPREHENSIVE ANALYSIS:** Use ALL search results to build a complete picture.
+**CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
+1. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
+2. **SOURCE ATTRIBUTION:** Every quote must include the source (website name, forum name, etc.) where it was found.
+3. **NO FORCED NUMBERS:** If you find only 3 positive quotes and 7 negative quotes, report exactly that. Do not try to balance or reach specific numbers.
+4. **BE HONEST ABOUT LIMITATIONS:** If there's insufficient data, clearly state that in your analysis.
+5. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
+6. **TRANSPARENCY:** If search results are limited or unclear, mention this in your recommendation.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -60,58 +62,40 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 💬 **דיווחי משתמשים אמיתיים**
 
-### ✅ **חוויות חיוביות (10 דיווחים)**
+**הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. אם לא נמצאו מספיק דיווחים, יוצגו רק אלה שנמצאו בפועל.
 
-1. **משתמש א':** "*תרגום מדויק של ציטוט משתמש חיובי מהתוצאות*"
-2. **משתמש ב':** "*תרגום נוסף של חוויה חיובית ספציפית*"
-3. **משתמש ג':** "*ציטוט חיובי נוסף עם פרטים ספציפיים*"
-4. **משתמש ד':** "*חוויה חיובית מתורגמת*"
-5. **משתמש ה':** "*דיווח חיובי נוסף*"
-6. **משתמש ו':** "*ציטוט חיובי*"
-7. **משתמש ז':** "*חוויה חיובית*"
-8. **משתמש ח':** "*דיווח חיובי*"
-9. **משתמש ט':** "*ציטוט חיובי*"
-10. **משתמש י':** "*חוויה חיובית אחרונה*"
+### ✅ **חוויות חיוביות**
+*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים חיוביים ספציפיים בתוצאות החיפוש". כל ציטוט חייב לכלול את המקור (שם האתר או הפורום).*
 
-### ❌ **חוויות שליליות (10 דיווחים)**
-
-1. **משתמש א':** "*תרגום מדויק של ציטוט משתמש שלילי מהתוצאות*"
-2. **משתמש ב':** "*תרגום נוסף של חוויה שלילית ספציפית*"
-3. **משתמש ג':** "*ציטוט שלילי נוסף עם פרטים ספציפיים*"
-4. **משתמש ד':** "*חוויה שלילית מתורגמת*"
-5. **משתמש ה':** "*דיווח שלילי נוסף*"
-6. **משתמש ו':** "*ציטוט שלילי*"
-7. **משתמש ז':** "*חוויה שלילית*"
-8. **משתמש ח':** "*דיווח שלילי*"
-9. **משתמש ט':** "*ציטוט שלילי*"
-10. **משתמש י':** "*חוויה שלילית אחרונה*"
+### ❌ **חוויות שליליות**
+*כתוב כאן רק ציטוטים אמיתיים שנמצאו בתוצאות החיפוש. אם לא נמצאו - כתוב "לא נמצאו דיווחים שליליים ספציפיים בתוצאות החיפוש". כל ציטוט חייב לכלול את המקור (שם האתר או הפורום).*
 
 ---
 
 ## 📊 **ניתוח מגמות מעמיק**
 
 ### 🔋 **ביצועי סוללה**
-*ניתוח ממצאים לגבי השפעת העדכון על הסוללה*
+*ניתוח ממצאים לגבי השפעת העדכון על הסוללה - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### ⚡ **ביצועי מערכת**
-*ניתוח ממצאים לגבי מהירות ויציבות המערכת*
+*ניתוח ממצאים לגבי מהירות ויציבות המערכת - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🎨 **ממשק משתמש וחוויית שימוש**
-*ניתוח שינויים בממשק ובחוויית המשתמש*
+*ניתוח שינויים בממשק ובחוויית המשתמש - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🔧 **בעיות טכניות ותקלות**
-*סיכום הבעיות הטכניות העיקריות שדווחו*
+*סיכום הבעיות הטכניות העיקריות שדווחו - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ---
 
 ## 🎯 **המלצה מפורטת**
 
-### 🚦 **החלטה: [מומלץ בחום לעדכן / מומלץ לעדכן / מומלץ להמתין / לא מומלץ לעדכן]**
+### 🚦 **החלטה: [מומלץ בחום לעדכן / מומלץ לעדכן / מומלץ להמתין / לא מומלץ לעדכן / אין מספיק מידע להמלצה]**
 
 **נימוקים:**
-• *נימוק ראשון מבוסס על הנתונים*
-• *נימוק שני מבוסס על הדיווחים*
-• *נימוק שלישי מבוסס על המגמות*
+• *נימוק ראשון מבוסס על הנתונים שנמצאו בפועל*
+• *נימוק שני מבוסס על הדיווחים שנמצאו בפועל*
+• *נימוק שלישי מבוסס על המגמות שזוהו בפועל*
 
 **המלצות נוספות:**
 • *המלצה מעשית ראשונה*
@@ -122,13 +106,13 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 📈 **סיכום נתונים**
 - **סה"כ מקורות נותחו:** ${searchResults.length}
-- **דיווחים חיוביים:** 10
-- **דיווחים שליליים:** 10
+- **דיווחים חיוביים שנמצאו:** [מספר אמיתי]
+- **דיווחים שליליים שנמצאו:** [מספר אמיתי]
 - **אמינות הניתוח:** גבוהה/בינונית/נמוכה (בהתאם לכמות ואיכות הנתונים)
 
 ---
 
-*הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי*`;
+*הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי. כל הציטוטים והדיווחים מבוססים על מקורות אמיתיים שנמצאו בחיפוש.*`;
 
   const maxRetries = 3;
   let lastError = null;
