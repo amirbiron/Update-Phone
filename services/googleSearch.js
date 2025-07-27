@@ -9,24 +9,33 @@ async function searchGoogle(query) {
         return [];
     }
 
+    // שאילתה ממוקדת יותר בנושאי עדכונים ובעיות
+    const focusedQuery = `"${query}" software update OR "android update" problems OR "one ui update" issues OR battery drain after update`;
+
     const url = `https://www.googleapis.com/customsearch/v1`;
     const params = {
         key: apiKey,
         cx: engineId,
-        q: `${query} user reviews forum`, // הוספת מילות מפתח לחיפוש ממוקד יותר
-        num: 10 // אפשר להגדיר עד 10 בבקשה אחת
+        q: focusedQuery,
+        num: 10
     };
 
     try {
+        console.log(`Searching Google with focused query: ${focusedQuery}`);
         const response = await axios.get(url, { params });
         if (response.data.items) {
-            // החזרת קטעי טקסט (snippets) מהתוצאות
-            return response.data.items.map(item => item.snippet);
+            // החזרת אובייקט מובנה במקום רק טקסט
+            return response.data.items.map(item => ({
+                title: item.title,
+                link: item.link,
+                snippet: item.snippet,
+                source: item.displayLink || 'Google Search'
+            }));
         }
         return [];
     } catch (error) {
         console.error('Error fetching data from Google Search:', error.response ? error.response.data : error.message);
-        return []; // החזר מערך ריק במקרה של שגיאה
+        return [];
     }
 }
 
