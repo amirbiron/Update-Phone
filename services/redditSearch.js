@@ -7,27 +7,12 @@ async function getRedditAccessToken() {
     // ... (This function remains unchanged)
     const clientId = process.env.REDDIT_CLIENT_ID;
     const clientSecret = process.env.REDDIT_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
-        throw new Error('Reddit API credentials are not defined.');
-    }
-
-    if (accessToken && Date.now() < tokenExpiresAt) {
-        return accessToken;
-    }
-
+    if (!clientId || !clientSecret) throw new Error('Reddit API credentials are not defined.');
+    if (accessToken && Date.now() < tokenExpiresAt) return accessToken;
     console.log('Requesting new Reddit access token...');
     const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    
     try {
-        const response = await axios.post('https://www.reddit.com/api/v1/access_token', 
-            'grant_type=client_credentials', {
-            headers: {
-                'Authorization': `Basic ${authString}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        });
-
+        const response = await axios.post('https://www.reddit.com/api/v1/access_token', 'grant_type=client_credentials', { headers: { 'Authorization': `Basic ${authString}`, 'Content-Type': 'application/x-www-form-urlencoded' } });
         accessToken = response.data.access_token;
         tokenExpiresAt = Date.now() + (response.data.expires_in - 60) * 1000;
         console.log('Successfully obtained new Reddit access token.');
@@ -44,22 +29,19 @@ async function searchReddit(deviceName, originalQuery) {
         const token = await getRedditAccessToken();
         const url = `https://oauth.reddit.com/search.json`;
         
-        const focusedQuery = `"${deviceName}" AND (${originalQuery.replace(/"/g, '')})`;
+        // שאילתה פשוטה ויעילה לרדיט
+        const focusedQuery = `"${deviceName}" ${originalQuery.replace(/"/g, '')} (update OR oneui OR issue OR battery)`;
 
         const params = {
             q: focusedQuery,
             limit: 12,
             sort: 'relevance',
-            t: 'all',
+            t: 'year', // חפש בשנה האחרונה כדי לקבל תוצאות רלוונטיות יותר
             restrict_sr: false
         };
 
-        console.log(`🔍 Reddit Search: Searching with query: ${focusedQuery}`);
-        const response = await axios.get(url, {
-            headers: { 'Authorization': `Bearer ${token}` },
-            params
-        });
-
+        console.log(`🔍 Reddit Search: Searching with simplified query: ${focusedQuery}`);
+        const response = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` }, params });
         const resultsCount = response.data?.data?.children?.length || 0;
         console.log(`✅ Reddit Search: Found ${resultsCount} results.`);
 
