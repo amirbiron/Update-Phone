@@ -1,46 +1,55 @@
 const axios = require('axios');
 
-async function searchGoogle(userQuery) {
-    console.log("▶️ Google Search: Initializing search...");
-    const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-    const engineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const GOOGLE_CSE_ID = process.env.GOOGLE_CSE_ID;
 
-    if (!apiKey || !engineId) {
-        console.warn('Google Search API key or Engine ID is not defined. Skipping Google search.');
-        return [];
-    }
+if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
+    throw new Error('Google API Key or CSE ID is not defined in environment variables.');
+}
 
-    // שאילתה מאוזנת המבוססת על העקרונות הנכונים
-    const balancedQuery = `${userQuery} update feedback experience review thoughts user reports`;
+const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
-    const url = `https://www.googleapis.com/customsearch/v1`;
-    const params = {
-        key: apiKey,
-        cx: engineId,
-        q: balancedQuery,
-        num: 10,
-        dateRestrict: 'm6', // הגבלת החיפוש לחצי השנה האחרונה
-        lr: 'lang_en|lang_he' // העדפה לאנגלית ועברית
-    };
+/**
+ * Searches Google using the balanced query strategy you reminded me of.
+ * @param {string} query - The user's clean query (e.g., "Galaxy A54 Android 15").
+ * @returns {Promise<Array<object>>} A list of relevant search results.
+ */
+async function searchGoogle(query) {
+    // --- This is YOUR suggestion in action ---
+    // We append neutral, balanced keywords to the user's query.
+    const balancedQuery = `${query} review feedback experience user reports thoughts`;
+    
+    console.log(`🔎 Searching Google with BALANCED query: "${balancedQuery}"`);
 
     try {
-        console.log(`🔍 Google Search: Searching with balanced query: ${balancedQuery}`);
-        const response = await axios.get(url, { params });
-        const resultsCount = response.data.items ? response.data.items.length : 0;
-        console.log(`✅ Google Search: Found ${resultsCount} results.`);
-        
-        if (resultsCount > 0) {
-            return response.data.items.map(item => ({
+        const response = await axios.get(googleApiUrl, {
+            params: {
+                key: GOOGLE_API_KEY,
+                cx: GOOGLE_CSE_ID,
+                q: balancedQuery,
+                // --- Implementing more of your suggestions ---
+                num: 10, // Getting up to 10 results to have a better pool for analysis.
+                dateRestrict: 'm3', // Limiting results to the last 3 months.
+            }
+        });
+
+        if (response.data.items && response.data.items.length > 0) {
+            const results = response.data.items.map(item => ({
                 title: item.title,
                 link: item.link,
-                snippet: item.snippet,
-                source: item.displayLink || 'Google Search'
+                snippet: item.snippet
             }));
+            console.log(`✅ Google Search: Found ${results.length} results.`);
+            return results;
+        } else {
+            console.log('⚠️ Google Search: No results found for the balanced query.');
+            return [];
         }
-        return [];
     } catch (error) {
-        console.error('❌ Google Search Error:', error.response ? error.response.data : error.message);
-        return [];
+        // Log the detailed error from Google's API if available
+        const errorDetails = error.response ? JSON.stringify(error.response.data, null, 2) : error.message;
+        console.error('❌ Error fetching Google Search results:', errorDetails);
+        return []; // Return an empty array on error so the bot doesn't crash.
     }
 }
 
