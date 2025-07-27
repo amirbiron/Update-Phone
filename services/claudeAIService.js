@@ -12,54 +12,56 @@ const anthropic = new Anthropic({
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Analyzes a curated sample of search results with a highly refined and decisive prompt.
+ * Analyzes a large, pre-filtered dataset to provide a comprehensive user report.
  * @param {string} query - The original user query.
- * @param {Array<object>} searchResults - The array of 10 search results from Google.
- * @returns {Promise<string>} The detailed and decisive analysis from Claude.
+ * @param {Array<object>} searchResults - The large, filtered array of search results.
+ * @returns {Promise<string>} The comprehensive analysis from Claude.
  */
 async function analyzeTextWithClaude(query, searchResults) {
+  if (searchResults.length === 0) {
+      return `לאחר חיפוש מעמיק, לא נמצאו דיווחים ספציפיים על הדגם המבוקש (${query}). ייתכן שהעדכון חדש מדי או שהדיונים עליו מתקיימים בפלטפורמות אחרות. מומלץ לנסות שוב בעוד מספר ימים.`;
+  }
+
   const contentForAnalysis = searchResults
     .map((item, index) => `Result #${index + 1}\nTitle: ${item.title}\nSnippet: ${item.snippet}\nLink: ${item.link}`)
     .join('\n\n---\n\n');
 
-  // V3 Prompt: Be decisive, analyze the sample, and provide translated evidence.
-  const prompt = `You are a decisive tech analyst. Your task is to analyze this curated sample of the 10 most relevant search results for the query: "${query}".
-Your entire analysis must be based ONLY on this provided sample. Do not apologize for the sample size or mention that information is "limited". Be confident in your analysis of the data you have.
+  // V5 Prompt: The "Serious Analysis" Prompt
+  const prompt = `You are a meticulous tech researcher. Your task is to analyze this large, pre-filtered list of search results for the query: "${query}".
+The user wants a comprehensive summary based on many real user reports.
+
+Your analysis must be based ONLY on the provided results. Be decisive and confident.
 
 Provide a detailed analysis in Hebrew, structured EXACTLY as follows:
 
-1.  **תמצית מנהלים:** A one-paragraph summary of the main themes found in the provided results.
+1.  **תמצית מנהלים:** A one-paragraph summary of the key findings from all the provided results.
 
-2.  **ממצאים מפורטים (Detailed Findings):**
-    *   **👍 דיווחים חיוביים (Positive Reports):** Group similar positive reports. For each theme, provide a bullet point with a direct quote or a specific summary translated into Hebrew.
-        *   לדוגמה:
-        *   **ביצועים משופרים:**
-            *   "משתמש ב-Reddit מציין שהמכשיר מרגיש 'מהיר וחלק יותר באופן משמעותי' (מתוך תוצאה #2)."
-            *   "כתבה ב-XDA מדווחת על 'שיפור של 15% במבחני הביצועים' (מתוך תוצאה #7)."
-    *   **👎 דיווחים שליליים (Negative Reports):** Group similar negative reports. For each theme, provide a bullet point with a direct quote or a specific summary translated into Hebrew.
-        *   לדוגמה:
-        *   **צריכת סוללה מוגברת:**
-            *   "משתמש מתלונן: 'הסוללה שלי נגמרת ב-30% מהר יותר אחרי העדכון' (מתוך תוצאה #1)."
-            *   "שרשור ב-Reddit מראה מספר משתמשים המאשרים 'בעיות סוללה חמורות' (מתוך תוצאה #4)."
+2.  **ריכוז דיווחי משתמשים (עד 15 דיווחים):** List up to 15 of the most relevant and informative user reports you found. For each report, provide a bullet point with a direct quote or a specific summary translated into Hebrew, and mention its source result number.
+    *   לדוגמה:
+    *   "הסוללה נגמרת לי בחצי מהזמן הרגיל אחרי העדכון, פשוט נורא (מתוך תוצאה #4)."
+    *   "הממשק החדש מרגיש מהיר בטירוף, כל אנימציה חלקה (מתוך תוצאה #11)."
+    *   "אפליקציית הבנק שלי קורסת כל פעם שאני מנסה לפתוח אותה (מתוך תוצאה #23)."
 
-3.  **המלצה מבוססת נתונים (Data-Driven Recommendation):** Based on the balance of positive vs. negative reports in the sample, provide a clear and decisive "מומלץ לעדכן", "לא מומלץ לעדכן", or "מומלץ להמתין". Justify your recommendation with the evidence you found.
+3.  **סיכום וזיהוי מגמות:** Based on the list above, briefly summarize the main positive and negative trends. (e.g., "The most common complaint by far is battery drain, mentioned in 7 different reports. On the other hand, 3 reports praise the new UI's speed.").
 
-Here are the 10 search results:\n---\n${contentForAnalysis}\n---`;
+4.  **המלצה סופית מבוססת נתונים:** Based on the balance of trends, provide a decisive "מומלץ לעדכן", "לא מומלץ לעדכן", or "מומלץ להמתין". Justify it with the data.
+
+Here are the search results:\n---\n${contentForAnalysis}\n---`;
 
   const maxRetries = 3;
   let lastError = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Claude API call: Attempt #${attempt} with new V3 Decisive Prompt.`);
+      console.log(`Claude API call: Attempt #${attempt} with new V5 Comprehensive Analysis Prompt.`);
       const response = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
-        max_tokens: 2500,
+        max_tokens: 3500, // Increased tokens for the very long and detailed response
         messages: [{ role: "user", content: prompt }],
       });
 
       if (response && response.content && response.content.length > 0) {
-        console.log("✅ Claude API analysis successful.");
+        console.log("✅ Claude API comprehensive analysis successful.");
         return response.content[0].text;
       } else {
           throw new Error("Claude API returned an empty or invalid response.");
