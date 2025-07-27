@@ -1,6 +1,6 @@
 const { getOrCreateUser, updateUserQueries } = require('../services/userService');
 const { searchGoogle } = require('../services/googleSearch');
-const { analyzeTextWithOpenAI } = require('../services/openaiService');
+const { analyzeTextWithClaude } = require('../services/claudeAIService'); // <-- התיקון כאן
 
 async function handleStart(bot, msg) {
     const chatId = msg.chat.id;
@@ -29,8 +29,7 @@ async function handleStart(bot, msg) {
     bot.sendMessage(chatId, welcomeMessage);
 }
 
-// --- כאן התיקון השני ---
-async function handleDeviceQuery(bot, msg, query) { // <-- מקבלים 'query' ישירות
+async function handleDeviceQuery(bot, msg, query) {
     const chatId = msg.chat.id;
     const user = await getOrCreateUser(msg.from);
 
@@ -49,7 +48,7 @@ async function handleDeviceQuery(bot, msg, query) { // <-- מקבלים 'query' 
             return;
         }
 
-        const analysis = await analyzeTextWithOpenAI(query, searchResults);
+        const analysis = await analyzeTextWithClaude(query, searchResults); // <-- והתיקון כאן
         await updateUserQueries(user.telegramId, user.monthlyQueryCount + 1);
         const queriesLeft = 30 - (user.monthlyQueryCount + 1);
 
