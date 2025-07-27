@@ -10,10 +10,8 @@ async function searchGoogle(deviceName, originalQuery) {
         return [];
     }
 
-    // שלב 1: חיפוש רחב עם השאילתה המקורית כדי לתפוס את ההקשר
-    // שלב 2: הוספת שם המכשיר הנקי כדי להבטיח רלוונטיות
-    // שלב 3: הוספת מילות מפתח קבועות למיקוד בנושאי עדכונים
-    const focusedQuery = `"${deviceName}" AND (${originalQuery}) (update OR review OR issues OR battery)`;
+    // שאילתה פשוטה ויעילה יותר: שם המכשיר + השאילתה המקורית + מילות מפתח
+    const focusedQuery = `"${deviceName}" ${originalQuery} update review issues battery`;
 
     const url = `https://www.googleapis.com/customsearch/v1`;
     const params = {
@@ -24,7 +22,7 @@ async function searchGoogle(deviceName, originalQuery) {
     };
 
     try {
-        console.log(`🔍 Google Search: Searching with query: ${focusedQuery}`);
+        console.log(`🔍 Google Search: Searching with simplified query: ${focusedQuery}`);
         const response = await axios.get(url, { params });
         const resultsCount = response.data.items ? response.data.items.length : 0;
         console.log(`✅ Google Search: Found ${resultsCount} results.`);
