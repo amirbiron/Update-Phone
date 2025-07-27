@@ -12,30 +12,28 @@ const anthropic = new Anthropic({
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Analyzes a large, pre-filtered dataset with the final "Bug Hunter" persona and prompt.
+ * Analyzes search results with the new "Pragmatic Analyst" persona.
  * @param {string} query - The original user query.
- * @param {Array<object>} searchResults - The large, filtered array of search results.
- * @returns {Promise<string>} The final, well-designed, and highly relevant analysis.
+ * @param {Array<object>} searchResults - The array of search results.
+ * @returns {Promise<string>} The pragmatic and realistic analysis.
  */
 async function analyzeTextWithClaude(query, searchResults) {
-  if (searchResults.length < 3) {
-      return `לאחר חיפוש מעמיק, לא נמצאו מספיק דיווחים טכניים ספציפיים על הדגם **${query}** כדי לגבש המלצה מהימנה. מומלץ לנסות שוב בעוד מספר ימים, לאחר שיצטברו יותר חוויות משתמשים.`;
+  if (searchResults.length === 0) {
+      return `לאחר חיפוש מעמיק, לא נמצאו כלל דיווחים ספציפיים על הדגם **${query}**. ייתכן שהעדכון חדש מדי או שהדיונים עליו מתקיימים בפלטפורמות אחרות.`;
   }
 
   const contentForAnalysis = searchResults
     .map((item, index) => `Source #${index + 1}\nTitle: ${item.title}\nSnippet: ${item.snippet}`)
     .join('\n\n---\n\n');
 
-  // V7 - The Final "Bug Hunter" Prompt
-  const prompt = `You are a "Bug Hunter" bot. Your SOLE mission is to find and report concrete, functional user experiences (good or bad) with a specific software update on a specific device, based on the provided search results for the query: "${query}".
+  // V8 - The "Pragmatic Analyst" Prompt
+  const prompt = `You are a "Pragmatic Analyst" bot. Your goal is to find signals in the noise of real-world user search results for the query: "${query}".
+Your main job is to extract any and all CLAIMS related to the device's functional performance (battery, speed, bugs, features, stability).
 
-**YOUR UNBREAKABLE RULES:**
-1.  **ACTION AND RESULT ONLY:** Only cite reports that describe a specific action and its result (e.g., "When I open the camera, the phone freezes").
-2.  **NO META-COMMENTARY:** You MUST IGNORE any mentions of user interest, hype, waiting for the update, brand loyalty, or general discussions. Focus ONLY on functional reports.
-3.  **NO VAGUE REPORTS:** IGNORE vague statements like "something is wrong" or "it's buggy". You must cite the specific bug.
-4.  **NO QUESTIONS:** IGNORE any questions you find in the search results.
-
-Your goal is to find at least 10 concrete reports if they exist in the provided data.
+**YOUR GUIDING PRINCIPLES:**
+1.  **EXTRACT, DON'T DISCARD:** It is better to report a slightly vague claim (e.g., "battery seems worse") than to report nothing. Your goal is to find as many claims as you can.
+2.  **FOCUS ON FUNCTION:** Your analysis must revolve around how the device WORKS. Ignore meta-commentary about hype, user interest, or brand loyalty.
+3.  **INFER AND SUMMARIZE:** You don't have to quote directly. You can summarize the user's point concisely.
 
 Provide a detailed analysis in Hebrew, using the following visually appealing Markdown format EXACTLY. The entire response must be in Hebrew.
 
@@ -44,31 +42,31 @@ Provide a detailed analysis in Hebrew, using the following visually appealing Ma
 ### 📊 ניתוח עדכון Android 15 עבור ${query}
 
 **תקציר מנהלים:**
-*One-paragraph summary of the key functional findings (bugs, performance, battery). Do not mention user "interest" or "hype".*
+*A one-paragraph summary of the key functional findings. What are the most common claims, positive and negative?*
 
 ---
 
-### 📝 **ריכוז דיווחי משתמשים**
+### 📝 **ריכוז טענות משתמשים**
 
-#### 👍 **דיווחים חיוביים**
-*   *List bullet points of positive reports here. Each bullet must be a specific, translated quote or summary of a functional improvement. e.g., "האנימציות בממשק מרגישות חלקות ומהירות מתמיד."*
-*   *If no positive reports are found, write: "לא נמצאו דיווחים חיוביים קונקרטיים."*
+#### 👍 **טענות חיוביות**
+*   *List bullet points of positive claims here. Summarize the user's point clearly. e.g., "משתמשים מדווחים על שיפור כללי במהירות המערכת ובתגובתיות שלה."*
+*   *If no positive claims are found, write: "לא אותרו טענות חיוביות ספציפיות."*
 
-#### 👎 **דיווחים שליליים**
-*   *List bullet points of negative reports here. Each bullet must be a specific, translated quote or summary of a functional bug or issue. e.g., "צריכת הסוללה התגברה בכ-30% במצב המתנה."*
-*   *If no negative reports are found, write: "לא נמצאו דיווחים שליליים קונקרטיים."*
+#### 👎 **טענות שליליות**
+*   *List bullet points of negative claims here. Summarize the user's point clearly. e.g., "מספר משתמשים מציינים בעיות של התחממות המכשיר בשימוש רגיל."*
+*   *If no negative claims are found, write: "לא אותרו טענות שליליות ספציפיות."*
 
 ---
 
 ### 📈 **מגמות עיקריות**
-*   **מגמה חיובית מרכזית:** *Summarize the main positive trend, if any. e.g., "שיפור ניכר במהירות הממשק."*
-*   **מגמה שלילית מרכזית:** *Summarize the main negative trend, if any. e.g., "בעיות יציבות וקריסות אפליקציות צד-שלישי."*
+*   **מגמה חיובית מרכזית:** *Summarize the main positive trend. e.g., "שיפור ניכר במהירות הממשק."*
+*   **מגמה שלילית מרכזית:** *Summarize the main negative trend. e.g., "דיווחים חוזרים על צריכת סוללה מוגברת."*
 
 ---
 
 ### 🚦 **המלצה סופית**
 **[מומלץ לעדכן / מומלץ להמתין / לא מומלץ לעדכן]**
-*Provide a short, sharp justification based ONLY on the balance of functional reports you found.*
+*Provide a short justification based on the balance of claims you found.*
 
 ---
 `;
@@ -78,7 +76,7 @@ Provide a detailed analysis in Hebrew, using the following visually appealing Ma
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`Claude API call: Attempt #${attempt} with the FINAL V7 Bug Hunter Prompt.`);
+      console.log(`Claude API call: Attempt #${attempt} with the new Pragmatic Analyst Prompt.`);
       const response = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
         max_tokens: 3500,
@@ -86,7 +84,7 @@ Provide a detailed analysis in Hebrew, using the following visually appealing Ma
       });
 
       if (response && response.content && response.content.length > 0) {
-        console.log("✅ Claude API 'Bug Hunter' analysis successful.");
+        console.log("✅ Claude API Pragmatic Analyst analysis successful.");
         return response.content[0].text;
       } else {
           throw new Error("Claude API returned an empty or invalid response.");
