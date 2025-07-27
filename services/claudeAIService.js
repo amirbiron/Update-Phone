@@ -1,13 +1,15 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
-// Ensure the API key is loaded from environment variables
-const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-if (!anthropicApiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not defined in environment variables.');
+// --- THIS IS YOUR FIX ---
+// Using the correct environment variable name that you have in Render
+const claudeApiKey = process.env.CLAUDE_API_KEY; 
+if (!claudeApiKey) {
+    throw new Error('CLAUDE_API_KEY is not defined in environment variables.');
 }
 
 const anthropic = new Anthropic({
-  apiKey: anthropicApiKey,
+  // Using the variable we just defined
+  apiKey: claudeApiKey, 
 });
 
 /**
@@ -40,7 +42,7 @@ ${contentForAnalysis}
 
   try {
     const response = await anthropic.messages.create({
-      // --- THIS IS THE FIX YOU CORRECTLY IDENTIFIED ---
+      // Using the correct model name you identified
       model: "claude-3-5-sonnet-20240620", 
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
