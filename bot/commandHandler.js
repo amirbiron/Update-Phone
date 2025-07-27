@@ -1,4 +1,4 @@
-const { getOrCreateUser, updateUserQueries } = require('../services/userService');
+const { getOrCreateUser, updateUserQueries, getRecentUsers } = require('../services/userService');
 const { searchGoogle } = require('../services/googleSearch');
 const { analyzeTextWithClaude } = require('../services/claudeAIService');
 const { sendLongMessage } = require('../common/utils');
@@ -116,4 +116,38 @@ async function handleDeviceQuery(bot, msg, query) {
     }
 }
 
-module.exports = { handleStart, handleDeviceQuery };
+async function handleRecentUsers(bot, msg) {
+    const chatId = msg.chat.id;
+    
+    try {
+        const recentUsers = await getRecentUsers();
+        const userCount = recentUsers.length;
+        
+        if (userCount === 0) {
+            await bot.sendMessage(chatId, '📊 **משתמשים פעילים בשבוע האחרון: 0**\n\nאין משתמשים שהשתמשו בבוט בשבוע האחרון.');
+            return;
+        }
+
+        let message = `📊 **משתמשים פעילים בשבוע האחרון: ${userCount}**\n\n`;
+        
+        recentUsers.forEach((user, index) => {
+            const name = user.firstName || user.username || 'משתמש לא ידוע';
+            const username = user.username ? `@${user.username}` : '';
+            const lastQuery = user.lastQueryDate ? new Date(user.lastQueryDate).toLocaleString('he-IL') : 'לא ידוע';
+            const queriesCount = user.monthlyQueryCount || 0;
+            
+            message += `${index + 1}. **${name}** ${username}\n`;
+            message += `   📅 פעילות אחרונה: ${lastQuery}\n`;
+            message += `   🔢 שאילתות החודש: ${queriesCount}/30\n`;
+            message += `   🆔 ID: ${user.telegramId}\n\n`;
+        });
+
+        await sendLongMessage(bot, chatId, message, { parse_mode: 'Markdown' });
+        
+    } catch (error) {
+        console.error('Error in handleRecentUsers:', error);
+        await bot.sendMessage(chatId, '❌ אירעה שגיאה בעת קבלת רשימת המשתמשים הפעילים.');
+    }
+}
+
+module.exports = { handleStart, handleDeviceQuery, handleRecentUsers };

@@ -51,4 +51,20 @@ async function updateUserQueries(telegramId, newCount) {
     );
 }
 
-module.exports = { getOrCreateUser, updateUserQueries };
+/**
+ * Gets users who were active in the last week.
+ * @returns {Promise<Array>} Array of user objects who were active in the last 7 days.
+ */
+async function getRecentUsers() {
+    const users = getUsersCollection();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const recentUsers = await users.find({
+        lastQueryDate: { $gte: oneWeekAgo }
+    }).sort({ lastQueryDate: -1 }).toArray();
+
+    return recentUsers;
+}
+
+module.exports = { getOrCreateUser, updateUserQueries, getRecentUsers };
