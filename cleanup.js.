@@ -1,0 +1,30 @@
+require('dotenv').config();
+const TelegramBot = require('node-telegram-bot-api');
+
+const token = process.env.TELEGRAM_BOT_TOKEN;
+
+if (!token) {
+    console.error('TELEGRAM_BOT_TOKEN not found in .env file!');
+    process.exit(1);
+}
+
+const bot = new TelegramBot(token);
+
+async function clearWebhook() {
+    try {
+        const currentWebhook = await bot.getWebHookInfo();
+        if (currentWebhook.url) {
+            console.log('Found an existing webhook:', currentWebhook.url);
+            await bot.deleteWebHook();
+            console.log('✅ Successfully deleted the old webhook.');
+        } else {
+            console.log('✅ No existing webhook found. All clean!');
+        }
+        process.exit(0);
+    } catch (error) {
+        console.error('Error during cleanup:', error.message);
+        process.exit(1);
+    }
+}
+
+clearWebhook();
