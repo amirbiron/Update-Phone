@@ -35,14 +35,20 @@ async function analyzeTextWithClaude(query, searchResults) {
     .map((item, index) => `Source #${index + 1}\nTitle: ${item.title}\nURL: ${item.link}\nSnippet: ${item.snippet}\nQuery Type: ${item.queryType || 'general'}`)
     .join('\n\n---\n\n');
 
-  // Enhanced Prompt for better user quotes extraction and design
+  // Enhanced Prompt for authentic analysis based only on real data
   const prompt = `You are an expert technology analyst specializing in Android device updates. Your task is to analyze search results for the query: "${query}" and provide a comprehensive Hebrew report.
 
-**CRITICAL REQUIREMENTS:**
-1. **EXTRACT 20 USER REPORTS TOTAL:** Find exactly 20 specific user experiences - 10 positive and 10 negative. These should be ACTUAL user quotes translated to Hebrew, not generic summaries.
-2. **QUOTE REAL USERS:** Look for phrases like "I updated", "after the update", "my experience", "I noticed", etc. Translate these to Hebrew while maintaining the personal tone.
-3. **BE SPECIFIC:** Include specific details like battery percentages, performance metrics, specific features mentioned.
-4. **COMPREHENSIVE ANALYSIS:** Use ALL search results to build a complete picture.
+**CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
+1. **TARGET 20 REAL QUOTES:** Try to find up to 20 actual user quotes from the search results (aim for 10 positive + 10 negative if possible).
+2. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
+3. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
+4. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+   - NO quote should appear without its corresponding link
+   - The link must be the exact URL from the search results provided
+5. **BE HONEST ABOUT ACTUAL NUMBERS:** If you find only 7 positive quotes and 5 negative quotes, report exactly that. State clearly how many you actually found.
+6. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the target of 10 per category.
+7. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
+8. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -60,58 +66,60 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 💬 **דיווחי משתמשים אמיתיים**
 
-### ✅ **חוויות חיוביות (10 דיווחים)**
+**הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. אם לא נמצאו מספיק דיווחים, יוצגו רק אלה שנמצאו בפועל.
 
-1. **משתמש א':** "*תרגום מדויק של ציטוט משתמש חיובי מהתוצאות*"
-2. **משתמש ב':** "*תרגום נוסף של חוויה חיובית ספציפית*"
-3. **משתמש ג':** "*ציטוט חיובי נוסף עם פרטים ספציפיים*"
-4. **משתמש ד':** "*חוויה חיובית מתורגמת*"
-5. **משתמש ה':** "*דיווח חיובי נוסף*"
-6. **משתמש ו':** "*ציטוט חיובי*"
-7. **משתמש ז':** "*חוויה חיובית*"
-8. **משתמש ח':** "*דיווח חיובי*"
-9. **משתמש ט':** "*ציטוט חיובי*"
-10. **משתמש י':** "*חוויה חיובית אחרונה*"
+### ✅ **חוויות חיוביות**
+*חפש עד 10 ציטוטים חיוביים אמיתיים מתוצאות החיפוש. אם מצאת פחות - כתוב בסוף הסעיף כמה בפועל נמצאו.*
 
-### ❌ **חוויות שליליות (10 דיווחים)**
+פורמט חובה לכל ציטוט (כולל קישור!):
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
-1. **משתמש א':** "*תרגום מדויק של ציטוט משתמש שלילי מהתוצאות*"
-2. **משתמש ב':** "*תרגום נוסף של חוויה שלילית ספציפית*"
-3. **משתמש ג':** "*ציטוט שלילי נוסף עם פרטים ספציפיים*"
-4. **משתמש ד':** "*חוויה שלילית מתורגמת*"
-5. **משתמש ה':** "*דיווח שלילי נוסף*"
-6. **משתמש ו':** "*ציטוט שלילי*"
-7. **משתמש ז':** "*חוויה שלילית*"
-8. **משתמש ח':** "*דיווח שלילי*"
-9. **משתמש ט':** "*ציטוט שלילי*"
-10. **משתמש י':** "*חוויה שלילית אחרונה*"
+דוגמה:
+**משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
+
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
+
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים מתוך יעד של 10*
+
+### ❌ **חוויות שליליות**
+*חפש עד 10 ציטוטים שליליים אמיתיים מתוצאות החיפוש. אם מצאת פחות - כתוב בסוף הסעיף כמה בפועל נמצאו.*
+
+פורמט חובה לכל ציטוט (כולל קישור!):
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
+
+דוגמה:
+**משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
+
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
+
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים מתוך יעד של 10*
 
 ---
 
 ## 📊 **ניתוח מגמות מעמיק**
 
 ### 🔋 **ביצועי סוללה**
-*ניתוח ממצאים לגבי השפעת העדכון על הסוללה*
+*ניתוח ממצאים לגבי השפעת העדכון על הסוללה - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### ⚡ **ביצועי מערכת**
-*ניתוח ממצאים לגבי מהירות ויציבות המערכת*
+*ניתוח ממצאים לגבי מהירות ויציבות המערכת - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🎨 **ממשק משתמש וחוויית שימוש**
-*ניתוח שינויים בממשק ובחוויית המשתמש*
+*ניתוח שינויים בממשק ובחוויית המשתמש - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🔧 **בעיות טכניות ותקלות**
-*סיכום הבעיות הטכניות העיקריות שדווחו*
+*סיכום הבעיות הטכניות העיקריות שדווחו - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ---
 
 ## 🎯 **המלצה מפורטת**
 
-### 🚦 **החלטה: [מומלץ בחום לעדכן / מומלץ לעדכן / מומלץ להמתין / לא מומלץ לעדכן]**
+### 🚦 **החלטה: [מומלץ בחום לעדכן / מומלץ לעדכן / מומלץ להמתין / לא מומלץ לעדכן / אין מספיק מידע להמלצה]**
 
 **נימוקים:**
-• *נימוק ראשון מבוסס על הנתונים*
-• *נימוק שני מבוסס על הדיווחים*
-• *נימוק שלישי מבוסס על המגמות*
+• *נימוק ראשון מבוסס על הנתונים שנמצאו בפועל*
+• *נימוק שני מבוסס על הדיווחים שנמצאו בפועל*
+• *נימוק שלישי מבוסס על המגמות שזוהו בפועל*
 
 **המלצות נוספות:**
 • *המלצה מעשית ראשונה*
@@ -122,13 +130,16 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 📈 **סיכום נתונים**
 - **סה"כ מקורות נותחו:** ${searchResults.length}
-- **דיווחים חיוביים:** 10
-- **דיווחים שליליים:** 10
+- **דיווחים חיוביים שנמצאו:** [מספר אמיתי] מתוך יעד של 10
+- **דיווחים שליליים שנמצאו:** [מספר אמיתי] מתוך יעד של 10
+- **סה"כ ציטוטים אמיתיים:** [סכום] מתוך יעד של 20
 - **אמינות הניתוח:** גבוהה/בינונית/נמוכה (בהתאם לכמות ואיכות הנתונים)
 
 ---
 
-*הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי*`;
+*הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי. כל הציטוטים והדיווחים מבוססים על מקורות אמיתיים שנמצאו בחיפוש. 
+
+💡 **המלצה:** לחצו על הקישורים כדי לקרוא את ההקשר המלא של כל ציטוט ולוודא שהוא רלוונטי למכשיר שלכם.*`;
 
   const maxRetries = 3;
   let lastError = null;
