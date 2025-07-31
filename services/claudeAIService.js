@@ -42,17 +42,19 @@ async function analyzeTextWithClaude(query, searchResults) {
 
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
 1. **EXTRACT ALL POSSIBLE QUOTES:** Search THOROUGHLY through ALL search results and extract EVERY user quote, opinion, experience, or report that mentions the specific device model, even if it's brief or indirect.
-2. **EXPAND YOUR SEARCH SCOPE:** Look for user comments, forum posts, Reddit discussions, review comments, social media posts, and any user-generated content in the search results.
-3. **INCLUDE PARTIAL MENTIONS:** Even if a quote doesn't give a full review, include it if it mentions the device and update experience (e.g., "battery is better after update", "no issues so far", "loving the new features").
-4. **PARAPHRASE WHEN NECESSARY:** If you find relevant user opinions that aren't in direct quote format, you can paraphrase them as long as you maintain accuracy and provide the source link.
-5. **LOOK IN SNIPPETS:** Pay special attention to the snippets provided - they often contain user quotes or opinions that might be missed.
-6. **FORUM AND REDDIT FOCUS:** Give extra attention to forum discussions, Reddit posts, and community discussions where users share experiences.
-7. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS.
-8. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found.
-9. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
-10. **BE THOROUGH:** Go through each search result systematically and look for ANY mention of user experience with the specific device model.
-11. **EXTRACT FROM TITLES TOO:** Sometimes the title itself contains user sentiment or experience - include these as well.
-12. **LOOK FOR IMPLICIT FEEDBACK:** Include results that imply user experience even if not in direct quote format (e.g., "users report improved battery life").
+2. **NO DUPLICATES:** Ensure each quote is unique - do not repeat the same information from different sources or rephrase the same quote multiple times.
+3. **EXPAND YOUR SEARCH SCOPE:** Look for user comments, forum posts, Reddit discussions, review comments, social media posts, and any user-generated content in the search results.
+4. **INCLUDE PARTIAL MENTIONS:** Even if a quote doesn't give a full review, include it if it mentions the device and update experience (e.g., "battery is better after update", "no issues so far", "loving the new features").
+5. **PARAPHRASE WHEN NECESSARY:** If you find relevant user opinions that aren't in direct quote format, you can paraphrase them as long as you maintain accuracy and provide the source link.
+6. **LOOK IN SNIPPETS:** Pay special attention to the snippets provided - they often contain user quotes or opinions that might be missed.
+7. **FORUM AND REDDIT FOCUS:** Give extra attention to forum discussions, Reddit posts, and community discussions where users share experiences.
+8. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS.
+9. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found.
+10. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+11. **BE THOROUGH:** Go through each search result systematically and look for ANY mention of user experience with the specific device model.
+12. **EXTRACT FROM TITLES TOO:** Sometimes the title itself contains user sentiment or experience - include these as well.
+13. **LOOK FOR IMPLICIT FEEDBACK:** Include results that imply user experience even if not in direct quote format (e.g., "users report improved battery life").
+14. **QUALITY OVER QUANTITY:** Prefer diverse, unique experiences over repetitive similar quotes.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -78,9 +80,11 @@ Provide your analysis in Hebrew using this EXACT format:
 - חפש ביטויים כמו "my experience", "after updating", "user reports", "feedback", "issues", "working well"
 - שים לב לתגובות ודיונים בפורומים, Reddit, XDA, ואתרי ביקורות
 - אל תתעלם מציטוטים קצרים או חלקיים - הם עדיין חשובים
+- **חשוב:** הימנע מכפילויות - אל תכלול את אותו ציטוט פעמיים או ציטוטים דומים מאוד
+- העדף ציטוטים מגוונים המספקים נקודות מבט שונות על החוויה
 
 ### ✅ **חוויות חיוביות**
-*חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים. חפש ביסודיות בכל snippet, title, ותוכן זמין. כלול גם חוויות חלקיות או קצרות שמזכירות את המכשיר.*
+*חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים. חפש ביסודיות בכל snippet, title, ותוכן זמין. כלול גם חוויות חלקיות או קצרות שמזכירות את המכשיר. הימנע מכפילויות!*
 
 פורמט חובה לכל ציטוט (כולל קישור!):
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
