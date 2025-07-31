@@ -63,6 +63,10 @@ async function handleStart(bot, msg) {
 ---
 
 **🔥 בואו נתחיל! שאלו אותי על העדכון שלכם ותקבלו ניתוח מקצועי ומקיף!**
+
+---
+
+**📞 לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**
     `;
     
     // Use sendLongMessage instead of bot.sendMessage for the welcome message
