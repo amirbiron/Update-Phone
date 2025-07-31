@@ -42,10 +42,23 @@ function extractModelFromQuery(query) {
         /iphone\s+(\d+\s*plus)/i,
         /iphone\s+(\d+)/i,
         
-        // Xiaomi patterns
-        /(mi\s*\d+)/i,
-        /(redmi\s*\w+\s*\d*)/i,
-        /(poco\s*\w+\s*\d*)/i,
+        // Xiaomi patterns - מסודר לפי ספציפיות (ספציפי יותר קודם)
+        /(xiaomi\s+\d+\s*ultra)/i,          // Xiaomi 14 Ultra
+        /(xiaomi\s+\d+\s*pro)/i,            // Xiaomi 14 Pro
+        /(mi\s*\d+\s*ultra)/i,              // Mi 13 Ultra
+        /(mi\s*\d+\s*pro)/i,                // Mi 13 Pro
+        /(mi\s*\d+\s*lite)/i,               // Mi 13 Lite
+        /(redmi\s+note\s*\d+\s*pro\s*\+)/i, // Redmi Note 12 Pro+
+        /(redmi\s+note\s*\d+\s*pro)/i,      // Redmi Note 12 Pro
+        /(redmi\s+k\d+\s*pro)/i,            // Redmi K70 Pro
+        /(redmi\s+\w+\s*\d*\s*pro)/i,       // Redmi [model] Pro כללי
+        /(poco\s+\w+\s*\d*\s*pro)/i,        // Poco X6 Pro, Poco F5 Pro
+        /(xiaomi\s+\d+)/i,                  // Xiaomi 14
+        /(mi\s*\d+)/i,                      // Mi 13
+        /(redmi\s+note\s*\d+)/i,            // Redmi Note 12
+        /(redmi\s+k\d+)/i,                  // Redmi K70
+        /(redmi\s*\w+\s*\d*)/i,             // Redmi כללי
+        /(poco\s*\w+\s*\d*)/i,              // Poco כללי
         
         // OnePlus patterns
         /oneplus\s+(\d+\s*pro)/i,
@@ -67,7 +80,7 @@ function extractModelFromQuery(query) {
             return {
                 original: modelName,
                 variations: [modelName],
-                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro')
+                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+')
             };
         }
     }
@@ -216,9 +229,27 @@ async function searchGoogle(userQuery) {
                     const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+|fe))`, 'i');
                     const hasExactMatch = modelRegex.test(fullText);
                     
-                    // בדיקה נוספת: אם מחפשים S24, לא נכלול תוצאות עם S24+ או S24 Ultra
+                    // בדיקה נוספת: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
                     if (model.toLowerCase() === 's24') {
                         const excludeVariants = /s24\s*(ultra|plus|pro|\+|fe)/i;
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור שיאומי - Mi 13 לא יכלול Mi 13 Pro/Ultra/Lite
+                    if (model.match(/^mi\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(ultra|pro|lite)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Xiaomi - Xiaomi 14 לא יכלול Xiaomi 14 Pro/Ultra
+                    if (model.match(/^xiaomi\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(ultra|pro|lite)`, 'i');
                         if (excludeVariants.test(fullText)) {
                             return false;
                         }
@@ -233,7 +264,16 @@ async function searchGoogle(userQuery) {
                 
                 // בדיקה כללית: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
                 if (model.match(/^[a-z]+\d+$/i)) {
-                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe)`, 'i');
+                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe|lite)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה מיוחדת עבור Redmi Note - למנוע ערבוב בין Note 12 ל-Note 12 Pro
+                if (model.match(/^redmi\s+note\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*(pro|\\+)`, 'i');
                     if (excludeVariants.test(fullText)) {
                         return false;
                     }
