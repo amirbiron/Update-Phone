@@ -44,7 +44,7 @@ async function analyzeTextWithClaude(query, searchResults) {
 3. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
 4. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
 5. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-רדיט:** "*translated quote*" - Website Name: direct URL link
+6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-רדיט:** "*translated quote*" - direct URL link
    - NO quote should appear without its corresponding link
    - The link must be the exact URL from the search results provided
    - If you can't find the exact URL for a quote, don't include that quote
@@ -77,10 +77,10 @@ Provide your analysis in Hebrew using this EXACT format:
 *חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
 
 פורמט חובה לכל ציטוט (כולל קישור!):
-**משתמש מ-רדיט:** "*הציטוט המתורגם*" - שם האתר: קישור למקור
+**משתמש מ-רדיט:** "*הציטוט המתורגם*" - קישור למקור
 
 דוגמה:
-**משתמש מ-רדיט:** "*העדכון שיפר לי את הביצועים משמעותיות*" - Reddit: https://reddit.com/example
+**משתמש מ-רדיט:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
 
 ⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
 
@@ -90,10 +90,10 @@ Provide your analysis in Hebrew using this EXACT format:
 *חלץ את כל הציטוטים השליליים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
 
 פורמט חובה לכל ציטוט (כולל קישור!):
-**משתמש מ-רדיט:** "*הציטוט המתורגם*" - שם האתר: קישור למקור
+**משתמש מ-רדיט:** "*הציטוט המתורגם*" - קישור למקור
 
 דוגמה:
-**משתמש מ-רדיט:** "*יש לי בעיות סוללה אחרי העדכון*" - XDA Forum: https://xda-developers.com/example
+**משתמש מ-רדיט:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
 
 ⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
 
