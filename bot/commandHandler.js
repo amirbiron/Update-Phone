@@ -7,6 +7,9 @@ async function handleStart(bot, msg) {
     const chatId = msg.chat.id;
     const user = await getOrCreateUser(msg.from);
     const queriesLeft = 30 - user.monthlyQueryCount;
+    
+    // הגדרת תפריט פקודות בהתאם לסטטוס המשתמש
+    await setupCommandMenu(bot, msg.from.id, chatId);
 
     const welcomeMessage = `
 🤖 **ברוכים הבאים לבוט יועץ עדכוני אנדרואיד המתקדם!**
@@ -153,6 +156,87 @@ async function handleRecentUsers(bot, msg) {
 }
 
 /**
+ * Sets up command menu for user based on their admin status.
+ * @param {object} bot - The Telegram bot instance.
+ * @param {number} userId - The user's Telegram ID.
+ * @param {number} chatId - The chat ID.
+ */
+async function setupCommandMenu(bot, userId, chatId) {
+    const adminChatIds = process.env.ADMIN_CHAT_IDS ? process.env.ADMIN_CHAT_IDS.split(',').map(id => parseInt(id.trim())) : [];
+    const isAdmin = adminChatIds.includes(userId);
+    
+    if (isAdmin) {
+        // תפריט פקודות למנהלים
+        const adminCommands = [
+            { command: 'start', description: 'התחלת השיחה' },
+            { command: 'recent_users', description: 'רשימת משתמשים פעילים' },
+            { command: 'reset_queries', description: 'איפוס מכסת שאילתות (הוסף ID משתמש)' },
+            { command: 'admin_help', description: 'עזרה לפקודות מנהל' }
+        ];
+        
+        try {
+            await bot.setMyCommands(adminCommands, { scope: { type: 'chat', chat_id: chatId } });
+            console.log(`✅ Admin commands menu set for user ${userId}`);
+            return true;
+        } catch (error) {
+            console.error('Error setting admin commands menu:', error);
+            return false;
+        }
+    } else {
+        // תפריט פקודות רגיל למשתמשים רגילים
+        const regularCommands = [
+            { command: 'start', description: 'התחלת השיחה' }
+        ];
+        
+        try {
+            await bot.setMyCommands(regularCommands, { scope: { type: 'chat', chat_id: chatId } });
+            console.log(`✅ Regular commands menu set for user ${userId}`);
+            return true;
+        } catch (error) {
+            console.error('Error setting regular commands menu:', error);
+            return false;
+        }
+    }
+}
+
+/**
+ * Handles admin help command.
+ * @param {object} bot - The Telegram bot instance.
+ * @param {object} msg - The Telegram message object.
+ */
+async function handleAdminHelp(bot, msg) {
+    const chatId = msg.chat.id;
+    const adminChatIds = process.env.ADMIN_CHAT_IDS ? process.env.ADMIN_CHAT_IDS.split(',').map(id => parseInt(id.trim())) : [];
+    
+    if (!adminChatIds.includes(msg.from.id)) {
+        await bot.sendMessage(chatId, '❌ פקודה זו זמינה רק למנהלים.');
+        return;
+    }
+    
+    const helpMessage = `
+🔧 **פקודות מנהל זמינות:**
+
+📋 **/recent_users** - רשימת משתמשים פעילים בשבוע האחרון
+🔄 **/reset_queries [USER_ID]** - איפוס מכסת שאילתות למשתמש ספציפי
+🏠 **/start** - התחלת השיחה מחדש
+❓ **/admin_help** - הצגת עזרה זו
+
+---
+
+📝 **דוגמת שימוש:**
+1. הקש \`/recent_users\` כדי לראות רשימת משתמשים
+2. העתק את ה-ID של המשתמש שאת רוצה לאפס לו את המכסה
+3. הקש \`/reset_queries 123456789\` (החלף את המספר ב-ID האמיתי)
+
+---
+
+⚠️ **הערה:** רק משתמשים שמוגדרים ב-ADMIN_CHAT_IDS יכולים להשתמש בפקודות אלו.
+    `;
+    
+    await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
+}
+
+/**
  * Handles admin command to reset user queries (admin only).
  * @param {object} bot - The Telegram bot instance.
  * @param {object} msg - The Telegram message object.
@@ -193,4 +277,4 @@ async function handleResetUserQueries(bot, msg, targetUserId) {
     }
 }
 
-module.exports = { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries };
+module.exports = { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries, handleAdminHelp, setupCommandMenu };

@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const TelegramBot = require('node-telegram-bot-api');
-const { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries } = require('./bot/commandHandler');
+const { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries, handleAdminHelp } = require('./bot/commandHandler');
 const { connectToDB } = require('./services/mongo');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -42,6 +42,7 @@ connectToDB().then(() => {
 bot.onText(/\/start/, (msg) => handleStart(bot, msg));
 bot.onText(/\/recent_users/, (msg) => handleRecentUsers(bot, msg));
 bot.onText(/\/reset_queries (.+)/, (msg, match) => handleResetUserQueries(bot, msg, match[1]));
+bot.onText(/\/admin_help/, (msg) => handleAdminHelp(bot, msg));
 
 // --- כאן התיקון העיקרי ---
 bot.on('message', (msg) => {
