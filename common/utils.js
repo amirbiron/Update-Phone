@@ -26,6 +26,36 @@ function getSupportedModels() {
 }
 
 /**
+ * Removes markdown formatting (asterisks and hash symbols) from text
+ * @param {string} text - The text to clean
+ * @returns {string} Text without markdown formatting
+ */
+function removeMarkdownFormatting(text) {
+    // Remove all asterisks (both single and double)
+    let cleanedText = text.replace(/\*/g, '');
+    
+    // Remove hash symbols at the beginning of lines (headers)
+    cleanedText = cleanedText.replace(/^#+\s*/gm, '');
+    
+    // Remove backticks (code formatting)
+    cleanedText = cleanedText.replace(/`/g, '');
+    
+    // Remove underscores used for italics
+    cleanedText = cleanedText.replace(/_/g, '');
+    
+    // Clean up multiple consecutive spaces (but preserve single spaces)
+    cleanedText = cleanedText.replace(/ {2,}/g, ' ');
+    
+    // Clean up multiple consecutive newlines (preserve up to 2)
+    cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n');
+    
+    // Trim each line
+    cleanedText = cleanedText.split('\n').map(line => line.trim()).join('\n');
+    
+    return cleanedText;
+}
+
+/**
  * Splits a long message into multiple parts to comply with Telegram's 4096 character limit
  * @param {string} message - The message to split
  * @param {number} maxLength - Maximum length per message part (default: 4000 to leave some buffer)
@@ -99,7 +129,7 @@ function splitLongMessage(message, maxLength = 4000) {
     // Add part numbers if there are multiple parts
     if (parts.length > 1) {
         return parts.map((part, index) => {
-            const partNumber = `📄 **חלק ${index + 1}/${parts.length}**\n\n`;
+            const partNumber = `📄 חלק ${index + 1}/${parts.length}\n\n`;
             return partNumber + part;
         });
     }
@@ -116,11 +146,18 @@ function splitLongMessage(message, maxLength = 4000) {
  * @returns {Promise} Promise that resolves when all parts are sent
  */
 async function sendLongMessage(bot, chatId, message, options = {}) {
-    const messageParts = splitLongMessage(message);
+    // Remove markdown formatting from the message
+    const cleanedMessage = removeMarkdownFormatting(message);
+    
+    const messageParts = splitLongMessage(cleanedMessage);
+    
+    // Remove parse_mode since we're not using markdown anymore
+    const cleanedOptions = { ...options };
+    delete cleanedOptions.parse_mode;
     
     for (let i = 0; i < messageParts.length; i++) {
         try {
-            await bot.sendMessage(chatId, messageParts[i], options);
+            await bot.sendMessage(chatId, messageParts[i], cleanedOptions);
             
             // Add a small delay between messages to avoid rate limiting
             if (i < messageParts.length - 1) {
@@ -131,7 +168,7 @@ async function sendLongMessage(bot, chatId, message, options = {}) {
             // Try to send an error message if the first part failed
             if (i === 0) {
                 try {
-                    await bot.sendMessage(chatId, '❌ אירעה שגיאה בשליחת ההודעה. ההודעה ארוכה מדי או שיש בעיית חיבור.', options);
+                    await bot.sendMessage(chatId, '❌ אירעה שגיאה בשליחת ההודעה. ההודעה ארוכה מדי או שיש בעיית חיבור.', cleanedOptions);
                 } catch (secondError) {
                     console.error('Failed to send error message:', secondError);
                 }
@@ -144,6 +181,7 @@ async function sendLongMessage(bot, chatId, message, options = {}) {
 module.exports = {
     getDeviceDetails,
     getSupportedModels,
+    removeMarkdownFormatting,
     splitLongMessage,
     sendLongMessage
 };

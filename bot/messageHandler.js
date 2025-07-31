@@ -1,5 +1,5 @@
 const { getDeviceDetails } = require('../common/utils');
-const { sendLongMessage } = require('../common/utils');
+const { sendLongMessage, removeMarkdownFormatting } = require('../common/utils');
 
 function handleUpdate(bot, msg) {
     const chatId = msg.chat.id;
@@ -21,13 +21,13 @@ async function handleMyDeviceInfo(bot, msg) {
     const deviceDetails = getDeviceDetails(defaultDevice);
     if (deviceDetails) {
         const message = `
-*פרטי המכשיר (דוגמה): ${deviceDetails.name}*
+פרטי המכשיר (דוגמה): ${deviceDetails.name}
 
-*המלצה:*
+המלצה:
 ${deviceDetails.recommendation}
         `;
-        // Use sendLongMessage instead of bot.sendMessage for device info
-        await sendLongMessage(bot, chatId, message, { parse_mode: 'Markdown' });
+        // Use sendLongMessage which now automatically removes markdown
+        await sendLongMessage(bot, chatId, message);
     }
 }
 
