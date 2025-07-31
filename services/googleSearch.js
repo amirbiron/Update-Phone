@@ -81,6 +81,8 @@ async function searchSpecificSite(query, site, maxResults = 10) {
  */
 async function searchAllSitesBalanced(query, resultsPerSite = 8) {
     console.log(`🚀 Starting balanced search across ${TARGET_SITES.length} sites...`);
+    console.log(`📝 Query: "${query}"`);
+    console.log(`🎯 Target sites: ${TARGET_SITES.join(', ')}`);
     
     // חיפוש מקביל בכל האתרים עם site: operator
     const siteSearchPromises = TARGET_SITES.map(site => 
@@ -105,7 +107,7 @@ async function searchAllSitesBalanced(query, resultsPerSite = 8) {
             });
         });
         
-        // סטטיסטיקות
+        // סטטיסטיקות מפורטות
         const siteDistribution = {};
         allResults.forEach(item => {
             siteDistribution[item.sourceSite] = (siteDistribution[item.sourceSite] || 0) + 1;
@@ -115,6 +117,16 @@ async function searchAllSitesBalanced(query, resultsPerSite = 8) {
         Object.entries(siteDistribution).forEach(([site, count]) => {
             console.log(`   ${site}: ${count} results`);
         });
+        
+        // אזהרות אם יש בעיות
+        const sitesWithResults = Object.keys(siteDistribution).length;
+        if (sitesWithResults === 1 && siteDistribution['reddit.com']) {
+            console.log('🚨 WARNING: Only Reddit results found! Check CSE configuration.');
+        } else if (sitesWithResults < TARGET_SITES.length / 2) {
+            console.log(`⚠️  WARNING: Only ${sitesWithResults}/${TARGET_SITES.length} sites returned results.`);
+        } else {
+            console.log(`✅ Good distribution: ${sitesWithResults}/${TARGET_SITES.length} sites have results.`);
+        }
         
         return allResults;
         
