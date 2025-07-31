@@ -1,7 +1,7 @@
 const { getOrCreateUser, updateUserQueries, getRecentUsers } = require('../services/userService');
 const { searchGoogle } = require('../services/googleSearch');
 const { analyzeTextWithClaude } = require('../services/claudeAIService');
-const { sendLongMessage } = require('../common/utils');
+const { sendLongMessage, removeMarkdownFormatting } = require('../common/utils');
 
 async function handleStart(bot, msg) {
     const chatId = msg.chat.id;
@@ -75,14 +75,16 @@ async function handleDeviceQuery(bot, msg, query) {
     }
 
     try {
-        await bot.sendMessage(chatId, `🔍 **מתחיל חיפוש מקיף...**
+        const searchMessage = `🔍 מתחיל חיפוש מקיף...
 
 ⏳ אני מבצע חיפוש מתקדם עם 6 אסטרטגיות שונות לאיסוף עד 100 תוצאות רלוונטיות.
 📊 לאחר מכן אנתח את כל הנתונים ואחלץ עד 20 עדויות משתמשים אמיתיות עם קישורים ישירים.
-🔗 **קישורים ישירים** - כל ציטוט יכלול קישור למקור המקורי לאימות עצמאי.
-🎯 **שקיפות מלאה** - אם לא אמצא מספיק מידע, אדווח על כך בכנות.
+🔗 קישורים ישירים - כל ציטוט יכלול קישור למקור המקורי לאימות עצמאי.
+🎯 שקיפות מלאה - אם לא אמצא מספיק מידע, אדווח על כך בכנות.
 
-*זה עשוי לקחת 1-2 דקות לניתוח מקיף...*`, { parse_mode: 'Markdown' });
+זה עשוי לקחת 1-2 דקות לניתוח מקיף...`;
+        
+        await bot.sendMessage(chatId, removeMarkdownFormatting(searchMessage));
         
         // מנקים את השאילתה ממילות שאלה כדי להתמקד במכשיר ובגרסה
         const cleanedQuery = query
