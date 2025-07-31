@@ -43,19 +43,10 @@ async function analyzeTextWithClaude(query, searchResults) {
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
 1. **EXTRACT ALL POSSIBLE QUOTES:** Search THOROUGHLY through ALL search results and extract EVERY user quote, opinion, experience, or report that mentions the specific device model, even if it's brief or indirect.
 2. **NO DUPLICATES:** Ensure each quote is unique - do not repeat the same information from different sources or rephrase the same quote multiple times.
-3. **AVOID REPETITIVE LANGUAGE:** Use varied language throughout the analysis. Don't repeat the same phrases, instructions, or formatting explanations multiple times in the response.
-3. **EXPAND YOUR SEARCH SCOPE:** Look for user comments, forum posts, Reddit discussions, review comments, social media posts, and any user-generated content in the search results.
-4. **INCLUDE PARTIAL MENTIONS:** Even if a quote doesn't give a full review, include it if it mentions the device and update experience (e.g., "battery is better after update", "no issues so far", "loving the new features").
-5. **PARAPHRASE WHEN NECESSARY:** If you find relevant user opinions that aren't in direct quote format, you can paraphrase them as long as you maintain accuracy and provide the source link.
-6. **LOOK IN SNIPPETS:** Pay special attention to the snippets provided - they often contain user quotes or opinions that might be missed.
-7. **FORUM AND REDDIT FOCUS:** Give extra attention to forum discussions, Reddit posts, and community discussions where users share experiences.
-8. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS.
-9. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found.
-10. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
-11. **BE THOROUGH:** Go through each search result systematically and look for ANY mention of user experience with the specific device model.
-12. **EXTRACT FROM TITLES TOO:** Sometimes the title itself contains user sentiment or experience - include these as well.
-13. **LOOK FOR IMPLICIT FEEDBACK:** Include results that imply user experience even if not in direct quote format (e.g., "users report improved battery life").
-14. **QUALITY OVER QUANTITY:** Prefer diverse, unique experiences over repetitive similar quotes.
+3. **AVOID REPETITIVE TEXT:** Don't repeat the same instructions, phrases, or formatting explanations within your response. Keep the analysis concise and avoid redundant language.
+4. **EXTRACT ALL QUOTES:** Search thoroughly through all search results for user quotes, opinions, and experiences.
+5. **MANDATORY FORMAT:** Every quote must use: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+6. **QUALITY FOCUS:** Prefer diverse, unique experiences over repetitive similar quotes.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -79,31 +70,19 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ### ✅ **חוויות חיוביות**
 
-פורמט: **משתמש מ-[אתר]:** "*ציטוט*" - [קישור]
-
-*📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים מתוך [סה"כ מקורות שנסקרו]*
-
 ### ❌ **חוויות שליליות**
-
-פורמט: **משתמש מ-[אתר]:** "*ציטוט*" - [קישור]
-
-*📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים מתוך [סה"כ מקורות שנסקרו]*
 
 ---
 
 ## 📊 **ניתוח מגמות מעמיק**
 
 ### 🔋 **ביצועי סוללה**
-*ניתוח ממצאים לגבי השפעת העדכון על הסוללה - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### ⚡ **ביצועי מערכת**
-*ניתוח ממצאים לגבי מהירות ויציבות המערכת - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🎨 **ממשק משתמש וחוויית שימוש**
-*ניתוח שינויים בממשק ובחוויית המשתמש - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🔧 **בעיות טכניות ותקלות**
-*סיכום הבעיות הטכניות העיקריות שדווחו - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ---
 
