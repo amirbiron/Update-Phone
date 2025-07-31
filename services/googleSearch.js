@@ -60,10 +60,21 @@ function extractModelFromQuery(query) {
         /(redmi\s*\w+\s*\d*)/i,             // Redmi כללי
         /(poco\s*\w+\s*\d*)/i,              // Poco כללי
         
-        // OnePlus patterns
-        /oneplus\s+(\d+\s*pro)/i,
-        /oneplus\s+(\d+)/i,
-        /(nord\s*\w*\s*\d*)/i,
+        // OnePlus patterns - מסודר לפי ספציפיות
+        /oneplus\s+(\d+\s*pro)/i,           // OnePlus 12 Pro
+        /oneplus\s+(\d+\s*r)/i,             // OnePlus 12R
+        /oneplus\s+(\d+\s*t)/i,             // OnePlus 12T
+        /(nord\s+ce\s*\d+\s*lite)/i,        // Nord CE 3 Lite
+        /(nord\s+ce\s*\d+)/i,               // Nord CE 3
+        /(nord\s+n\d+\s*se)/i,              // Nord N20 SE
+        /(nord\s+n\d+)/i,                   // Nord N30
+        /(nord\s*\d+)/i,                    // Nord 3
+        /oneplus\s+(open)/i,                // OnePlus Open
+        /oneplus\s+(\d+)/i,                 // OnePlus 12
+        /(nord)/i,                          // Nord כללי
+        /(op\d+\s*pro)/i,                   // OP12 Pro (קיצור)
+        /(op\d+)/i,                         // OP12 (קיצור)
+        /(1\+\d+)/i,                        // 1+12 (סימון חלופי)
         
         // Generic pattern for any word with letters and numbers
         /([a-z]+\d+[a-z]*)/i
@@ -80,7 +91,7 @@ function extractModelFromQuery(query) {
             return {
                 original: modelName,
                 variations: [modelName],
-                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+')
+                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+') || modelName.includes(' r') || modelName.includes(' t') || modelName.includes('ce') || modelName.includes(' se')
             };
         }
     }
@@ -255,6 +266,24 @@ async function searchGoogle(userQuery) {
                         }
                     }
                     
+                    // בדיקה עבור OnePlus - OnePlus 12 לא יכלול OnePlus 12 Pro/R/T
+                    if (model.match(/^oneplus\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(pro|r|t)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור OP (קיצור) - OP12 לא יכלול OP12 Pro
+                    if (model.match(/^op\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
                     return hasExactMatch;
                 }
                 
@@ -264,7 +293,7 @@ async function searchGoogle(userQuery) {
                 
                 // בדיקה כללית: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
                 if (model.match(/^[a-z]+\d+$/i)) {
-                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe|lite)`, 'i');
+                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe|lite|\\br\\b|\\bt\\b)`, 'i');
                     if (excludeVariants.test(fullText)) {
                         return false;
                     }
@@ -274,6 +303,24 @@ async function searchGoogle(userQuery) {
                 if (model.match(/^redmi\s+note\s*\d+$/i)) {
                     const baseModel = model.replace(/\s+/g, '\\s*');
                     const excludeVariants = new RegExp(`${baseModel}\\s*(pro|\\+)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה מיוחדת עבור Nord - למנוע ערבוב בין Nord 3 ל-Nord CE 3
+                if (model.match(/^nord\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*(ce|lite)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה עבור Nord CE - Nord CE 3 לא יכלול Nord CE 3 Lite
+                if (model.match(/^nord\s+ce\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*lite`, 'i');
                     if (excludeVariants.test(fullText)) {
                         return false;
                     }
