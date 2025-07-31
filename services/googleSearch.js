@@ -9,16 +9,6 @@ if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
 
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
-// האתרים המוגדרים במנוע החיפוש המותאם אישית
-const TARGET_SITES = [
-    'reddit.com',
-    'xda-developers.com', 
-    'androidcentral.com',
-    'androidpolice.com',
-    '9to5google.com',
-    'support.google.com'
-];
-
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
     const words = lowerCaseQuery.split(' ');
@@ -27,168 +17,91 @@ function extractModelFromQuery(query) {
 }
 
 /**
- * חיפוש באתר ספציפי
- */
-async function searchSpecificSite(query, site, maxResults = 5) {
-    const siteQuery = `${query} site:${site}`;
-    
-    try {
-        console.log(`🔍 Searching ${site} for: "${query}"`);
-        
-        const response = await axios.get(googleApiUrl, {
-            params: { 
-                key: GOOGLE_API_KEY, 
-                cx: GOOGLE_CSE_ID, 
-                q: siteQuery, 
-                num: Math.min(maxResults, 10),
-                dateRestrict: 'm6',
-                lr: 'lang_en' 
-            }
-        });
-
-        const items = response.data.items || [];
-        console.log(`✅ Found ${items.length} results from ${site}`);
-        
-        return items.map(item => ({
-            ...item,
-            sourceSite: site
-        }));
-
-    } catch (error) {
-        console.warn(`⚠️ Search failed for ${site}:`, error.message);
-        return [];
-    }
-}
-
-/**
- * חיפוש מאוזן בכל האתרים
- */
-async function searchAllSitesBalanced(query, resultsPerSite = 15) {
-    console.log(`🚀 Starting balanced search across ${TARGET_SITES.length} sites...`);
-    
-    // חיפוש מקביל בכל האתרים
-    const siteSearchPromises = TARGET_SITES.map(site => 
-        searchSpecificSite(query, site, resultsPerSite)
-    );
-    
-    try {
-        const siteResults = await Promise.all(siteSearchPromises);
-        let allResults = [];
-        let uniqueLinks = new Set();
-        
-        // איסוף תוצאות מכל האתרים
-        siteResults.forEach((results, index) => {
-            const site = TARGET_SITES[index];
-            console.log(`📊 ${site}: ${results.length} results`);
-            
-            results.forEach(item => {
-                if (!uniqueLinks.has(item.link)) {
-                    uniqueLinks.add(item.link);
-                    allResults.push(item);
-                }
-            });
-        });
-        
-        // סטטיסטיקות
-        const siteDistribution = {};
-        allResults.forEach(item => {
-            siteDistribution[item.sourceSite] = (siteDistribution[item.sourceSite] || 0) + 1;
-        });
-        
-        console.log('📈 Results distribution by site:');
-        Object.entries(siteDistribution).forEach(([site, count]) => {
-            console.log(`   ${site}: ${count} results`);
-        });
-        
-        return allResults;
-        
-    } catch (error) {
-        console.error('❌ Error in balanced site search:', error.message);
-        return [];
-    }
-}
-
-/**
- * חיפוש היברידי - מאוזן + כללי
- */
-async function hybridSearch(query) {
-    console.log(`🔄 Starting hybrid search strategy...`);
-    
-    // 1. חיפוש מאוזן באתרים ספציפיים (עד 15 מכל אתר = 90 תוצאות)
-    const balancedResults = await searchAllSitesBalanced(query, 15);
-    
-    // 2. חיפוש כללי נוסף (אם יש מעט תוצאות)
-    let generalResults = [];
-    if (balancedResults.length < 60) {
-        console.log(`🔍 Adding general search to supplement results...`);
-        
-        try {
-            const response = await axios.get(googleApiUrl, {
-                params: { 
-                    key: GOOGLE_API_KEY, 
-                    cx: GOOGLE_CSE_ID, 
-                    q: `${query} review experience feedback`,
-                    num: 10,
-                    dateRestrict: 'm6',
-                    lr: 'lang_en' 
-                }
-            });
-            
-            generalResults = (response.data.items || []).map(item => ({
-                ...item,
-                sourceSite: 'general'
-            }));
-            
-        } catch (error) {
-            console.warn('⚠️ General search failed:', error.message);
-        }
-    }
-    
-    // 3. איחוד התוצאות
-    let allResults = [...balancedResults];
-    let uniqueLinks = new Set(balancedResults.map(item => item.link));
-    
-    generalResults.forEach(item => {
-        if (!uniqueLinks.has(item.link)) {
-            uniqueLinks.add(item.link);
-            allResults.push(item);
-        }
-    });
-    
-    console.log(`✅ Total unique results: ${allResults.length}`);
-    
-    return allResults;
-}
-
-/**
- * Fetches results using a balanced approach across multiple sites
+ * Fetches up to 100 results with enhanced search queries and performs intelligent filtering.
  * @param {string} userQuery - The user's query.
- * * @returns {Promise<Array<object>>} A balanced list of search results from multiple sources.
+ * @returns {Promise<Array<object>>} A comprehensive, well-filtered list of relevant search results.
  */
 async function searchGoogle(userQuery) {
     const englishQuery = userQuery.replace(/אנדרואיד/g, 'Android').replace(/\?/g, '');
     
-    console.log(`🚀 Starting enhanced multi-site search for: "${englishQuery}"`);
+    // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר
+    const searchQueries = [
+        `${englishQuery} review feedback experience user reports`,
+        `${englishQuery} update problems issues bugs battery performance`,
+        `${englishQuery} after update thoughts opinions reddit forum`,
+        `${englishQuery} "updated to" "upgraded to" user experience review`,
+        `${englishQuery} performance battery life speed issues complaints`,
+        `${englishQuery} "worth updating" "should I update" recommendations`
+    ];
     
+    const model = extractModelFromQuery(englishQuery);
+    if (!model) {
+        console.warn("Could not extract a specific model from the query for filtering. Results may be less focused.");
+    }
+
+    console.log(`🚀 Initiating enhanced paginated search for up to 100 results with ${searchQueries.length} different search strategies...`);
+
+    // יצירת חיפושים מקבילים - עד 100 תוצאות סה"כ
+    const allSearchPromises = [];
+    
+    for (let i = 0; i < searchQueries.length; i++) {
+        const query = searchQueries[i];
+        // עבור כל שאילתה, נבצע 2 חיפושים של 10 תוצאות (20 לכל שאילתה)
+        // סה"כ: 6 שאילתות * 20 תוצאות = 120, אבל נגביל ל-100
+        for (let page = 0; page < 2; page++) {
+            allSearchPromises.push(
+                axios.get(googleApiUrl, {
+                    params: { 
+                        key: GOOGLE_API_KEY, 
+                        cx: GOOGLE_CSE_ID, 
+                        q: query, 
+                        num: 10, 
+                        start: (page * 10) + 1, 
+                        dateRestrict: 'm6', // הרחבה ל-6 חודשים לכיסוי טוב יותר
+                        lr: 'lang_en' 
+                    }
+                }).catch(error => {
+                    console.warn(`Search failed for query: ${query}, page: ${page + 1}`, error.message);
+                    return { data: { items: [] } };
+                })
+            );
+        }
+    }
+
     try {
-        // שימוש בחיפוש היברידי חדש
-        const allResults = await hybridSearch(englishQuery);
+        const responses = await Promise.all(allSearchPromises);
+        let allResults = [];
+        let uniqueLinks = new Set(); // למניעת כפילויות
         
-        const model = extractModelFromQuery(englishQuery);
-        
+        responses.forEach((response, index) => {
+            if (response.data.items) {
+                response.data.items.forEach(item => {
+                    // הוספת תוצאה רק אם הקישור לא קיים כבר
+                    if (!uniqueLinks.has(item.link)) {
+                        uniqueLinks.add(item.link);
+                        allResults.push({
+                            ...item,
+                            queryIndex: index // לזיהוי מאיזה חיפוש הגיעה התוצאה
+                        });
+                    }
+                });
+            }
+        });
+
+        console.log(`✅ Collected ${allResults.length} unique results from Google across ${searchQueries.length} search strategies.`);
+
         if (!model) {
-            // אם אין מודל ספציפי, החזר את כל התוצאות
             return allResults
-                .slice(0, 100) // שמירה על 100 תוצאות כמו בקוד המקורי
+                .slice(0, 100) // הגבלה ל-100 תוצאות
                 .map(item => ({ 
                     title: item.title, 
                     link: item.link, 
                     snippet: item.snippet,
-                    sourceSite: item.sourceSite || 'unknown'
+                    queryType: searchQueries[item.queryIndex] || 'unknown'
                 }));
         }
 
-        // סינון לפי מודל ספציפי
+        // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
         const filteredResults = allResults.filter(item => {
             const titleMatch = item.title && item.title.toLowerCase().includes(model);
             const snippetMatch = item.snippet && item.snippet.toLowerCase().includes(model);
@@ -197,9 +110,9 @@ async function searchGoogle(userQuery) {
             return titleMatch || snippetMatch || linkMatch;
         });
 
-        console.log(`🔍 Filtered to ${filteredResults.length} results for model "${model}"`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title, snippet, or URL.`);
 
-        // מיון לפי רלוונטיות
+        // מיון התוצאות לפי רלוונטיות (תוצאות עם המודל בכותרת מקבלות עדיפות)
         const sortedResults = filteredResults.sort((a, b) => {
             const aInTitle = a.title && a.title.toLowerCase().includes(model) ? 1 : 0;
             const bInTitle = b.title && b.title.toLowerCase().includes(model) ? 1 : 0;
@@ -207,17 +120,17 @@ async function searchGoogle(userQuery) {
         });
 
         return sortedResults
-            .slice(0, 100) // שמירה על 100 תוצאות כמו בקוד המקורי
+            .slice(0, 100) // הגבלה ל-100 תוצאות הטובות ביותר
             .map(item => ({ 
                 title: item.title, 
                 link: item.link, 
                 snippet: item.snippet,
-                sourceSite: item.sourceSite || 'unknown'
+                queryType: searchQueries[item.queryIndex] || 'unknown'
             }));
 
     } catch (error) {
         const errorDetails = error.response ? JSON.stringify(error.response.data, null, 2) : error.message;
-        console.error('❌ Error during enhanced multi-site search:', errorDetails);
+        console.error('❌ Error during enhanced paginated Google Search:', errorDetails);
         return [];
     }
 }
