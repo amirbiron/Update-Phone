@@ -44,7 +44,7 @@ async function analyzeTextWithClaude(query, searchResults) {
 3. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
 4. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
 5. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [Website Name](direct URL link)
    - NO quote should appear without its corresponding link
    - The link must be the exact URL from the search results provided
    - If you can't find the exact URL for a quote, don't include that quote
@@ -53,6 +53,7 @@ async function analyzeTextWithClaude(query, searchResults) {
 9. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
 10. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
 11. **NO QUOTE WITHOUT LINK:** If you cannot provide a direct link to the source of a quote, do not include that quote in your analysis.
+12. **PRESERVE FULL USER RESPONSES:** Do not shorten, truncate, or summarize user quotes - include them in full to maintain authenticity and context. Present the complete user experience as reported.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -76,10 +77,10 @@ Provide your analysis in Hebrew using this EXACT format:
 *חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
 
 פורמט חובה לכל ציטוט (כולל קישור!):
-**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [שם האתר](קישור למקור)
 
 דוגמה:
-**משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
+**משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - [Reddit](https://reddit.com/example)
 
 ⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
 
@@ -92,7 +93,7 @@ Provide your analysis in Hebrew using this EXACT format:
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
 דוגמה:
-**משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
+**משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - [XDA Forum](https://xda-developers.com/example)
 
 ⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
 
