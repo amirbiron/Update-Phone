@@ -54,14 +54,30 @@ function extractModelFromQuery(query) {
         const match = lowerCaseQuery.match(pattern);
         if (match) {
             // מנקים רווחים מיותרים ומחזירים את הדגם המלא
-            return match[1] ? match[1].trim() : match[0].trim();
+            const modelName = match[1] ? match[1].trim() : match[0].trim();
+            
+            // יצירת אובייקט עם מידע על הדגם וווריאציות שלו
+            return {
+                original: modelName,
+                variations: [modelName],
+                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro')
+            };
         }
     }
     
     // אם לא מצאנו דפוס ספציפי, נשתמש בלוגיקה הישנה כגיבוי
     const words = lowerCaseQuery.split(' ');
     const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
-    return model || null;
+    
+    if (model) {
+        return {
+            original: model,
+            variations: [model],
+            isSpecific: false
+        };
+    }
+    
+    return null;
 }
 
 /**
@@ -72,18 +88,36 @@ function extractModelFromQuery(query) {
 async function searchGoogle(userQuery) {
     const englishQuery = userQuery.replace(/אנדרואיד/g, 'Android').replace(/\?/g, '');
     
+    const modelInfo = extractModelFromQuery(englishQuery);
+    
+    // יצירת שאילתות חיפוש מותאמות - אם יש דגם, נחפש גם עם רווח וגם בלי
+    let baseQuery = englishQuery;
+    if (modelInfo && modelInfo.compact !== modelInfo.spaced) {
+        // אם המשתמש כתב oneplus13, נחפש גם oneplus 13
+        baseQuery = englishQuery.replace(modelInfo.compact, modelInfo.spaced);
+    }
+    
     // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר
     const searchQueries = [
-        `${englishQuery} review feedback experience user reports`,
-        `${englishQuery} update problems issues bugs battery performance`,
-        `${englishQuery} after update thoughts opinions reddit forum`,
-        `${englishQuery} "updated to" "upgraded to" user experience review`,
-        `${englishQuery} performance battery life speed issues complaints`,
-        `${englishQuery} "worth updating" "should I update" recommendations`
+        `${baseQuery} review feedback experience user reports`,
+        `${baseQuery} update problems issues bugs battery performance`,
+        `${baseQuery} after update thoughts opinions reddit forum`,
+        `${baseQuery} "updated to" "upgraded to" user experience review`,
+        `${baseQuery} performance battery life speed issues complaints`,
+        `${baseQuery} "worth updating" "should I update" recommendations`
     ];
     
-    const model = extractModelFromQuery(englishQuery);
-    if (!model) {
+    // אם יש דגם קומפקטי, נוסיף גם חיפושים עם הגרסה הקומפקטית
+    if (modelInfo && modelInfo.compact !== modelInfo.spaced) {
+        const compactQueries = [
+            `${englishQuery} review feedback experience user reports`,
+            `${englishQuery} update problems issues bugs battery performance`,
+            `${englishQuery} after update thoughts opinions reddit forum`
+        ];
+        searchQueries.push(...compactQueries);
+    }
+    
+    if (!modelInfo) {
         console.warn("Could not extract a specific model from the query for filtering. Results may be less focused.");
     }
 
@@ -138,7 +172,7 @@ async function searchGoogle(userQuery) {
 
         console.log(`✅ Collected ${allResults.length} unique results from Google across ${searchQueries.length} search strategies.`);
 
-        if (!model) {
+        if (!modelInfo) {
             return allResults
                 .slice(0, 100) // הגבלה ל-100 תוצאות
                 .map(item => ({ 
@@ -156,8 +190,10 @@ async function searchGoogle(userQuery) {
             const link = item.link ? item.link.toLowerCase() : '';
             const fullText = `${title} ${snippet} ${link}`;
             
+            const model = modelInfo.original;
+            
             // אם המודל כולל מילים כמו "ultra", "plus", "pro" - נחפש התאמה מדויקת יותר
-            if (model.includes('ultra') || model.includes('plus') || model.includes('pro')) {
+            if (modelInfo.isSpecific) {
                 // עבור דגמים מיוחדים, נחפש את המודל המלא
                 const modelWords = model.split(/\s+/);
                 return modelWords.every(word => fullText.includes(word));
@@ -166,24 +202,25 @@ async function searchGoogle(userQuery) {
                 const hasModel = fullText.includes(model);
                 if (!hasModel) return false;
                 
-                // אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus
-                if (model.match(/s\d+$/)) {
-                    const hasUltra = fullText.includes(model + ' ultra') || fullText.includes(model + 'ultra');
-                    const hasPlus = fullText.includes(model + ' plus') || fullText.includes(model + 'plus');
-                    const hasPro = fullText.includes(model + ' pro') || fullText.includes(model + 'pro');
-                    return !hasUltra && !hasPlus && !hasPro;
+                // שיפור: אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus/Pro באופן מדויק יותר
+                if (model.match(/s\d+$/i)) {
+                    // נבדוק שהמודל מופיע עם גבולות מילים ברורים ואחריו לא Ultra/Plus/Pro/+
+                    const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+))`, 'i');
+                    return modelRegex.test(fullText);
                 }
                 
-                return hasModel;
+                // עבור דגמים אחרים, נבדוק שאין Ultra/Plus/Pro מיד אחרי המודל
+                const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+))`, 'i');
+                return modelRegex.test(fullText);
             }
         });
 
-        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title, snippet, or URL.`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${modelInfo.original}" in title, snippet, or URL.`);
 
         // מיון התוצאות לפי רלוונטיות (תוצאות עם המודל בכותרת מקבלות עדיפות)
         const sortedResults = filteredResults.sort((a, b) => {
-            const aInTitle = a.title && a.title.toLowerCase().includes(model) ? 1 : 0;
-            const bInTitle = b.title && b.title.toLowerCase().includes(model) ? 1 : 0;
+            const aInTitle = a.title && a.title.toLowerCase().includes(modelInfo.original) ? 1 : 0;
+            const bInTitle = b.title && b.title.toLowerCase().includes(modelInfo.original) ? 1 : 0;
             return bInTitle - aInTitle;
         });
 
