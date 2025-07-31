@@ -49,21 +49,29 @@ async function analyzeTextWithClaude(query, searchResults) {
   const prompt = `You are an expert technology analyst specializing in Android device updates. Your task is to analyze search results for the query: "${query}" and provide a comprehensive Hebrew report.
 
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
-1. **EXTRACT ALL RELEVANT QUOTES:** Find and include ALL user quotes/reports that are relevant to the specific device model requested, up to a maximum of 20 quotes total.
-2. **PRIORITIZE RELEVANCE:** Focus on quotes that specifically mention the device model and update experience.
-3. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
-4. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
-5. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-רדיט:** "*translated quote*" - direct URL link
+1. **ANDROID UPDATE RELEVANCE ONLY:** ONLY include quotes and reports that are specifically about Android software updates, firmware updates, or OS upgrades. EXCLUDE any content about:
+   - Hardware reviews or unboxing
+   - General device performance without mentioning updates
+   - App-specific issues not related to system updates
+   - Purchase recommendations or price discussions
+   - Accessories or cases
+   - Any content not directly related to Android OS updates
+2. **EXTRACT ALL RELEVANT QUOTES:** Find and include ALL user quotes/reports that are relevant to Android updates for the specific device model requested, up to a maximum of 20 quotes total.
+3. **PRIORITIZE ANDROID UPDATE RELEVANCE:** Focus ONLY on quotes that specifically mention Android updates, OS upgrades, firmware updates, or system update experiences.
+4. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
+5. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
+6. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
+7. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-רדיט:** "*translated quote*" - direct URL link
    - NO quote should appear without its corresponding link
    - The link must be the exact URL from the search results provided
    - If you can't find the exact URL for a quote, don't include that quote
-7. **BE HONEST ABOUT ACTUAL NUMBERS:** Report exactly how many relevant quotes you found. Don't aim for artificial balance - if you find 15 positive and 3 negative, report that honestly.
-8. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the maximum of 20 total.
-9. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
-10. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
-11. **NO QUOTE WITHOUT LINK:** If you cannot provide a direct link to the source of a quote, do not include that quote in your analysis.
-12. **PRESERVE FULL USER RESPONSES:** Do not shorten, truncate, or summarize user quotes - include them in full to maintain authenticity and context. Present the complete user experience as reported.
+8. **BE HONEST ABOUT ACTUAL NUMBERS:** Report exactly how many relevant Android update quotes you found. Don't aim for artificial balance - if you find 15 positive and 3 negative, report that honestly.
+9. **TRANSPARENT REPORTING:** At the end of each section, mention how many Android update quotes were actually found vs. the maximum of 20 total.
+10. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results that relates to Android updates.
+11. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
+12. **NO QUOTE WITHOUT LINK:** If you cannot provide a direct link to the source of a quote, do not include that quote in your analysis.
+13. **PRESERVE FULL USER RESPONSES:** Do not shorten, truncate, or summarize user quotes - include them in full to maintain authenticity and context. Present the complete user experience as reported.
+14. **STRICT ANDROID UPDATE FILTER:** If a search result doesn't mention Android updates, OS upgrades, firmware updates, or system updates, completely ignore it in your analysis.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}

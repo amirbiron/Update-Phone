@@ -150,22 +150,22 @@ async function searchGoogle(userQuery) {
         baseQuery = englishQuery.replace(modelInfo.compact, modelInfo.spaced);
     }
     
-    // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר
+    // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר - ספציפי לעדכוני אנדרואיד בלבד
     const searchQueries = [
-        `${baseQuery} review feedback experience user reports`,
-        `${baseQuery} update problems issues bugs battery performance`,
-        `${baseQuery} after update thoughts opinions reddit forum`,
-        `${baseQuery} "updated to" "upgraded to" user experience review`,
-        `${baseQuery} performance battery life speed issues complaints`,
-        `${baseQuery} "worth updating" "should I update" recommendations`
+        `${baseQuery} android update review feedback experience user reports`,
+        `${baseQuery} android update problems issues bugs battery performance`,
+        `${baseQuery} android after update thoughts opinions reddit forum`,
+        `${baseQuery} android "updated to" "upgraded to" user experience review`,
+        `${baseQuery} android update performance battery life speed issues complaints`,
+        `${baseQuery} android "worth updating" "should I update" recommendations`
     ];
     
-    // אם יש דגם קומפקטי, נוסיף גם חיפושים עם הגרסה הקומפקטית
+    // אם יש דגם קומפקטי, נוסיף גם חיפושים עם הגרסה הקומפקטית - ספציפי לעדכוני אנדרואיד בלבד
     if (modelInfo && modelInfo.compact !== modelInfo.spaced) {
         const compactQueries = [
-            `${englishQuery} review feedback experience user reports`,
-            `${englishQuery} update problems issues bugs battery performance`,
-            `${englishQuery} after update thoughts opinions reddit forum`
+            `${englishQuery} android update review feedback experience user reports`,
+            `${englishQuery} android update problems issues bugs battery performance`,
+            `${englishQuery} android after update thoughts opinions reddit forum`
         ];
         searchQueries.push(...compactQueries);
     }
@@ -236,12 +236,49 @@ async function searchGoogle(userQuery) {
                 }));
         }
 
-        // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
+        // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור + בדיקת רלוונטיות לעדכוני אנדרואיד
         const filteredResults = allResults.filter(item => {
             const title = item.title ? item.title.toLowerCase() : '';
             const snippet = item.snippet ? item.snippet.toLowerCase() : '';
             const link = item.link ? item.link.toLowerCase() : '';
             const fullText = `${title} ${snippet} ${link}`;
+            
+            // בדיקה ראשונה: האם התוכן קשור לעדכוני אנדרואיד?
+            const androidUpdateKeywords = [
+                'android', 'update', 'upgrade', 'firmware', 'os', 'software update',
+                'system update', 'security patch', 'miui', 'one ui', 'coloros',
+                'oxygenos', 'funtouch', 'realme ui', 'android 15', 'android 14',
+                'android 13', 'android 12', 'updated to', 'upgraded to'
+            ];
+            
+            const hasAndroidUpdateContent = androidUpdateKeywords.some(keyword => 
+                fullText.includes(keyword)
+            );
+            
+            // אם אין תוכן קשור לעדכוני אנדרואיד, נדחה את התוצאה
+            if (!hasAndroidUpdateContent) {
+                return false;
+            }
+            
+            // בדיקה שנייה: האם התוכן לא קשור לעדכוני אנדרואיד (blacklist)
+            const irrelevantKeywords = [
+                'unboxing', 'price', 'buy', 'purchase', 'deal', 'sale', 'discount',
+                'case', 'cover', 'screen protector', 'accessories', 'camera test',
+                'photo', 'video test', 'gaming test', 'benchmark', 'antutu',
+                'geekbench', 'specs', 'specification', 'launch', 'announcement',
+                'leak', 'rumor', 'render', 'design', 'color', 'storage', 'ram',
+                'processor', 'chipset', 'display', 'screen', 'battery mah',
+                'charging speed', 'wireless charging', 'headphone', 'earbuds'
+            ];
+            
+            const hasIrrelevantContent = irrelevantKeywords.some(keyword => 
+                fullText.includes(keyword)
+            );
+            
+            // אם יש תוכן לא רלוונטי, נדחה את התוצאה
+            if (hasIrrelevantContent) {
+                return false;
+            }
             
             const model = modelInfo.original;
             
@@ -406,7 +443,7 @@ async function searchGoogle(userQuery) {
             }
         });
 
-        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${modelInfo.original}" in title, snippet, or URL.`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${modelInfo.original}" and Android updates in title, snippet, or URL.`);
 
         // מיון התוצאות לפי רלוונטיות (תוצאות עם המודל בכותרת מקבלות עדיפות)
         const sortedResults = filteredResults.sort((a, b) => {
