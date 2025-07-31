@@ -11,16 +11,9 @@ const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
-    const words = lowerCaseQuery.split(/\s+/);
-    const modelToken = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
-    if (!modelToken) return null;
-
-    // If the token is something like "oneplus13" we will generate a friendlier spaced version: "oneplus 13"
-    const match = modelToken.match(/^([a-z]+)([0-9]+)$/);
-    if (match) {
-        return `${match[1]} ${match[2]}`; // e.g., "oneplus 13"
-    }
-    return modelToken;
+    const words = lowerCaseQuery.split(' ');
+    const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
+    return model || null;
 }
 
 /**
@@ -108,58 +101,21 @@ async function searchGoogle(userQuery) {
                 }));
         }
 
-        // סינון מתקדם - יצירת וריאציות שם מודל כדי לתפוס כתיב מקוצר (ללא מותג) או עם תוספים כמו Ultra/Pro
-        const brandWords = [
-            'samsung','galaxy','oneplus','xiaomi','redmi','poco','google','pixel','apple','iphone','sony','xperia',
-            'oppo','vivo','honor','motorola','moto','lg','lenovo','huawei','mate','nova'
-        ];
-        const descriptors = ['ultra','pro','plus','max','note','edge','fold','flip','fe','lite'];
-
-        const modelVariations = [];
-        // בסיסי: המודל שזוהה + גרסאות עם וללא רווח
-        if (model) {
-            modelVariations.push(model);
-            const spacedMatch = model.replace(/([a-z]+)([0-9]+)/, '$1 $2');
-            if (!modelVariations.includes(spacedMatch)) modelVariations.push(spacedMatch);
-            const noSpaceVariant = model.replace(/\s+/g, '');
-            if (!modelVariations.includes(noSpaceVariant)) modelVariations.push(noSpaceVariant);
-        }
-
-        // וריאציה ללא מילות מותג כלל (למשל "galaxy")
-        const tokens = englishQuery.toLowerCase().split(/\s+/).filter(Boolean);
-        const noBrandTokens = tokens.filter(t => !brandWords.includes(t));
-        if (noBrandTokens.length) {
-            const shortQuery = noBrandTokens.join(' ');
-            if (!modelVariations.includes(shortQuery)) modelVariations.push(shortQuery);
-        }
-
-        // הוספת תיאורי דגמים (Ultra, Pro וכו') אם קיימים בשאילתה
-        const foundDescriptors = descriptors.filter(d => tokens.includes(d));
-        foundDescriptors.forEach(desc => {
-            modelVariations.slice().forEach(base => {
-                const combined = `${base} ${desc}`.trim();
-                if (!modelVariations.includes(combined)) modelVariations.push(combined);
-                const noSpaceCombined = combined.replace(/\s+/g, '');
-                if (!modelVariations.includes(noSpaceCombined)) modelVariations.push(noSpaceCombined);
-            });
-        });
-
-        // הסרת כפילויות וריקים
-        const uniqueModelVariations = [...new Set(modelVariations.filter(Boolean))];
-
+        // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
         const filteredResults = allResults.filter(item => {
-            const title = item.title ? item.title.toLowerCase() : '';
-            const snippet = item.snippet ? item.snippet.toLowerCase() : '';
-            const link = item.link ? item.link.toLowerCase() : '';
-            return uniqueModelVariations.some(variant => title.includes(variant) || snippet.includes(variant) || link.includes(variant));
+            const titleMatch = item.title && item.title.toLowerCase().includes(model);
+            const snippetMatch = item.snippet && item.snippet.toLowerCase().includes(model);
+            const linkMatch = item.link && item.link.toLowerCase().includes(model);
+            
+            return titleMatch || snippetMatch || linkMatch;
         });
 
-        console.log(`🔍 Filtered down to ${filteredResults.length} results using model variations: ${uniqueModelVariations.join(', ')}`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title, snippet, or URL.`);
 
         // מיון התוצאות לפי רלוונטיות (תוצאות עם המודל בכותרת מקבלות עדיפות)
         const sortedResults = filteredResults.sort((a, b) => {
-            const aInTitle = a.title && uniqueModelVariations.some(v=>a.title.toLowerCase().includes(v)) ? 1 : 0;
-            const bInTitle = b.title && uniqueModelVariations.some(v=>b.title.toLowerCase().includes(v)) ? 1 : 0;
+            const aInTitle = a.title && a.title.toLowerCase().includes(model) ? 1 : 0;
+            const bInTitle = b.title && b.title.toLowerCase().includes(model) ? 1 : 0;
             return bInTitle - aInTitle;
         });
 
