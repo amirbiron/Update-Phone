@@ -16,15 +16,9 @@ function extractModelFromQuery(query) {
     const patterns = [
         // Samsung patterns - מחפשים דגמים ספציפיים כולל Ultra/Plus/Pro
         /galaxy\s+(s\d+\s*ultra)/i,
-        /galaxy\s+(s\d+\s*\+)/i,  // עבור S24+ למשל
         /galaxy\s+(s\d+\s*plus)/i,
         /galaxy\s+(s\d+\s*pro)/i,
-        /(?:galaxy\s+)?(s\d+\s*ultra)/i,  // גם בלי "galaxy"
-        /(?:galaxy\s+)?(s\d+\s*\+)/i,     // גם בלי "galaxy" עם +
-        /(?:galaxy\s+)?(s\d+\s*plus)/i,   // גם בלי "galaxy"
-        /(?:galaxy\s+)?(s\d+\s*pro)/i,    // גם בלי "galaxy"
-        /galaxy\s+(s\d+)(?!\s*(?:ultra|plus|pro|\+))/i,  // S24 רגיל בלי Ultra/Plus/Pro
-        /(?:galaxy\s+)?(s\d+)(?!\s*(?:ultra|plus|pro|\+))/i,  // גם בלי "galaxy"
+        /galaxy\s+(s\d+)/i,
         /galaxy\s+(a\d+)/i,
         /galaxy\s+(note\s*\d+)/i,
         /galaxy\s+(z\s*fold\s*\d+)/i,
@@ -172,13 +166,12 @@ async function searchGoogle(userQuery) {
                 const hasModel = fullText.includes(model);
                 if (!hasModel) return false;
                 
-                // אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus/Pro
-                if (model.match(/s\d+$/i)) {
-                    // בדיקה מקיפה יותר לווריאציות של Ultra/Plus/Pro
-                    const modelPattern = model.replace(/\s+/g, '\\s*'); // מאפשר רווחים משתנים
-                    const ultraRegex = new RegExp(`${modelPattern}\\s*(ultra|\\+|plus|pro)`, 'i');
-                    const hasVariant = ultraRegex.test(fullText);
-                    return !hasVariant;
+                // אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus
+                if (model.match(/s\d+$/)) {
+                    const hasUltra = fullText.includes(model + ' ultra') || fullText.includes(model + 'ultra');
+                    const hasPlus = fullText.includes(model + ' plus') || fullText.includes(model + 'plus');
+                    const hasPro = fullText.includes(model + ' pro') || fullText.includes(model + 'pro');
+                    return !hasUltra && !hasPlus && !hasPro;
                 }
                 
                 return hasModel;
