@@ -67,18 +67,39 @@ function extractModelFromQuery(query) {
                 }
             }
             
+            // בדיקה אם יש מילים נוספות אחרי המספר (כמו Ultra, Pro, Plus)
+            const additionalWords = [];
+            for (let j = i + 2; j < words.length; j++) {
+                const word = words[j];
+                if (['ultra', 'pro', 'plus', 'max', 'mini', 'lite', 'edge', 'note'].includes(word)) {
+                    additionalWords.push(word);
+                } else {
+                    break;
+                }
+            }
+            
+            const hasAdditionalWords = additionalWords.length > 0;
+            const additionalPart = hasAdditionalWords ? ' ' + additionalWords.join(' ') : '';
+            
+            const variations = [
+                compactModel + additionalPart.replace(/\s/g, ''),
+                fullModel + additionalPart,
+                `${shortBrand}${nextWord}${additionalPart.replace(/\s/g, '')}`,
+                `${shortBrand} ${nextWord}${additionalPart}`
+            ];
+            
+            // רק אם יש מילים נוספות, נוסיף את הגרסה הקצרה
+            if (hasAdditionalWords) {
+                variations.push(`${shortBrand}${nextWord}${additionalPart}`);
+                variations.push(`s${nextWord}${additionalPart}`); // עבור Samsung
+            }
+            
             return {
-                compact: compactModel,
-                spaced: fullModel,
-                shortened: `${shortBrand}${nextWord}`,
-                original: fullModel,
-                variations: [
-                    compactModel,
-                    fullModel,
-                    `${shortBrand}${nextWord}`,
-                    `${shortBrand} ${nextWord}`,
-                    nextWord // רק המספר (כמו "24" עבור S24)
-                ]
+                compact: compactModel + additionalPart.replace(/\s/g, ''),
+                spaced: fullModel + additionalPart,
+                shortened: hasAdditionalWords ? `${shortBrand}${nextWord}${additionalPart}` : fullModel,
+                original: fullModel + additionalPart,
+                variations: [...new Set(variations)] // הסרת כפילויות
             };
         }
     }
@@ -88,20 +109,27 @@ function extractModelFromQuery(query) {
     if (galaxyMatch) {
         const [, series, model, extra] = galaxyMatch;
         const extraPart = extra ? extra.trim() : '';
+        const hasExtra = extraPart && ['ultra', 'pro', 'plus', 'max', 'mini', 'lite', 'edge', 'note'].includes(extraPart);
+        
+        const variations = [
+            `samsung galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+            `samsung ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+            `galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+            `${series}${model}${extraPart ? ' ' + extraPart : ''}`
+        ];
+        
+        // רק אם יש מילה נוספת כמו Ultra, נוסיף קיצורים
+        if (hasExtra) {
+            variations.push(`s${model} ${extraPart}`);
+            variations.push(`s${model}${extraPart}`);
+        }
         
         return {
-            compact: `samsung${series}${model}${extraPart}`,
+            compact: `samsung${series}${model}${extraPart.replace(/\s/g, '')}`,
             spaced: `samsung galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
-            shortened: `s${model}${extraPart ? ' ' + extraPart : ''}`,
+            shortened: hasExtra ? `s${model} ${extraPart}` : `samsung galaxy ${series}${model}`,
             original: galaxyMatch[0],
-            variations: [
-                `samsung galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
-                `samsung ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
-                `galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
-                `s${model}${extraPart ? ' ' + extraPart : ''}`,
-                `${series}${model}${extraPart ? ' ' + extraPart : ''}`,
-                `${model}${extraPart ? ' ' + extraPart : ''}`
-            ]
+            variations: [...new Set(variations)]
         };
     }
     
@@ -225,14 +253,16 @@ async function searchGoogle(userQuery) {
         }
 
         // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
-        // מחפש גם את הגרסה הקומפקטית וגם את הגרסה עם רווח
+        // מחפש את כל הווריאציות של הדגם
         const filteredResults = allResults.filter(item => {
             const checkMatch = (text, modelInfo) => {
                 if (!text) return false;
                 const lowerText = text.toLowerCase();
-                return lowerText.includes(modelInfo.compact) || 
-                       lowerText.includes(modelInfo.spaced) ||
-                       lowerText.includes(modelInfo.original);
+                
+                // בדיקה של כל הווריאציות
+                return modelInfo.variations.some(variation => 
+                    lowerText.includes(variation.toLowerCase())
+                );
             };
             
             const titleMatch = checkMatch(item.title, modelInfo);
@@ -242,16 +272,16 @@ async function searchGoogle(userQuery) {
             return titleMatch || snippetMatch || linkMatch;
         });
 
-        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${modelInfo.spaced}" or "${modelInfo.compact}" in title, snippet, or URL.`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning model variations in title, snippet, or URL.`);
 
         // מיון התוצאות לפי רלוונטיות (תוצאות עם המודל בכותרת מקבלות עדיפות)
         const sortedResults = filteredResults.sort((a, b) => {
             const checkTitleMatch = (title, modelInfo) => {
                 if (!title) return false;
                 const lowerTitle = title.toLowerCase();
-                return lowerTitle.includes(modelInfo.compact) || 
-                       lowerTitle.includes(modelInfo.spaced) ||
-                       lowerTitle.includes(modelInfo.original);
+                return modelInfo.variations.some(variation => 
+                    lowerTitle.includes(variation.toLowerCase())
+                );
             };
             
             const aInTitle = checkTitleMatch(a.title, modelInfo) ? 1 : 0;
