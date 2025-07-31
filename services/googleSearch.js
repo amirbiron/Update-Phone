@@ -11,9 +11,53 @@ const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
+    
+    // חיפוש דגמים שכתובים בלי רווח (כמו oneplus13, samsungs24, iphone15)
+    const compactModelMatch = lowerCaseQuery.match(/([a-z]+)(\d+)/);
+    if (compactModelMatch) {
+        const [, brand, model] = compactModelMatch;
+        // החזרת הדגם עם רווח ובלי רווח לחיפוש רחב יותר
+        return {
+            compact: compactModelMatch[0], // oneplus13
+            spaced: `${brand} ${model}`, // oneplus 13
+            original: compactModelMatch[0]
+        };
+    }
+    
+    // חיפוש דגמים רגילים (עם רווח) - מחפש מילה אחרי מותג שמכילה מספרים
     const words = lowerCaseQuery.split(' ');
+    
+    // חיפוש מותגים ידועים ואחריהם מספר דגם
+    const knownBrands = ['oneplus', 'samsung', 'iphone', 'galaxy', 'pixel', 'xiaomi', 'huawei', 'lg', 'htc', 'sony'];
+    
+    for (let i = 0; i < words.length - 1; i++) {
+        const currentWord = words[i];
+        const nextWord = words[i + 1];
+        
+        // בדיקה אם המילה הנוכחית היא מותג ידוע והמילה הבאה מכילה מספרים
+        if (knownBrands.some(brand => currentWord.includes(brand)) && /\d/.test(nextWord)) {
+            const fullModel = `${currentWord} ${nextWord}`;
+            const compactModel = `${currentWord}${nextWord}`;
+            return {
+                compact: compactModel,
+                spaced: fullModel,
+                original: fullModel
+            };
+        }
+    }
+    
+    // חיפוש דגמים רגילים (מילה אחת עם אותיות ומספרים)
     const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
-    return model || null;
+    
+    if (model) {
+        return {
+            compact: model,
+            spaced: model,
+            original: model
+        };
+    }
+    
+    return null;
 }
 
 /**
@@ -24,18 +68,36 @@ function extractModelFromQuery(query) {
 async function searchGoogle(userQuery) {
     const englishQuery = userQuery.replace(/אנדרואיד/g, 'Android').replace(/\?/g, '');
     
+    const modelInfo = extractModelFromQuery(englishQuery);
+    
+    // יצירת שאילתות חיפוש מותאמות - אם יש דגם, נחפש גם עם רווח וגם בלי
+    let baseQuery = englishQuery;
+    if (modelInfo && modelInfo.compact !== modelInfo.spaced) {
+        // אם המשתמש כתב oneplus13, נחפש גם oneplus 13
+        baseQuery = englishQuery.replace(modelInfo.compact, modelInfo.spaced);
+    }
+    
     // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר
     const searchQueries = [
-        `${englishQuery} review feedback experience user reports`,
-        `${englishQuery} update problems issues bugs battery performance`,
-        `${englishQuery} after update thoughts opinions reddit forum`,
-        `${englishQuery} "updated to" "upgraded to" user experience review`,
-        `${englishQuery} performance battery life speed issues complaints`,
-        `${englishQuery} "worth updating" "should I update" recommendations`
+        `${baseQuery} review feedback experience user reports`,
+        `${baseQuery} update problems issues bugs battery performance`,
+        `${baseQuery} after update thoughts opinions reddit forum`,
+        `${baseQuery} "updated to" "upgraded to" user experience review`,
+        `${baseQuery} performance battery life speed issues complaints`,
+        `${baseQuery} "worth updating" "should I update" recommendations`
     ];
     
-    const model = extractModelFromQuery(englishQuery);
-    if (!model) {
+    // אם יש דגם קומפקטי, נוסיף גם חיפושים עם הגרסה הקומפקטית
+    if (modelInfo && modelInfo.compact !== modelInfo.spaced) {
+        const compactQueries = [
+            `${englishQuery} review feedback experience user reports`,
+            `${englishQuery} update problems issues bugs battery performance`,
+            `${englishQuery} after update thoughts opinions reddit forum`
+        ];
+        searchQueries.push(...compactQueries);
+    }
+    
+    if (!modelInfo) {
         console.warn("Could not extract a specific model from the query for filtering. Results may be less focused.");
     }
 
@@ -90,7 +152,7 @@ async function searchGoogle(userQuery) {
 
         console.log(`✅ Collected ${allResults.length} unique results from Google across ${searchQueries.length} search strategies.`);
 
-        if (!model) {
+        if (!modelInfo) {
             return allResults
                 .slice(0, 100) // הגבלה ל-100 תוצאות
                 .map(item => ({ 
@@ -102,20 +164,37 @@ async function searchGoogle(userQuery) {
         }
 
         // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
+        // מחפש גם את הגרסה הקומפקטית וגם את הגרסה עם רווח
         const filteredResults = allResults.filter(item => {
-            const titleMatch = item.title && item.title.toLowerCase().includes(model);
-            const snippetMatch = item.snippet && item.snippet.toLowerCase().includes(model);
-            const linkMatch = item.link && item.link.toLowerCase().includes(model);
+            const checkMatch = (text, modelInfo) => {
+                if (!text) return false;
+                const lowerText = text.toLowerCase();
+                return lowerText.includes(modelInfo.compact) || 
+                       lowerText.includes(modelInfo.spaced) ||
+                       lowerText.includes(modelInfo.original);
+            };
+            
+            const titleMatch = checkMatch(item.title, modelInfo);
+            const snippetMatch = checkMatch(item.snippet, modelInfo);
+            const linkMatch = checkMatch(item.link, modelInfo);
             
             return titleMatch || snippetMatch || linkMatch;
         });
 
-        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title, snippet, or URL.`);
+        console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${modelInfo.spaced}" or "${modelInfo.compact}" in title, snippet, or URL.`);
 
         // מיון התוצאות לפי רלוונטיות (תוצאות עם המודל בכותרת מקבלות עדיפות)
         const sortedResults = filteredResults.sort((a, b) => {
-            const aInTitle = a.title && a.title.toLowerCase().includes(model) ? 1 : 0;
-            const bInTitle = b.title && b.title.toLowerCase().includes(model) ? 1 : 0;
+            const checkTitleMatch = (title, modelInfo) => {
+                if (!title) return false;
+                const lowerTitle = title.toLowerCase();
+                return lowerTitle.includes(modelInfo.compact) || 
+                       lowerTitle.includes(modelInfo.spaced) ||
+                       lowerTitle.includes(modelInfo.original);
+            };
+            
+            const aInTitle = checkTitleMatch(a.title, modelInfo) ? 1 : 0;
+            const bInTitle = checkTitleMatch(b.title, modelInfo) ? 1 : 0;
             return bInTitle - aInTitle;
         });
 
