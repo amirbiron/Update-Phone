@@ -7,13 +7,17 @@ const https = require('https');
 console.log('🔍 === Google Search API Test ===');
 console.log(`📅 Timestamp: ${new Date().toISOString()}`);
 
-// בדיקת משתני סביבה
-const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+// בדיקת משתני סביבה - גם החדשים וגם הישנים
+const apiKey = process.env.GOOGLE_SEARCH_API_KEY || process.env.GOOGLE_API_KEY;
+const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_ID;
 
 console.log('\n🔑 === Environment Variables ===');
-console.log(`GOOGLE_SEARCH_API_KEY: ${apiKey ? `✅ EXISTS (${apiKey.substring(0, 15)}...)` : '❌ MISSING'}`);
-console.log(`GOOGLE_SEARCH_ENGINE_ID: ${searchEngineId ? `✅ EXISTS (${searchEngineId})` : '❌ MISSING'}`);
+console.log(`GOOGLE_SEARCH_API_KEY: ${process.env.GOOGLE_SEARCH_API_KEY ? `✅ EXISTS (${process.env.GOOGLE_SEARCH_API_KEY.substring(0, 15)}...)` : '❌ MISSING'}`);
+console.log(`GOOGLE_SEARCH_ENGINE_ID: ${process.env.GOOGLE_SEARCH_ENGINE_ID ? `✅ EXISTS (${process.env.GOOGLE_SEARCH_ENGINE_ID})` : '❌ MISSING'}`);
+console.log(`GOOGLE_API_KEY (legacy): ${process.env.GOOGLE_API_KEY ? `✅ EXISTS (${process.env.GOOGLE_API_KEY.substring(0, 15)}...)` : '❌ MISSING'}`);
+console.log(`GOOGLE_CSE_ID (legacy): ${process.env.GOOGLE_CSE_ID ? `✅ EXISTS (${process.env.GOOGLE_CSE_ID})` : '❌ MISSING'}`);
+console.log(`Using API Key: ${apiKey ? `✅ ${apiKey.substring(0, 15)}...` : '❌ NONE'}`);
+console.log(`Using CSE ID: ${searchEngineId ? `✅ ${searchEngineId}` : '❌ NONE'}`);
 
 if (!apiKey || !searchEngineId) {
   console.log('\n❌ Cannot test API - missing required environment variables');
@@ -35,7 +39,7 @@ console.log('\n🚀 === Testing Google Search API ===');
 
 // בניית URL לבדיקה
 const testQuery = 'Android update';
-const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(testQuery)}&num=1`;
+const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(testQuery)}&num=3`;
 
 console.log(`🔍 Test query: "${testQuery}"`);
 console.log(`🌐 API URL: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`);
@@ -68,10 +72,28 @@ https.get(url, (res) => {
         console.log(`Search time: ${jsonData.searchInformation?.searchTime || 'unknown'}s`);
         
         if (jsonData.items && jsonData.items.length > 0) {
-          console.log('\n📋 First result:');
-          console.log(`Title: ${jsonData.items[0].title}`);
-          console.log(`Link: ${jsonData.items[0].link}`);
-          console.log(`Snippet: ${jsonData.items[0].snippet?.substring(0, 100)}...`);
+          console.log('\n📋 Search Results:');
+          jsonData.items.forEach((item, index) => {
+            console.log(`\n${index + 1}. ${item.title}`);
+            console.log(`   URL: ${item.link}`);
+            console.log(`   Snippet: ${item.snippet?.substring(0, 100)}...`);
+            
+            // בדיקה מאיזה אתר הגיעה התוצאה
+            const domain = new URL(item.link).hostname;
+            console.log(`   Domain: ${domain}`);
+          });
+          
+          // סטטיסטיקה של דומיינים
+          const domains = {};
+          jsonData.items.forEach(item => {
+            const domain = new URL(item.link).hostname;
+            domains[domain] = (domains[domain] || 0) + 1;
+          });
+          
+          console.log('\n📊 === Domain Distribution ===');
+          Object.entries(domains).forEach(([domain, count]) => {
+            console.log(`   ${domain}: ${count} results`);
+          });
         }
         
         console.log('\n🎉 Google Search API is working correctly!');
