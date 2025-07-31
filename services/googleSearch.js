@@ -63,7 +63,7 @@ async function searchSpecificSite(query, site, maxResults = 5) {
 /**
  * חיפוש מאוזן בכל האתרים
  */
-async function searchAllSitesBalanced(query, resultsPerSite = 8) {
+async function searchAllSitesBalanced(query, resultsPerSite = 15) {
     console.log(`🚀 Starting balanced search across ${TARGET_SITES.length} sites...`);
     
     // חיפוש מקביל בכל האתרים
@@ -114,12 +114,12 @@ async function searchAllSitesBalanced(query, resultsPerSite = 8) {
 async function hybridSearch(query) {
     console.log(`🔄 Starting hybrid search strategy...`);
     
-    // 1. חיפוש מאוזן באתרים ספציפיים
-    const balancedResults = await searchAllSitesBalanced(query, 6);
+    // 1. חיפוש מאוזן באתרים ספציפיים (עד 15 מכל אתר = 90 תוצאות)
+    const balancedResults = await searchAllSitesBalanced(query, 15);
     
     // 2. חיפוש כללי נוסף (אם יש מעט תוצאות)
     let generalResults = [];
-    if (balancedResults.length < 20) {
+    if (balancedResults.length < 60) {
         console.log(`🔍 Adding general search to supplement results...`);
         
         try {
@@ -179,7 +179,7 @@ async function searchGoogle(userQuery) {
         if (!model) {
             // אם אין מודל ספציפי, החזר את כל התוצאות
             return allResults
-                .slice(0, 50)
+                .slice(0, 100) // שמירה על 100 תוצאות כמו בקוד המקורי
                 .map(item => ({ 
                     title: item.title, 
                     link: item.link, 
@@ -207,7 +207,7 @@ async function searchGoogle(userQuery) {
         });
 
         return sortedResults
-            .slice(0, 50)
+            .slice(0, 100) // שמירה על 100 תוצאות כמו בקוד המקורי
             .map(item => ({ 
                 title: item.title, 
                 link: item.link, 
