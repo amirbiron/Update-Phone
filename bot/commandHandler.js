@@ -11,12 +11,9 @@ async function handleStart(bot, msg) {
     // הגדרת תפריט פקודות בהתאם לסטטוס המשתמש
     await setupCommandMenu(bot, msg.from.id, chatId);
 
-    const welcomeMessage = `
-🤖 **ברוכים הבאים לבוט יועץ עדכוני אנדרואיד המתקדם!**
+    const welcomeMessage = `🤖 **ברוכים הבאים לבוט יועץ עדכוני אנדרואיד המתקדם!**
 
 📊 **שאילתות נותרות החודש: ${queriesLeft}/30**
-
----
 
 ## 📱 **איך זה עובד:**
 1️⃣ **שלחו שאלה** על המכשיר והעדכון שלכם
@@ -24,21 +21,13 @@ async function handleStart(bot, msg) {
 3️⃣ **ניתוח מקיף** - קבלת דו"ח מפורט עם ציטוטים אמיתיים
 4️⃣ **המלצה מבוססת נתונים** - החלטה מושכלת על בסיס העדויות
 
----
-
 ## 💡 **המלצה לחיפוש אפקטיבי:**
 כתבו את שם הדגם בקצרה, למשל:
 • \`כדאי לעדכן A54 לאנדרואיד 15?\`
 
-
----
-
 **🔥 בואו נתחיל! שאלו אותי על העדכון שלכם ותקבלו ניתוח מקצועי ומקיף!**
 
----
-
-**📞 לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**
-    `;
+**📞 לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**`;
     
     // Use sendLongMessage instead of bot.sendMessage for the welcome message
     await sendLongMessage(bot, chatId, welcomeMessage, { parse_mode: 'Markdown' });
