@@ -11,6 +11,54 @@ const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
+    
+    // מחפשים דפוסים ספציפיים של דגמים
+    const patterns = [
+        // Samsung patterns - מחפשים דגמים ספציפיים כולל Ultra/Plus/Pro
+        /galaxy\s+(s\d+\s*ultra)/i,
+        /galaxy\s+(s\d+\s*plus)/i,
+        /galaxy\s+(s\d+\s*pro)/i,
+        /galaxy\s+(s\d+)/i,
+        /galaxy\s+(a\d+)/i,
+        /galaxy\s+(note\s*\d+)/i,
+        /galaxy\s+(z\s*fold\s*\d+)/i,
+        /galaxy\s+(z\s*flip\s*\d+)/i,
+        
+        // Google Pixel patterns
+        /pixel\s+(\d+\s*pro)/i,
+        /pixel\s+(\d+\s*xl)/i,
+        /pixel\s+(\d+)/i,
+        
+        // iPhone patterns
+        /iphone\s+(\d+\s*pro\s*max)/i,
+        /iphone\s+(\d+\s*pro)/i,
+        /iphone\s+(\d+\s*plus)/i,
+        /iphone\s+(\d+)/i,
+        
+        // Xiaomi patterns
+        /(mi\s*\d+)/i,
+        /(redmi\s*\w+\s*\d*)/i,
+        /(poco\s*\w+\s*\d*)/i,
+        
+        // OnePlus patterns
+        /oneplus\s+(\d+\s*pro)/i,
+        /oneplus\s+(\d+)/i,
+        /(nord\s*\w*\s*\d*)/i,
+        
+        // Generic pattern for any word with letters and numbers
+        /([a-z]+\d+[a-z]*)/i
+    ];
+    
+    // מנסים למצוא התאמה עם הדפוסים הספציפיים
+    for (const pattern of patterns) {
+        const match = lowerCaseQuery.match(pattern);
+        if (match) {
+            // מנקים רווחים מיותרים ומחזירים את הדגם המלא
+            return match[1] ? match[1].trim() : match[0].trim();
+        }
+    }
+    
+    // אם לא מצאנו דפוס ספציפי, נשתמש בלוגיקה הישנה כגיבוי
     const words = lowerCaseQuery.split(' ');
     const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
     return model || null;
@@ -103,11 +151,31 @@ async function searchGoogle(userQuery) {
 
         // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
         const filteredResults = allResults.filter(item => {
-            const titleMatch = item.title && item.title.toLowerCase().includes(model);
-            const snippetMatch = item.snippet && item.snippet.toLowerCase().includes(model);
-            const linkMatch = item.link && item.link.toLowerCase().includes(model);
+            const title = item.title ? item.title.toLowerCase() : '';
+            const snippet = item.snippet ? item.snippet.toLowerCase() : '';
+            const link = item.link ? item.link.toLowerCase() : '';
+            const fullText = `${title} ${snippet} ${link}`;
             
-            return titleMatch || snippetMatch || linkMatch;
+            // אם המודל כולל מילים כמו "ultra", "plus", "pro" - נחפש התאמה מדויקת יותר
+            if (model.includes('ultra') || model.includes('plus') || model.includes('pro')) {
+                // עבור דגמים מיוחדים, נחפש את המודל המלא
+                const modelWords = model.split(/\s+/);
+                return modelWords.every(word => fullText.includes(word));
+            } else {
+                // עבור דגמים רגילים, נוודא שהמודל מופיע אבל לא עם Ultra/Plus/Pro
+                const hasModel = fullText.includes(model);
+                if (!hasModel) return false;
+                
+                // אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus
+                if (model.match(/s\d+$/)) {
+                    const hasUltra = fullText.includes(model + ' ultra') || fullText.includes(model + 'ultra');
+                    const hasPlus = fullText.includes(model + ' plus') || fullText.includes(model + 'plus');
+                    const hasPro = fullText.includes(model + ' pro') || fullText.includes(model + 'pro');
+                    return !hasUltra && !hasPlus && !hasPro;
+                }
+                
+                return hasModel;
+            }
         });
 
         console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title, snippet, or URL.`);
