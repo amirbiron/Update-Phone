@@ -170,6 +170,7 @@ async function setupCommandMenu(bot, userId, chatId) {
         const adminCommands = [
             { command: 'start', description: 'התחלת השיחה' },
             { command: 'recent_users', description: 'רשימת משתמשים פעילים' },
+            { command: 'reset_me', description: 'איפוס המכסה שלי (מהיר)' },
             { command: 'reset_queries', description: 'איפוס מכסת שאילתות (הוסף ID משתמש)' },
             { command: 'admin_help', description: 'עזרה לפקודות מנהל' }
         ];
@@ -217,6 +218,7 @@ async function handleAdminHelp(bot, msg) {
 🔧 **פקודות מנהל זמינות:**
 
 📋 **/recent_users** - רשימת משתמשים פעילים בשבוע האחרון
+⚡ **/reset_me** - איפוס המכסה שלי (מהיר)
 🔄 **/reset_queries [USER_ID]** - איפוס מכסת שאילתות למשתמש ספציפי
 🏠 **/start** - התחלת השיחה מחדש
 ❓ **/admin_help** - הצגת עזרה זו
@@ -224,6 +226,8 @@ async function handleAdminHelp(bot, msg) {
 ---
 
 📝 **דוגמת שימוש:**
+⚡ **איפוס מהיר עבורך:** פשוט הקש \`/reset_me\`
+📋 **איפוס למשתמש אחר:**
 1. הקש \`/recent_users\` כדי לראות רשימת משתמשים
 2. העתק את ה-ID של המשתמש שאת רוצה לאפס לו את המכסה
 3. הקש \`/reset_queries 123456789\` (החלף את המספר ב-ID האמיתי)
@@ -234,6 +238,37 @@ async function handleAdminHelp(bot, msg) {
     `;
     
     await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
+}
+
+/**
+ * Handles quick reset for the main admin user.
+ * @param {object} bot - The Telegram bot instance.
+ * @param {object} msg - The Telegram message object.
+ */
+async function handleQuickReset(bot, msg) {
+    const chatId = msg.chat.id;
+    const adminChatIds = process.env.ADMIN_CHAT_IDS ? process.env.ADMIN_CHAT_IDS.split(',').map(id => parseInt(id.trim())) : [];
+    
+    // בדיקה אם המשתמש הוא מנהל
+    if (!adminChatIds.includes(msg.from.id)) {
+        await bot.sendMessage(chatId, '❌ אין לך הרשאות מנהל לביצוע פעולה זו.');
+        return;
+    }
+    
+    const targetUserId = 6865105071; // ה-ID שלך
+    
+    try {
+        const success = await resetUserQueries(targetUserId);
+        
+        if (success) {
+            await bot.sendMessage(chatId, `✅ המכסה שלך אופסה בהצלחה!\nאתה יכול עכשיו לבצע 30 שאילתות חדשות.`);
+        } else {
+            await bot.sendMessage(chatId, `❌ משתמש עם ID ${targetUserId} לא נמצא במערכת.`);
+        }
+    } catch (error) {
+        console.error('Error in handleQuickReset:', error);
+        await bot.sendMessage(chatId, '❌ אירעה שגיאה בעת איפוס המכסה.');
+    }
 }
 
 /**
@@ -277,4 +312,4 @@ async function handleResetUserQueries(bot, msg, targetUserId) {
     }
 }
 
-module.exports = { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries, handleAdminHelp, setupCommandMenu };
+module.exports = { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries, handleQuickReset, handleAdminHelp, setupCommandMenu };
