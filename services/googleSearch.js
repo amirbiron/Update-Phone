@@ -11,9 +11,16 @@ const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
-    const words = lowerCaseQuery.split(' ');
-    const model = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
-    return model || null;
+    const words = lowerCaseQuery.split(/\s+/);
+    const modelToken = words.find(word => /[a-z]/.test(word) && /[0-9]/.test(word));
+    if (!modelToken) return null;
+
+    // If the token is something like "oneplus13" we will generate a friendlier spaced version: "oneplus 13"
+    const match = modelToken.match(/^([a-z]+)([0-9]+)$/);
+    if (match) {
+        return `${match[1]} ${match[2]}`; // e.g., "oneplus 13"
+    }
+    return modelToken;
 }
 
 /**
@@ -101,13 +108,23 @@ async function searchGoogle(userQuery) {
                 }));
         }
 
-        // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור
+        // סינון מתקדם - חיפוש המודל בכותרת, בקטע או בקישור (לוקחים בחשבון גם גרסה עם רווח בין אותיות למספרים)
+        const modelVariations = [model];
+        const spacedMatch = model.replace(/([a-z]+)([0-9]+)/, "$1 $2");
+        if (!modelVariations.includes(spacedMatch)) {
+            modelVariations.push(spacedMatch);
+        }
+        const noSpaceVariant = model.replace(/\s+/g, "");
+        if (!modelVariations.includes(noSpaceVariant)) {
+            modelVariations.push(noSpaceVariant);
+        }
+
         const filteredResults = allResults.filter(item => {
-            const titleMatch = item.title && item.title.toLowerCase().includes(model);
-            const snippetMatch = item.snippet && item.snippet.toLowerCase().includes(model);
-            const linkMatch = item.link && item.link.toLowerCase().includes(model);
-            
-            return titleMatch || snippetMatch || linkMatch;
+            const title = item.title ? item.title.toLowerCase() : "";
+            const snippet = item.snippet ? item.snippet.toLowerCase() : "";
+            const link = item.link ? item.link.toLowerCase() : "";
+
+            return modelVariations.some(variant => title.includes(variant) || snippet.includes(variant) || link.includes(variant));
         });
 
         console.log(`🔍 Filtered down to ${filteredResults.length} results specifically mentioning "${model}" in title, snippet, or URL.`);
