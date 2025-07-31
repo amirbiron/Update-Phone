@@ -43,6 +43,7 @@ async function analyzeTextWithClaude(query, searchResults) {
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
 1. **EXTRACT ALL POSSIBLE QUOTES:** Search THOROUGHLY through ALL search results and extract EVERY user quote, opinion, experience, or report that mentions the specific device model, even if it's brief or indirect.
 2. **NO DUPLICATES:** Ensure each quote is unique - do not repeat the same information from different sources or rephrase the same quote multiple times.
+3. **AVOID REPETITIVE LANGUAGE:** Use varied language throughout the analysis. Don't repeat the same phrases, instructions, or formatting explanations multiple times in the response.
 3. **EXPAND YOUR SEARCH SCOPE:** Look for user comments, forum posts, Reddit discussions, review comments, social media posts, and any user-generated content in the search results.
 4. **INCLUDE PARTIAL MENTIONS:** Even if a quote doesn't give a full review, include it if it mentions the device and update experience (e.g., "battery is better after update", "no issues so far", "loving the new features").
 5. **PARAPHRASE WHEN NECESSARY:** If you find relevant user opinions that aren't in direct quote format, you can paraphrase them as long as you maintain accuracy and provide the source link.
@@ -72,44 +73,19 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 💬 **דיווחי משתמשים אמיתיים**
 
-**הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. יוצגו כל הדיווחים הרלוונטיים שנמצאו לדגם הספציפי, עד מקסימום 20 ציטוטים סה"כ.
+**💎 הערה חשובה:** כל הדיווחים מבוססים על עדויות אמיתיות מהחיפוש. מוצגים עד 20 ציטוטים ייחודיים לדגם הספציפי.
 
-**🔍 הוראות חיפוש מפורטות:**
-- עבור על כל תוצאת חיפוש בזהירות ובחפש בכותרת, בקטע (snippet), ובכל מידע זמין
-- כלול כל אזכור של משתמש שמזכיר את המכשיר והעדכון, גם אם הוא קצר
-- חפש ביטויים כמו "my experience", "after updating", "user reports", "feedback", "issues", "working well"
-- שים לב לתגובות ודיונים בפורומים, Reddit, XDA, ואתרי ביקורות
-- אל תתעלם מציטוטים קצרים או חלקיים - הם עדיין חשובים
-- **חשוב:** הימנע מכפילויות - אל תכלול את אותו ציטוט פעמיים או ציטוטים דומים מאוד
-- העדף ציטוטים מגוונים המספקים נקודות מבט שונות על החוויה
+**🎯 עקרונות החיפוש:** חפש ביסודיות, הימנע מכפילויות, העדף מגוון נקודות מבט
 
 ### ✅ **חוויות חיוביות**
-*חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים. חפש ביסודיות בכל snippet, title, ותוכן זמין. כלול גם חוויות חלקיות או קצרות שמזכירות את המכשיר. הימנע מכפילויות!*
 
-פורמט חובה לכל ציטוט (כולל קישור!):
-**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
-
-דוגמאות:
-**משתמש מ-רדיט:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
-**משתמש מ-XDA Forum:** "*הסוללה מחזיקה יותר אחרי העדכון*" - https://xda-developers.com/example
-**משתמש מ-Android Central:** "*בלי בעיות עד כה*" - https://androidcentral.com/example
-
-⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי! חפש גם בכותרות ובקטעים קצרים!
+פורמט: **משתמש מ-[אתר]:** "*ציטוט*" - [קישור]
 
 *📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים מתוך [סה"כ מקורות שנסקרו]*
 
 ### ❌ **חוויות שליליות**
-*חלץ את כל הציטוטים השליליים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים. חפש ביסודיות בכל snippet, title, ותוכן זמין. כלול גם תלונות חלקיות או קצרות שמזכירות את המכשיר.*
 
-פורמט חובה לכל ציטוט (כולל קישור!):
-**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
-
-דוגמאות:
-**משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
-**משתמש מ-רדיט:** "*המכשיר נהיה איטי יותר*" - https://reddit.com/example
-**משתמש מ-Android Police:** "*מתחרט על העדכון*" - https://androidpolice.com/example
-
-⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי! חפש גם בכותרות ובקטעים קצרים!
+פורמט: **משתמש מ-[אתר]:** "*ציטוט*" - [קישור]
 
 *📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים מתוך [סה"כ מקורות שנסקרו]*
 
