@@ -43,11 +43,12 @@ async function handleStart(bot, msg) {
 
 ---
 
-## 💬 **דוגמאות לשאלות:**
-• \`Samsung Galaxy A54 Android 15\`
-• \`Google Pixel 8 Pro update experience\`
-• \`Xiaomi 13 Android 14 battery issues\`
-• \`OnePlus 12 performance after update\`
+## 💡 **המלצה לחיפוש אפקטיבי:**
+כתבו את שם הדגם בקצרה, למשל:
+• \`כדאי לעדכן A54 לאנדרואיד 15?\`
+• \`Pixel 8 Pro עדכון חוויה\`
+• \`Xiaomi 13 Android 14 בעיות סוללה\`
+• \`OnePlus 12 ביצועים אחרי עדכון\`
 
 ---
 

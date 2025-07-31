@@ -28,7 +28,9 @@ async function analyzeTextWithClaude(query, searchResults) {
 • הדיונים מתקיימים בפלטפורמות אחרות (קבוצות פייסבוק, פורומים מקומיים)
 • המכשיר פחות פופולרי בקהילות דוברות אנגלית
 
-**המלצה:** נסו לחפש בפלטפורמות מקומיות או להמתין מספר שבועות נוספים לקבלת מידע נוסף.`;
+**המלצה:** נסו לחפש בפלטפורמות מקומיות או להמתין מספר שבועות נוספים לקבלת מידע נוסף.
+
+📞 **לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**`;
   }
 
   const contentForAnalysis = searchResults
@@ -84,7 +86,7 @@ Provide your analysis in Hebrew using this EXACT format:
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
 דוגמאות:
-**משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
+**משתמש מ-רדיט:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
 **משתמש מ-XDA Forum:** "*הסוללה מחזיקה יותר אחרי העדכון*" - https://xda-developers.com/example
 **משתמש מ-Android Central:** "*בלי בעיות עד כה*" - https://androidcentral.com/example
 
@@ -100,7 +102,7 @@ Provide your analysis in Hebrew using this EXACT format:
 
 דוגמאות:
 **משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
-**משתמש מ-Reddit:** "*המכשיר נהיה איטי יותר*" - https://reddit.com/example
+**משתמש מ-רדיט:** "*המכשיר נהיה איטי יותר*" - https://reddit.com/example
 **משתמש מ-Android Police:** "*מתחרט על העדכון*" - https://androidpolice.com/example
 
 ⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי! חפש גם בכותרות ובקטעים קצרים!
@@ -153,7 +155,9 @@ Provide your analysis in Hebrew using this EXACT format:
 
 *הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי. כל הציטוטים והדיווחים מבוססים על מקורות אמיתיים שנמצאו בחיפוש. 
 
-💡 **המלצה:** לחצו על הקישורים כדי לקרוא את ההקשר המלא של כל ציטוט ולוודא שהוא רלוונטי למכשיר שלכם.*`;
+💡 **המלצה:** לחצו על הקישורים כדי לקרוא את ההקשר המלא של כל ציטוט ולוודא שהוא רלוונטי למכשיר שלכם.
+
+📞 **לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם***`;
 
   const maxRetries = 3;
   let lastError = null;
@@ -195,7 +199,9 @@ Provide your analysis in Hebrew using this EXACT format:
 • פנו לתמיכה טכנית
 • בדקו את החיבור לאינטרנט
 
-*אנו מתנצלים על האי נוחות ופועלים לפתרון המהיר של הבעיה.*`;
+*אנו מתנצלים על האי נוחות ופועלים לפתרון המהיר של הבעיה.*
+
+📞 **לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**`;
 }
 
 module.exports = { analyzeTextWithClaude };
