@@ -15,9 +15,16 @@ function extractModelFromQuery(query) {
     // מחפשים דפוסים ספציפיים של דגמים
     const patterns = [
         // Samsung patterns - מחפשים דגמים ספציפיים כולל Ultra/Plus/Pro
+        // הסדר חשוב! דגמים ספציפיים יותר קודם
         /galaxy\s+(s\d+\s*ultra)/i,
+        /galaxy\s+(s\d+\s*\+)/i,  // מוסיף תמיכה ב-S24+ עם סימן +
         /galaxy\s+(s\d+\s*plus)/i,
         /galaxy\s+(s\d+\s*pro)/i,
+        /\b(s\d+\s*\+)\b/i,       // תמיכה ב-S24+ ללא Galaxy
+        /\b(s\d+\s*ultra)\b/i,    // תמיכה ב-S24 Ultra ללא Galaxy
+        /\b(s\d+\s*plus)\b/i,     // תמיכה ב-S24 Plus ללא Galaxy
+        /\b(s\d+\s*pro)\b/i,      // תמיכה ב-S24 Pro ללא Galaxy
+        /\b(s\d+)\b/i,            // תמיכה ב-S24 ללא Galaxy (בסוף כי הוא כללי)
         /galaxy\s+(s\d+)/i,
         /galaxy\s+(a\d+)/i,
         /galaxy\s+(note\s*\d+)/i,
@@ -205,13 +212,34 @@ async function searchGoogle(userQuery) {
                 // שיפור: אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus/Pro באופן מדויק יותר
                 if (model.match(/s\d+$/i)) {
                     // נבדוק שהמודל מופיע עם גבולות מילים ברורים ואחריו לא Ultra/Plus/Pro/+
-                    const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+))`, 'i');
-                    return modelRegex.test(fullText);
+                    // גם נוודא שלא מופיע s24+ או s24 plus וכו'
+                    const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+|fe))`, 'i');
+                    const hasExactMatch = modelRegex.test(fullText);
+                    
+                    // בדיקה נוספת: אם מחפשים S24, לא נכלול תוצאות עם S24+ או S24 Ultra
+                    if (model.toLowerCase() === 's24') {
+                        const excludeVariants = /s24\s*(ultra|plus|pro|\+|fe)/i;
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    return hasExactMatch;
                 }
                 
                 // עבור דגמים אחרים, נבדוק שאין Ultra/Plus/Pro מיד אחרי המודל
-                const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+))`, 'i');
-                return modelRegex.test(fullText);
+                const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+|fe))`, 'i');
+                const hasExactMatch = modelRegex.test(fullText);
+                
+                // בדיקה כללית: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
+                if (model.match(/^[a-z]+\d+$/i)) {
+                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                return hasExactMatch;
             }
         });
 
