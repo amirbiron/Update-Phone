@@ -108,7 +108,7 @@ async function searchGoogle(userQuery) {
 
         console.log(`✅ Collected ${allResults.length} unique results from Google across ${searchQueries.length} search strategies.`);
 
-        if (!modelInfo) {
+        if (!model) {
             return allResults
                 .slice(0, 100) // הגבלה ל-100 תוצאות
                 .map(item => ({ 
