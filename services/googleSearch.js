@@ -15,19 +15,31 @@ function extractModelFromQuery(query) {
     // מחפשים דפוסים ספציפיים של דגמים
     const patterns = [
         // Samsung patterns - מחפשים דגמים ספציפיים כולל Ultra/Plus/Pro
+        // הסדר חשוב! דגמים ספציפיים יותר קודם
         /galaxy\s+(s\d+\s*ultra)/i,
+        /galaxy\s+(s\d+\s*\+)/i,  // מוסיף תמיכה ב-S24+ עם סימן +
         /galaxy\s+(s\d+\s*plus)/i,
         /galaxy\s+(s\d+\s*pro)/i,
+        /\b(s\d+\s*\+)\b/i,       // תמיכה ב-S24+ ללא Galaxy
+        /\b(s\d+\s*ultra)\b/i,    // תמיכה ב-S24 Ultra ללא Galaxy
+        /\b(s\d+\s*plus)\b/i,     // תמיכה ב-S24 Plus ללא Galaxy
+        /\b(s\d+\s*pro)\b/i,      // תמיכה ב-S24 Pro ללא Galaxy
+        /\b(s\d+)\b/i,            // תמיכה ב-S24 ללא Galaxy (בסוף כי הוא כללי)
         /galaxy\s+(s\d+)/i,
         /galaxy\s+(a\d+)/i,
         /galaxy\s+(note\s*\d+)/i,
         /galaxy\s+(z\s*fold\s*\d+)/i,
         /galaxy\s+(z\s*flip\s*\d+)/i,
         
-        // Google Pixel patterns
-        /pixel\s+(\d+\s*pro)/i,
-        /pixel\s+(\d+\s*xl)/i,
-        /pixel\s+(\d+)/i,
+        // Google Pixel patterns - מסודר לפי ספציפיות
+        /pixel\s+(\d+\s*pro\s*xl)/i,        // Pixel 9 Pro XL
+        /pixel\s+(\d+\s*pro)/i,             // Pixel 8 Pro
+        /pixel\s+(\d+\s*xl)/i,              // Pixel 3 XL (דגמים ישנים)
+        /pixel\s+(\d+\s*a)/i,               // Pixel 8a, Pixel 7a
+        /pixel\s+(fold)/i,                  // Pixel Fold
+        /pixel\s+(watch)/i,                 // Pixel Watch
+        /pixel\s+(buds)/i,                  // Pixel Buds
+        /pixel\s+(\d+)/i,                   // Pixel 8
         
         // iPhone patterns
         /iphone\s+(\d+\s*pro\s*max)/i,
@@ -35,15 +47,56 @@ function extractModelFromQuery(query) {
         /iphone\s+(\d+\s*plus)/i,
         /iphone\s+(\d+)/i,
         
-        // Xiaomi patterns
-        /(mi\s*\d+)/i,
-        /(redmi\s*\w+\s*\d*)/i,
-        /(poco\s*\w+\s*\d*)/i,
+        // Xiaomi patterns - מסודר לפי ספציפיות (ספציפי יותר קודם)
+        /(xiaomi\s+\d+\s*ultra)/i,          // Xiaomi 14 Ultra
+        /(xiaomi\s+\d+\s*pro)/i,            // Xiaomi 14 Pro
+        /(mi\s*\d+\s*ultra)/i,              // Mi 13 Ultra
+        /(mi\s*\d+\s*pro)/i,                // Mi 13 Pro
+        /(mi\s*\d+\s*lite)/i,               // Mi 13 Lite
+        /(redmi\s+note\s*\d+\s*pro\s*\+)/i, // Redmi Note 12 Pro+
+        /(redmi\s+note\s*\d+\s*pro)/i,      // Redmi Note 12 Pro
+        /(redmi\s+k\d+\s*pro)/i,            // Redmi K70 Pro
+        /(redmi\s+\w+\s*\d*\s*pro)/i,       // Redmi [model] Pro כללי
+        /(poco\s+\w+\s*\d*\s*pro)/i,        // Poco X6 Pro, Poco F5 Pro
+        /(xiaomi\s+\d+)/i,                  // Xiaomi 14
+        /(mi\s*\d+)/i,                      // Mi 13
+        /(redmi\s+note\s*\d+)/i,            // Redmi Note 12
+        /(redmi\s+k\d+)/i,                  // Redmi K70
+        /(redmi\s*\w+\s*\d*)/i,             // Redmi כללי
+        /(poco\s*\w+\s*\d*)/i,              // Poco כללי
         
-        // OnePlus patterns
-        /oneplus\s+(\d+\s*pro)/i,
-        /oneplus\s+(\d+)/i,
-        /(nord\s*\w*\s*\d*)/i,
+        // OnePlus patterns - מסודר לפי ספציפיות
+        /oneplus\s+(\d+\s*pro)/i,           // OnePlus 12 Pro
+        /oneplus\s+(\d+\s*r)/i,             // OnePlus 12R
+        /oneplus\s+(\d+\s*t)/i,             // OnePlus 12T
+        /(nord\s+ce\s*\d+\s*lite)/i,        // Nord CE 3 Lite
+        /(nord\s+ce\s*\d+)/i,               // Nord CE 3
+        /(nord\s+n\d+\s*se)/i,              // Nord N20 SE
+        /(nord\s+n\d+)/i,                   // Nord N30
+        /(nord\s*\d+)/i,                    // Nord 3
+        /oneplus\s+(open)/i,                // OnePlus Open
+        /oneplus\s+(\d+)/i,                 // OnePlus 12
+        /(nord)/i,                          // Nord כללי
+        /(op\d+\s*pro)/i,                   // OP12 Pro (קיצור)
+        /(op\d+)/i,                         // OP12 (קיצור)
+        /(1\+\d+)/i,                        // 1+12 (סימון חלופי)
+        
+        // Huawei patterns - מסודר לפי ספציפיות
+        /huawei\s+(p\d+\s*pro)/i,           // Huawei P60 Pro
+        /huawei\s+(mate\s*\d+\s*pro)/i,     // Huawei Mate 60 Pro
+        /huawei\s+(nova\s*\d+\s*pro)/i,     // Huawei Nova 12 Pro
+        /huawei\s+(mate\s*x)/i,             // Huawei Mate X (מתקפל)
+        /huawei\s+(p\d+)/i,                 // Huawei P60
+        /huawei\s+(mate\s*\d+)/i,           // Huawei Mate 60
+        /huawei\s+(nova\s*\d+)/i,           // Huawei Nova 12
+        /(p\d+\s*pro)/i,                    // P60 Pro ללא Huawei
+        /(p\d+)/i,                          // P60 ללא Huawei
+        
+        // Honor patterns (חברה בת לשעבר של Huawei)
+        /honor\s+(\d+\s*pro)/i,             // Honor 90 Pro
+        /honor\s+(magic\s*\d+\s*pro)/i,     // Honor Magic 5 Pro
+        /honor\s+(\d+)/i,                   // Honor 90
+        /honor\s+(magic\s*\d+)/i,           // Honor Magic 5
         
         // Generic pattern for any word with letters and numbers
         /([a-z]+\d+[a-z]*)/i
@@ -60,7 +113,7 @@ function extractModelFromQuery(query) {
             return {
                 original: modelName,
                 variations: [modelName],
-                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro')
+                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+') || modelName.includes(' r') || modelName.includes(' t') || modelName.includes('ce') || modelName.includes(' se') || modelName.includes(' a') || modelName.includes('xl') || modelName.includes('fold') || modelName.includes('watch') || modelName.includes('buds') || modelName.includes('mate x') || modelName.includes('magic')
             };
         }
     }
@@ -205,13 +258,151 @@ async function searchGoogle(userQuery) {
                 // שיפור: אם זה Samsung S24 למשל, נוודא שזה לא S24 Ultra/Plus/Pro באופן מדויק יותר
                 if (model.match(/s\d+$/i)) {
                     // נבדוק שהמודל מופיע עם גבולות מילים ברורים ואחריו לא Ultra/Plus/Pro/+
-                    const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+))`, 'i');
-                    return modelRegex.test(fullText);
+                    // גם נוודא שלא מופיע s24+ או s24 plus וכו'
+                    const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+|fe))`, 'i');
+                    const hasExactMatch = modelRegex.test(fullText);
+                    
+                    // בדיקה נוספת: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
+                    if (model.toLowerCase() === 's24') {
+                        const excludeVariants = /s24\s*(ultra|plus|pro|\+|fe)/i;
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור שיאומי - Mi 13 לא יכלול Mi 13 Pro/Ultra/Lite
+                    if (model.match(/^mi\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(ultra|pro|lite)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Xiaomi - Xiaomi 14 לא יכלול Xiaomi 14 Pro/Ultra
+                    if (model.match(/^xiaomi\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(ultra|pro|lite)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור OnePlus - OnePlus 12 לא יכלול OnePlus 12 Pro/R/T
+                    if (model.match(/^oneplus\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(pro|r|t)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור OP (קיצור) - OP12 לא יכלול OP12 Pro
+                    if (model.match(/^op\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Pixel - Pixel 8 לא יכלול Pixel 8 Pro/8a
+                    if (model.match(/^pixel\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(pro|a|xl)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Huawei P - P60 לא יכלול P60 Pro
+                    if (model.match(/^p\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Huawei Mate - Mate 60 לא יכלול Mate 60 Pro
+                    if (model.match(/^mate\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Honor - Honor 90 לא יכלול Honor 90 Pro
+                    if (model.match(/^honor\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Honor Magic - Magic 5 לא יכלול Magic 5 Pro
+                    if (model.match(/^magic\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    return hasExactMatch;
                 }
                 
                 // עבור דגמים אחרים, נבדוק שאין Ultra/Plus/Pro מיד אחרי המודל
-                const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+))`, 'i');
-                return modelRegex.test(fullText);
+                const modelRegex = new RegExp(`\\b${model}\\b(?!\\s*(ultra|plus|pro|\\+|fe))`, 'i');
+                const hasExactMatch = modelRegex.test(fullText);
+                
+                // בדיקה כללית: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
+                if (model.match(/^[a-z]+\d+$/i)) {
+                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe|lite|\\br\\b|\\bt\\b|\\ba\\b|xl)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה מיוחדת עבור Redmi Note - למנוע ערבוב בין Note 12 ל-Note 12 Pro
+                if (model.match(/^redmi\s+note\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*(pro|\\+)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה מיוחדת עבור Nord - למנוע ערבוב בין Nord 3 ל-Nord CE 3
+                if (model.match(/^nord\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*(ce|lite)`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה עבור Nord CE - Nord CE 3 לא יכלול Nord CE 3 Lite
+                if (model.match(/^nord\s+ce\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*lite`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה עבור Huawei Nova - Nova 12 לא יכלול Nova 12 Pro
+                if (model.match(/^nova\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                return hasExactMatch;
             }
         });
 
