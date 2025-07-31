@@ -12,15 +12,34 @@ const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 function extractModelFromQuery(query) {
     const lowerCaseQuery = query.toLowerCase();
     
+    // מיפוי קיצורים נפוצים של מותגים
+    const brandShortcuts = {
+        'samsung galaxy': 's',
+        'samsung': 's',
+        'oneplus': 'op',
+        'google pixel': 'pixel',
+        'iphone': 'iphone',
+        'xiaomi': 'mi',
+        'huawei': 'p'
+    };
+    
     // חיפוש דגמים שכתובים בלי רווח (כמו oneplus13, samsungs24, iphone15)
     const compactModelMatch = lowerCaseQuery.match(/([a-z]+)(\d+)/);
     if (compactModelMatch) {
         const [, brand, model] = compactModelMatch;
-        // החזרת הדגם עם רווח ובלי רווח לחיפוש רחב יותר
+        const shortBrand = brandShortcuts[brand] || brand;
+        
         return {
             compact: compactModelMatch[0], // oneplus13
             spaced: `${brand} ${model}`, // oneplus 13
-            original: compactModelMatch[0]
+            shortened: `${shortBrand}${model}`, // op13 או s24
+            original: compactModelMatch[0],
+            variations: [
+                compactModelMatch[0],
+                `${brand} ${model}`,
+                `${shortBrand}${model}`,
+                `${shortBrand} ${model}`
+            ]
         };
     }
     
@@ -38,12 +57,52 @@ function extractModelFromQuery(query) {
         if (knownBrands.some(brand => currentWord.includes(brand)) && /\d/.test(nextWord)) {
             const fullModel = `${currentWord} ${nextWord}`;
             const compactModel = `${currentWord}${nextWord}`;
+            
+            // חיפוש קיצור למותג
+            let shortBrand = currentWord;
+            for (const [fullBrand, shortForm] of Object.entries(brandShortcuts)) {
+                if (currentWord.includes(fullBrand)) {
+                    shortBrand = shortForm;
+                    break;
+                }
+            }
+            
             return {
                 compact: compactModel,
                 spaced: fullModel,
-                original: fullModel
+                shortened: `${shortBrand}${nextWord}`,
+                original: fullModel,
+                variations: [
+                    compactModel,
+                    fullModel,
+                    `${shortBrand}${nextWord}`,
+                    `${shortBrand} ${nextWord}`,
+                    nextWord // רק המספר (כמו "24" עבור S24)
+                ]
             };
         }
+    }
+    
+    // חיפוש מקרים מיוחדים כמו "Samsung Galaxy S24 Ultra" 
+    const galaxyMatch = lowerCaseQuery.match(/samsung\s+galaxy\s+([a-z]+)(\d+)(\s+\w+)?/);
+    if (galaxyMatch) {
+        const [, series, model, extra] = galaxyMatch;
+        const extraPart = extra ? extra.trim() : '';
+        
+        return {
+            compact: `samsung${series}${model}${extraPart}`,
+            spaced: `samsung galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+            shortened: `s${model}${extraPart ? ' ' + extraPart : ''}`,
+            original: galaxyMatch[0],
+            variations: [
+                `samsung galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+                `samsung ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+                `galaxy ${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+                `s${model}${extraPart ? ' ' + extraPart : ''}`,
+                `${series}${model}${extraPart ? ' ' + extraPart : ''}`,
+                `${model}${extraPart ? ' ' + extraPart : ''}`
+            ]
+        };
     }
     
     // חיפוש דגמים רגילים (מילה אחת עם אותיות ומספרים)
@@ -53,7 +112,9 @@ function extractModelFromQuery(query) {
         return {
             compact: model,
             spaced: model,
-            original: model
+            shortened: model,
+            original: model,
+            variations: [model]
         };
     }
     
