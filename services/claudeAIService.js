@@ -28,9 +28,7 @@ async function analyzeTextWithClaude(query, searchResults) {
 • הדיונים מתקיימים בפלטפורמות אחרות (קבוצות פייסבוק, פורומים מקומיים)
 • המכשיר פחות פופולרי בקהילות דוברות אנגלית
 
-**המלצה:** נסו לחפש בפלטפורמות מקומיות או להמתין מספר שבועות נוספים לקבלת מידע נוסף.
-
-📞 **לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**`;
+**המלצה:** נסו לחפש בפלטפורמות מקומיות או להמתין מספר שבועות נוספים לקבלת מידע נוסף.`;
   }
 
   const contentForAnalysis = searchResults
@@ -41,12 +39,20 @@ async function analyzeTextWithClaude(query, searchResults) {
   const prompt = `You are an expert technology analyst specializing in Android device updates. Your task is to analyze search results for the query: "${query}" and provide a comprehensive Hebrew report.
 
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
-1. **EXTRACT ALL POSSIBLE QUOTES:** Search THOROUGHLY through ALL search results and extract EVERY user quote, opinion, experience, or report that mentions the specific device model, even if it's brief or indirect.
-2. **NO DUPLICATES:** Ensure each quote is unique - do not repeat the same information from different sources or rephrase the same quote multiple times.
-3. **AVOID REPETITIVE TEXT:** Don't repeat the same instructions, phrases, or formatting explanations within your response. Keep the analysis concise and avoid redundant language.
-4. **EXTRACT ALL QUOTES:** Search thoroughly through all search results for user quotes, opinions, and experiences.
-5. **MANDATORY FORMAT:** Every quote must use: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
-6. **QUALITY FOCUS:** Prefer diverse, unique experiences over repetitive similar quotes.
+1. **EXTRACT ALL RELEVANT QUOTES:** Find and include ALL user quotes/reports that are relevant to the specific device model requested, up to a maximum of 20 quotes total.
+2. **PRIORITIZE RELEVANCE:** Focus on quotes that specifically mention the device model and update experience.
+3. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
+4. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
+5. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
+6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+   - NO quote should appear without its corresponding link
+   - The link must be the exact URL from the search results provided
+   - If you can't find the exact URL for a quote, don't include that quote
+7. **BE HONEST ABOUT ACTUAL NUMBERS:** Report exactly how many relevant quotes you found. Don't aim for artificial balance - if you find 15 positive and 3 negative, report that honestly.
+8. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the maximum of 20 total.
+9. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
+10. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
+11. **NO QUOTE WITHOUT LINK:** If you cannot provide a direct link to the source of a quote, do not include that quote in your analysis.
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -64,25 +70,49 @@ Provide your analysis in Hebrew using this EXACT format:
 
 ## 💬 **דיווחי משתמשים אמיתיים**
 
-**💎 הערה חשובה:** כל הדיווחים מבוססים על עדויות אמיתיות מהחיפוש. מוצגים עד 20 ציטוטים ייחודיים לדגם הספציפי.
-
-**🎯 עקרונות החיפוש:** חפש ביסודיות, הימנע מכפילויות, העדף מגוון נקודות מבט
+**הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. יוצגו כל הדיווחים הרלוונטיים שנמצאו לדגם הספציפי, עד מקסימום 20 ציטוטים סה"כ.
 
 ### ✅ **חוויות חיוביות**
+*חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
+
+פורמט חובה לכל ציטוט (כולל קישור!):
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
+
+דוגמה:
+**משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
+
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
+
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים*
 
 ### ❌ **חוויות שליליות**
+*חלץ את כל הציטוטים השליליים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
+
+פורמט חובה לכל ציטוט (כולל קישור!):
+**משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
+
+דוגמה:
+**משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
+
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
+
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים*
 
 ---
 
 ## 📊 **ניתוח מגמות מעמיק**
 
 ### 🔋 **ביצועי סוללה**
+*ניתוח ממצאים לגבי השפעת העדכון על הסוללה - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### ⚡ **ביצועי מערכת**
+*ניתוח ממצאים לגבי מהירות ויציבות המערכת - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🎨 **ממשק משתמש וחוויית שימוש**
+*ניתוח שינויים בממשק ובחוויית המשתמש - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ### 🔧 **בעיות טכניות ותקלות**
+*סיכום הבעיות הטכניות העיקריות שדווחו - רק על בסיס מידע שנמצא בתוצאות החיפוש*
 
 ---
 
@@ -114,9 +144,7 @@ Provide your analysis in Hebrew using this EXACT format:
 
 *הניתוח מבוסס על חיפוש מקיף ברשת ואינו מהווה תחליף לייעוץ טכני מקצועי. כל הציטוטים והדיווחים מבוססים על מקורות אמיתיים שנמצאו בחיפוש. 
 
-💡 **המלצה:** לחצו על הקישורים כדי לקרוא את ההקשר המלא של כל ציטוט ולוודא שהוא רלוונטי למכשיר שלכם.
-
-📞 **לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם***`;
+💡 **המלצה:** לחצו על הקישורים כדי לקרוא את ההקשר המלא של כל ציטוט ולוודא שהוא רלוונטי למכשיר שלכם.*`;
 
   const maxRetries = 3;
   let lastError = null;
@@ -126,7 +154,7 @@ Provide your analysis in Hebrew using this EXACT format:
       console.log(`Claude API call: Attempt #${attempt} with enhanced user quotes extraction.`);
       const response = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
-        max_tokens: 6000, // הגדלה נוספת למקס טוקנים לתמיכה ביותר ציטוטים
+        max_tokens: 4000, // הגדלה למקס טוקנים לתמיכה בתוכן מורחב
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -158,9 +186,7 @@ Provide your analysis in Hebrew using this EXACT format:
 • פנו לתמיכה טכנית
 • בדקו את החיבור לאינטרנט
 
-*אנו מתנצלים על האי נוחות ופועלים לפתרון המהיר של הבעיה.*
-
-📞 **לכל תקלה או ביקורת ניתן לפנות ל-@moominAmir בטלגרם**`;
+*אנו מתנצלים על האי נוחות ופועלים לפתרון המהיר של הבעיה.*`;
 }
 
 module.exports = { analyzeTextWithClaude };
