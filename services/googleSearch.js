@@ -1,15 +1,15 @@
 const axios = require('axios');
 
-const GOOGLE_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;
-const GOOGLE_CSE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+const GOOGLE_API_KEY = process.env.GOOGLE_SEARCH_API_KEY || process.env.GOOGLE_API_KEY;
+const GOOGLE_CSE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID || process.env.GOOGLE_CSE_ID;
 
 if (!GOOGLE_API_KEY || !GOOGLE_CSE_ID) {
-    throw new Error('Google API Key (GOOGLE_SEARCH_API_KEY) or CSE ID (GOOGLE_SEARCH_ENGINE_ID) is not defined in environment variables.');
+    throw new Error('Google API Key (GOOGLE_SEARCH_API_KEY/GOOGLE_API_KEY) or CSE ID (GOOGLE_SEARCH_ENGINE_ID/GOOGLE_CSE_ID) is not defined in environment variables.');
 }
 
 const googleApiUrl = 'https://www.googleapis.com/customsearch/v1';
 
-// האתרים המוגדרים במנוע החיפוש המותאם אישית
+// האתרים המוגדרים לחיפוש
 const TARGET_SITES = [
     'reddit.com',
     'xda-developers.com', 
@@ -27,13 +27,15 @@ function extractModelFromQuery(query) {
 }
 
 /**
- * חיפוש באתר ספציפי
+ * חיפוש באתר ספציפי עם site: operator
  */
-async function searchSpecificSite(query, site, maxResults = 15) {
+async function searchSpecificSite(query, site, maxResults = 10) {
+    // שימוש ב-site: operator ישירות במקום להסתמך על CSE
     const siteQuery = `${query} site:${site}`;
     
     try {
         console.log(`🔍 Searching ${site} for: "${query}"`);
+        console.log(`📝 Full query: "${siteQuery}"`);
         
         const response = await axios.get(googleApiUrl, {
             params: { 
@@ -49,6 +51,16 @@ async function searchSpecificSite(query, site, maxResults = 15) {
         const items = response.data.items || [];
         console.log(`✅ Found ${items.length} results from ${site}`);
         
+        // דיבאג - הצגת התוצאות הראשונות
+        if (items.length > 0) {
+            console.log(`📋 First result from ${site}:`);
+            console.log(`   Title: ${items[0].title}`);
+            console.log(`   URL: ${items[0].link}`);
+            console.log(`   Domain: ${new URL(items[0].link).hostname}`);
+        } else {
+            console.log(`❌ No results found for site:${site} with query: "${query}"`);
+        }
+        
         return items.map(item => ({
             ...item,
             sourceSite: site
@@ -56,6 +68,10 @@ async function searchSpecificSite(query, site, maxResults = 15) {
         
     } catch (error) {
         console.warn(`⚠️ Search failed for ${site}:`, error.message);
+        if (error.response) {
+            console.warn(`   Status: ${error.response.status}`);
+            console.warn(`   Data:`, JSON.stringify(error.response.data, null, 2));
+        }
         return [];
     }
 }
@@ -63,10 +79,10 @@ async function searchSpecificSite(query, site, maxResults = 15) {
 /**
  * חיפוש מאוזן בכל האתרים
  */
-async function searchAllSitesBalanced(query, resultsPerSite = 15) {
+async function searchAllSitesBalanced(query, resultsPerSite = 8) {
     console.log(`🚀 Starting balanced search across ${TARGET_SITES.length} sites...`);
     
-    // חיפוש מקביל בכל האתרים
+    // חיפוש מקביל בכל האתרים עם site: operator
     const siteSearchPromises = TARGET_SITES.map(site => 
         searchSpecificSite(query, site, resultsPerSite)
     );
@@ -109,39 +125,50 @@ async function searchAllSitesBalanced(query, resultsPerSite = 15) {
 }
 
 /**
+ * חיפוש כללי נוסף (בלי site: restrictions)
+ */
+async function generalSearch(query, maxResults = 15) {
+    console.log(`🔍 Adding general search to supplement results...`);
+    
+    try {
+        const response = await axios.get(googleApiUrl, {
+            params: { 
+                key: GOOGLE_API_KEY, 
+                cx: GOOGLE_CSE_ID, 
+                q: `${query} review experience feedback Android`,
+                num: Math.min(maxResults, 10),
+                dateRestrict: 'm6',
+                lr: 'lang_en' 
+            }
+        });
+        
+        const items = response.data.items || [];
+        console.log(`✅ Found ${items.length} general results`);
+        
+        return items.map(item => ({
+            ...item,
+            sourceSite: 'general'
+        }));
+        
+    } catch (error) {
+        console.warn('⚠️ General search failed:', error.message);
+        return [];
+    }
+}
+
+/**
  * חיפוש היברידי - מאוזן + כללי
  */
 async function hybridSearch(query) {
-    console.log(`🔄 Starting hybrid search strategy...`);
+    console.log(`🔄 Starting hybrid search strategy for: "${query}"`);
     
-    // 1. חיפוש מאוזן באתרים ספציפיים (עד 15 מכל אתר = 90 תוצאות)
-    const balancedResults = await searchAllSitesBalanced(query, 15);
+    // 1. חיפוש מאוזן באתרים ספציפיים
+    const balancedResults = await searchAllSitesBalanced(query, 8);
     
-    // 2. חיפוש כללי נוסף (אם יש מעט תוצאות)
+    // 2. חיפוש כללי נוסף אם יש מעט תוצאות
     let generalResults = [];
-    if (balancedResults.length < 60) {
-        console.log(`🔍 Adding general search to supplement results...`);
-        
-        try {
-            const response = await axios.get(googleApiUrl, {
-                params: { 
-                    key: GOOGLE_API_KEY, 
-                    cx: GOOGLE_CSE_ID, 
-                    q: `${query} review experience feedback`,
-                    num: 10,
-                    dateRestrict: 'm6',
-                    lr: 'lang_en' 
-                }
-            });
-            
-            generalResults = (response.data.items || []).map(item => ({
-                ...item,
-                sourceSite: 'general'
-            }));
-            
-        } catch (error) {
-            console.warn('⚠️ General search failed:', error.message);
-        }
+    if (balancedResults.length < 30) {
+        generalResults = await generalSearch(query, 15);
     }
     
     // 3. איחוד התוצאות
