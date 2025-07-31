@@ -81,6 +81,23 @@ function extractModelFromQuery(query) {
         /(op\d+)/i,                         // OP12 (קיצור)
         /(1\+\d+)/i,                        // 1+12 (סימון חלופי)
         
+        // Huawei patterns - מסודר לפי ספציפיות
+        /huawei\s+(p\d+\s*pro)/i,           // Huawei P60 Pro
+        /huawei\s+(mate\s*\d+\s*pro)/i,     // Huawei Mate 60 Pro
+        /huawei\s+(nova\s*\d+\s*pro)/i,     // Huawei Nova 12 Pro
+        /huawei\s+(mate\s*x)/i,             // Huawei Mate X (מתקפל)
+        /huawei\s+(p\d+)/i,                 // Huawei P60
+        /huawei\s+(mate\s*\d+)/i,           // Huawei Mate 60
+        /huawei\s+(nova\s*\d+)/i,           // Huawei Nova 12
+        /(p\d+\s*pro)/i,                    // P60 Pro ללא Huawei
+        /(p\d+)/i,                          // P60 ללא Huawei
+        
+        // Honor patterns (חברה בת לשעבר של Huawei)
+        /honor\s+(\d+\s*pro)/i,             // Honor 90 Pro
+        /honor\s+(magic\s*\d+\s*pro)/i,     // Honor Magic 5 Pro
+        /honor\s+(\d+)/i,                   // Honor 90
+        /honor\s+(magic\s*\d+)/i,           // Honor Magic 5
+        
         // Generic pattern for any word with letters and numbers
         /([a-z]+\d+[a-z]*)/i
     ];
@@ -96,7 +113,7 @@ function extractModelFromQuery(query) {
             return {
                 original: modelName,
                 variations: [modelName],
-                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+') || modelName.includes(' r') || modelName.includes(' t') || modelName.includes('ce') || modelName.includes(' se') || modelName.includes(' a') || modelName.includes('xl') || modelName.includes('fold') || modelName.includes('watch') || modelName.includes('buds')
+                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+') || modelName.includes(' r') || modelName.includes(' t') || modelName.includes('ce') || modelName.includes(' se') || modelName.includes(' a') || modelName.includes('xl') || modelName.includes('fold') || modelName.includes('watch') || modelName.includes('buds') || modelName.includes('mate x') || modelName.includes('magic')
             };
         }
     }
@@ -298,6 +315,42 @@ async function searchGoogle(userQuery) {
                         }
                     }
                     
+                    // בדיקה עבור Huawei P - P60 לא יכלול P60 Pro
+                    if (model.match(/^p\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Huawei Mate - Mate 60 לא יכלול Mate 60 Pro
+                    if (model.match(/^mate\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Honor - Honor 90 לא יכלול Honor 90 Pro
+                    if (model.match(/^honor\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
+                    // בדיקה עבור Honor Magic - Magic 5 לא יכלול Magic 5 Pro
+                    if (model.match(/^magic\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
                     return hasExactMatch;
                 }
                 
@@ -335,6 +388,15 @@ async function searchGoogle(userQuery) {
                 if (model.match(/^nord\s+ce\s*\d+$/i)) {
                     const baseModel = model.replace(/\s+/g, '\\s*');
                     const excludeVariants = new RegExp(`${baseModel}\\s*lite`, 'i');
+                    if (excludeVariants.test(fullText)) {
+                        return false;
+                    }
+                }
+                
+                // בדיקה עבור Huawei Nova - Nova 12 לא יכלול Nova 12 Pro
+                if (model.match(/^nova\s*\d+$/i)) {
+                    const baseModel = model.replace(/\s+/g, '\\s*');
+                    const excludeVariants = new RegExp(`${baseModel}\\s*pro`, 'i');
                     if (excludeVariants.test(fullText)) {
                         return false;
                     }
