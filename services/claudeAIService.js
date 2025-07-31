@@ -39,20 +39,18 @@ async function analyzeTextWithClaude(query, searchResults) {
   const prompt = `You are an expert technology analyst specializing in Android device updates. Your task is to analyze search results for the query: "${query}" and provide a comprehensive Hebrew report.
 
 **CRITICAL REQUIREMENTS FOR AUTHENTICITY:**
-1. **EXTRACT ALL RELEVANT QUOTES:** Find and include ALL user quotes/reports that are relevant to the specific device model requested, up to a maximum of 20 quotes total.
-2. **PRIORITIZE RELEVANCE:** Focus on quotes that specifically mention the device model and update experience.
-3. **ONLY REAL QUOTES:** Extract ONLY actual user quotes that appear in the search results. DO NOT invent or fabricate any quotes.
-4. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS. No quote without a link.
-5. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found. Use the exact URL from the search results.
-6. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
-   - NO quote should appear without its corresponding link
-   - The link must be the exact URL from the search results provided
-   - If you can't find the exact URL for a quote, don't include that quote
-7. **BE HONEST ABOUT ACTUAL NUMBERS:** Report exactly how many relevant quotes you found. Don't aim for artificial balance - if you find 15 positive and 3 negative, report that honestly.
-8. **TRANSPARENT REPORTING:** At the end of each section, mention how many quotes were actually found vs. the maximum of 20 total.
-9. **REAL DATA ONLY:** Base ALL analysis sections (battery, performance, UI, issues) only on information actually found in the search results.
-10. **LINK VERIFICATION:** Make sure every quote has its corresponding source link from the search results provided.
-11. **NO QUOTE WITHOUT LINK:** If you cannot provide a direct link to the source of a quote, do not include that quote in your analysis.
+1. **EXTRACT ALL POSSIBLE QUOTES:** Search THOROUGHLY through ALL search results and extract EVERY user quote, opinion, experience, or report that mentions the specific device model, even if it's brief or indirect.
+2. **EXPAND YOUR SEARCH SCOPE:** Look for user comments, forum posts, Reddit discussions, review comments, social media posts, and any user-generated content in the search results.
+3. **INCLUDE PARTIAL MENTIONS:** Even if a quote doesn't give a full review, include it if it mentions the device and update experience (e.g., "battery is better after update", "no issues so far", "loving the new features").
+4. **PARAPHRASE WHEN NECESSARY:** If you find relevant user opinions that aren't in direct quote format, you can paraphrase them as long as you maintain accuracy and provide the source link.
+5. **LOOK IN SNIPPETS:** Pay special attention to the snippets provided - they often contain user quotes or opinions that might be missed.
+6. **FORUM AND REDDIT FOCUS:** Give extra attention to forum discussions, Reddit posts, and community discussions where users share experiences.
+7. **MANDATORY LINKS:** Every single quote MUST include the direct URL link. NO EXCEPTIONS.
+8. **SOURCE ATTRIBUTION WITH LINKS:** Every quote must include both the source name AND the direct link to where it was found.
+9. **MANDATORY QUOTE FORMAT:** EVERY quote must use this exact format: **משתמש מ-[Website Name]:** "*translated quote*" - [direct URL link]
+10. **BE THOROUGH:** Go through each search result systematically and look for ANY mention of user experience with the specific device model.
+11. **EXTRACT FROM TITLES TOO:** Sometimes the title itself contains user sentiment or experience - include these as well.
+12. **LOOK FOR IMPLICIT FEEDBACK:** Include results that imply user experience even if not in direct quote format (e.g., "users report improved battery life").
 
 **SEARCH RESULTS TO ANALYZE:**
 ${contentForAnalysis}
@@ -72,31 +70,42 @@ Provide your analysis in Hebrew using this EXACT format:
 
 **הערה חשובה:** הדיווחים הבאים מבוססים אך ורק על עדויות אמיתיות שנמצאו בתוצאות החיפוש. יוצגו כל הדיווחים הרלוונטיים שנמצאו לדגם הספציפי, עד מקסימום 20 ציטוטים סה"כ.
 
+**🔍 הוראות חיפוש מפורטות:**
+- עבור על כל תוצאת חיפוש בזהירות ובחפש בכותרת, בקטע (snippet), ובכל מידע זמין
+- כלול כל אזכור של משתמש שמזכיר את המכשיר והעדכון, גם אם הוא קצר
+- חפש ביטויים כמו "my experience", "after updating", "user reports", "feedback", "issues", "working well"
+- שים לב לתגובות ודיונים בפורומים, Reddit, XDA, ואתרי ביקורות
+- אל תתעלם מציטוטים קצרים או חלקיים - הם עדיין חשובים
+
 ### ✅ **חוויות חיוביות**
-*חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
+*חלץ את כל הציטוטים החיוביים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים. חפש ביסודיות בכל snippet, title, ותוכן זמין. כלול גם חוויות חלקיות או קצרות שמזכירות את המכשיר.*
 
 פורמט חובה לכל ציטוט (כולל קישור!):
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
-דוגמה:
+דוגמאות:
 **משתמש מ-Reddit:** "*העדכון שיפר לי את הביצועים משמעותיות*" - https://reddit.com/example
+**משתמש מ-XDA Forum:** "*הסוללה מחזיקה יותר אחרי העדכון*" - https://xda-developers.com/example
+**משתמש מ-Android Central:** "*בלי בעיות עד כה*" - https://androidcentral.com/example
 
-⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי! חפש גם בכותרות ובקטעים קצרים!
 
-*📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים*
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים חיוביים מתוך [סה"כ מקורות שנסקרו]*
 
 ### ❌ **חוויות שליליות**
-*חלץ את כל הציטוטים השליליים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים.*
+*חלץ את כל הציטוטים השליליים הרלוונטיים שנמצאו בתוצאות החיפוש לדגם הספציפי. כלול את כולם עד למגבלה הכוללת של 20 ציטוטים. חפש ביסודיות בכל snippet, title, ותוכן זמין. כלול גם תלונות חלקיות או קצרות שמזכירות את המכשיר.*
 
 פורמט חובה לכל ציטוט (כולל קישור!):
 **משתמש מ-[שם האתר]:** "*הציטוט המתורגם*" - [קישור למקור]
 
-דוגמה:
+דוגמאות:
 **משתמש מ-XDA Forum:** "*יש לי בעיות סוללה אחרי העדכון*" - https://xda-developers.com/example
+**משתמש מ-Reddit:** "*המכשיר נהיה איטי יותר*" - https://reddit.com/example
+**משתמש מ-Android Police:** "*מתחרט על העדכון*" - https://androidpolice.com/example
 
-⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי!
+⚠️ **חשוב:** כל ציטוט חייב לכלול קישור למקור המקורי! חפש גם בכותרות ובקטעים קצרים!
 
-*📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים*
+*📊 סיכום: נמצאו [מספר אמיתי] דיווחים שליליים מתוך [סה"כ מקורות שנסקרו]*
 
 ---
 
@@ -154,7 +163,7 @@ Provide your analysis in Hebrew using this EXACT format:
       console.log(`Claude API call: Attempt #${attempt} with enhanced user quotes extraction.`);
       const response = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
-        max_tokens: 4000, // הגדלה למקס טוקנים לתמיכה בתוכן מורחב
+        max_tokens: 6000, // הגדלה נוספת למקס טוקנים לתמיכה ביותר ציטוטים
         messages: [{ role: "user", content: prompt }],
       });
 

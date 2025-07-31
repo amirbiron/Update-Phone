@@ -24,14 +24,17 @@ function extractModelFromQuery(query) {
 async function searchGoogle(userQuery) {
     const englishQuery = userQuery.replace(/אנדרואיד/g, 'Android').replace(/\?/g, '');
     
-    // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר
+    // שליחת מספר חיפושים מקבילים עם מילות מפתח שונות לכיסוי מקיף יותר - מתמקדים ביותר תוכן עם ציטוטי משתמשים
     const searchQueries = [
-        `${englishQuery} review feedback experience user reports`,
-        `${englishQuery} update problems issues bugs battery performance`,
-        `${englishQuery} after update thoughts opinions reddit forum`,
-        `${englishQuery} "updated to" "upgraded to" user experience review`,
-        `${englishQuery} performance battery life speed issues complaints`,
-        `${englishQuery} "worth updating" "should I update" recommendations`
+        `${englishQuery} review feedback experience user reports reddit forum`,
+        `${englishQuery} update problems issues bugs battery performance user complaints`,
+        `${englishQuery} after update thoughts opinions reddit xda forum discussion`,
+        `${englishQuery} "updated to" "upgraded to" user experience review forum`,
+        `${englishQuery} performance battery life speed issues complaints reddit forum`,
+        `${englishQuery} "worth updating" "should I update" recommendations user opinion`,
+        `${englishQuery} site:reddit.com user experience review feedback`,
+        `${englishQuery} site:xda-developers.com user feedback review experience`,
+        `${englishQuery} "my experience" "after updating" user review forum`
     ];
     
     const model = extractModelFromQuery(englishQuery);
@@ -46,9 +49,10 @@ async function searchGoogle(userQuery) {
     
     for (let i = 0; i < searchQueries.length; i++) {
         const query = searchQueries[i];
-        // עבור כל שאילתה, נבצע 2 חיפושים של 10 תוצאות (20 לכל שאילתה)
-        // סה"כ: 6 שאילתות * 20 תוצאות = 120, אבל נגביל ל-100
-        for (let page = 0; page < 2; page++) {
+        // עבור כל שאילתה, נבצע 1-2 חיפושים של 10 תוצאות
+        // סה"כ: 9 שאילתות * 10-20 תוצאות = עד 180, אבל נגביל ל-100
+        const pagesPerQuery = i < 6 ? 2 : 1; // לשאילתות הראשונות 2 עמודים, לאחרונות 1
+        for (let page = 0; page < pagesPerQuery; page++) {
             allSearchPromises.push(
                 axios.get(googleApiUrl, {
                     params: { 
@@ -57,7 +61,7 @@ async function searchGoogle(userQuery) {
                         q: query, 
                         num: 10, 
                         start: (page * 10) + 1, 
-                        dateRestrict: 'm6', // הרחבה ל-6 חודשים לכיסוי טוב יותר
+                        dateRestrict: 'm12', // הרחבה ל-12 חודשים לכיסוי מקסימלי של ציטוטי משתמשים
                         lr: 'lang_en' 
                     }
                 }).catch(error => {
