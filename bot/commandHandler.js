@@ -1,4 +1,4 @@
-const { getOrCreateUser, updateUserQueries, getRecentUsers } = require('../services/userService');
+const { getOrCreateUser, updateUserQueries, resetUserQueries, getRecentUsers } = require('../services/userService');
 const { searchGoogle } = require('../services/googleSearch');
 const { analyzeTextWithClaude } = require('../services/claudeAIService');
 const { sendLongMessage, removeMarkdownFormatting } = require('../common/utils');
@@ -152,4 +152,45 @@ async function handleRecentUsers(bot, msg) {
     }
 }
 
-module.exports = { handleStart, handleDeviceQuery, handleRecentUsers };
+/**
+ * Handles admin command to reset user queries (admin only).
+ * @param {object} bot - The Telegram bot instance.
+ * @param {object} msg - The Telegram message object.
+ * @param {string} targetUserId - The user ID to reset queries for.
+ */
+async function handleResetUserQueries(bot, msg, targetUserId) {
+    const chatId = msg.chat.id;
+    const adminChatIds = process.env.ADMIN_CHAT_IDS ? process.env.ADMIN_CHAT_IDS.split(',').map(id => parseInt(id.trim())) : [];
+    
+    // בדיקה אם המשתמש הוא מנהל
+    if (!adminChatIds.includes(msg.from.id)) {
+        await bot.sendMessage(chatId, '❌ אין לך הרשאות מנהל לביצוע פעולה זו.');
+        return;
+    }
+    
+    if (!targetUserId) {
+        await bot.sendMessage(chatId, '❌ נא לציין ID של המשתמש לאיפוס.\nדוגמה: /reset_queries 123456789');
+        return;
+    }
+    
+    const userId = parseInt(targetUserId);
+    if (isNaN(userId)) {
+        await bot.sendMessage(chatId, '❌ ID המשתמש חייב להיות מספר.');
+        return;
+    }
+    
+    try {
+        const success = await resetUserQueries(userId);
+        
+        if (success) {
+            await bot.sendMessage(chatId, `✅ מכסת השאילתות אופסה בהצלחה עבור משתמש ${userId}.\nהמשתמש יכול עכשיו לבצע 30 שאילתות חדשות.`);
+        } else {
+            await bot.sendMessage(chatId, `❌ משתמש עם ID ${userId} לא נמצא במערכת.`);
+        }
+    } catch (error) {
+        console.error('Error in handleResetUserQueries:', error);
+        await bot.sendMessage(chatId, '❌ אירעה שגיאה בעת איפוס מכסת השאילתות.');
+    }
+}
+
+module.exports = { handleStart, handleDeviceQuery, handleRecentUsers, handleResetUserQueries };

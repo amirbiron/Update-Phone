@@ -52,6 +52,27 @@ async function updateUserQueries(telegramId, newCount) {
 }
 
 /**
+ * Resets the monthly query count for a specific user (admin function).
+ * @param {number} telegramId - The user's Telegram ID to reset.
+ * @returns {Promise<boolean>} Returns true if user was found and reset, false otherwise.
+ */
+async function resetUserQueries(telegramId) {
+    const users = getUsersCollection();
+    const result = await users.updateOne(
+        { telegramId: telegramId },
+        { $set: { monthlyQueryCount: 0, lastQueryDate: new Date() } }
+    );
+    
+    if (result.matchedCount > 0) {
+        console.log(`✅ Queries reset for user ${telegramId}`);
+        return true;
+    } else {
+        console.log(`❌ User ${telegramId} not found`);
+        return false;
+    }
+}
+
+/**
  * Gets users who were active in the last week.
  * @returns {Promise<Array>} Array of user objects who were active in the last 7 days.
  */
@@ -67,4 +88,4 @@ async function getRecentUsers() {
     return recentUsers;
 }
 
-module.exports = { getOrCreateUser, updateUserQueries, getRecentUsers };
+module.exports = { getOrCreateUser, updateUserQueries, resetUserQueries, getRecentUsers };
