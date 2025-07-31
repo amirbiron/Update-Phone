@@ -31,10 +31,15 @@ function extractModelFromQuery(query) {
         /galaxy\s+(z\s*fold\s*\d+)/i,
         /galaxy\s+(z\s*flip\s*\d+)/i,
         
-        // Google Pixel patterns
-        /pixel\s+(\d+\s*pro)/i,
-        /pixel\s+(\d+\s*xl)/i,
-        /pixel\s+(\d+)/i,
+        // Google Pixel patterns - מסודר לפי ספציפיות
+        /pixel\s+(\d+\s*pro\s*xl)/i,        // Pixel 9 Pro XL
+        /pixel\s+(\d+\s*pro)/i,             // Pixel 8 Pro
+        /pixel\s+(\d+\s*xl)/i,              // Pixel 3 XL (דגמים ישנים)
+        /pixel\s+(\d+\s*a)/i,               // Pixel 8a, Pixel 7a
+        /pixel\s+(fold)/i,                  // Pixel Fold
+        /pixel\s+(watch)/i,                 // Pixel Watch
+        /pixel\s+(buds)/i,                  // Pixel Buds
+        /pixel\s+(\d+)/i,                   // Pixel 8
         
         // iPhone patterns
         /iphone\s+(\d+\s*pro\s*max)/i,
@@ -91,7 +96,7 @@ function extractModelFromQuery(query) {
             return {
                 original: modelName,
                 variations: [modelName],
-                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+') || modelName.includes(' r') || modelName.includes(' t') || modelName.includes('ce') || modelName.includes(' se')
+                isSpecific: modelName.includes('ultra') || modelName.includes('plus') || modelName.includes('pro') || modelName.includes('lite') || modelName.includes('+') || modelName.includes(' r') || modelName.includes(' t') || modelName.includes('ce') || modelName.includes(' se') || modelName.includes(' a') || modelName.includes('xl') || modelName.includes('fold') || modelName.includes('watch') || modelName.includes('buds')
             };
         }
     }
@@ -284,6 +289,15 @@ async function searchGoogle(userQuery) {
                         }
                     }
                     
+                    // בדיקה עבור Pixel - Pixel 8 לא יכלול Pixel 8 Pro/8a
+                    if (model.match(/^pixel\s*\d+$/i)) {
+                        const baseModel = model.replace(/\s+/g, '\\s*');
+                        const excludeVariants = new RegExp(`${baseModel}\\s*(pro|a|xl)`, 'i');
+                        if (excludeVariants.test(fullText)) {
+                            return false;
+                        }
+                    }
+                    
                     return hasExactMatch;
                 }
                 
@@ -293,7 +307,7 @@ async function searchGoogle(userQuery) {
                 
                 // בדיקה כללית: אם מחפשים דגם בסיסי, לא נכלול וריאנטים
                 if (model.match(/^[a-z]+\d+$/i)) {
-                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe|lite|\\br\\b|\\bt\\b)`, 'i');
+                    const excludeVariants = new RegExp(`${model}\\s*(ultra|plus|pro|\\+|fe|lite|\\br\\b|\\bt\\b|\\ba\\b|xl)`, 'i');
                     if (excludeVariants.test(fullText)) {
                         return false;
                     }
