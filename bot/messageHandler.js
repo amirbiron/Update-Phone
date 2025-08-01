@@ -1,11 +1,13 @@
 const { getDeviceDetails } = require('../common/utils');
 const { sendLongMessage, removeMarkdownFormatting } = require('../common/utils');
+const reporter = require('../activityReporterInstance');
 
 function handleUpdate(bot, msg) {
     const chatId = msg.chat.id;
     if (msg.text && !msg.text.startsWith('/')) {
         // You can add a default reply here if you want
     }
+    reporter.reportActivity(msg.from.id);
 }
 
 function handleCallbackQuery(bot, callbackQuery) {
@@ -13,6 +15,7 @@ function handleCallbackQuery(bot, callbackQuery) {
     const data = callbackQuery.data;
     bot.answerCallbackQuery(callbackQuery.id);
     bot.sendMessage(chatId, `בחרת: ${data}`);
+    reporter.reportActivity(callbackQuery.from.id);
 }
 
 async function handleMyDeviceInfo(bot, msg) {
@@ -29,6 +32,7 @@ ${deviceDetails.recommendation}
         // Use sendLongMessage which now automatically removes markdown
         await sendLongMessage(bot, chatId, message);
     }
+    reporter.reportActivity(msg.from.id);
 }
 
 module.exports = {
