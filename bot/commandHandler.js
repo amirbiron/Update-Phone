@@ -2,12 +2,15 @@ const { getOrCreateUser, updateUserQueries, resetUserQueries, getRecentUsers } =
 const { searchGoogle } = require('../services/googleSearch');
 const { analyzeTextWithClaude } = require('../services/claudeAIService');
 const { sendLongMessage, removeMarkdownFormatting } = require('../common/utils');
+const reporter = require('../activityReporterInstance');
 
 async function handleStart(bot, msg) {
     const chatId = msg.chat.id;
     const user = await getOrCreateUser(msg.from);
     const queriesLeft = 30 - user.monthlyQueryCount;
     
+    reporter.reportActivity(msg.from.id);
+
     // הגדרת תפריט פקודות בהתאם לסטטוס המשתמש
     await setupCommandMenu(bot, msg.from.id, chatId);
 
@@ -41,6 +44,8 @@ async function handleDeviceQuery(bot, msg, query) {
         bot.sendMessage(chatId, '🚫 הגעתם למכסת השאילתות החודשית שלכם (30). המכסה תתאפס בתחילת החודש הבא.');
         return;
     }
+
+    reporter.reportActivity(msg.from.id);
 
     try {
         const searchMessage = `🔍 מתחיל חיפוש מקיף...
@@ -89,6 +94,8 @@ async function handleDeviceQuery(bot, msg, query) {
 async function handleRecentUsers(bot, msg) {
     const chatId = msg.chat.id;
     
+    reporter.reportActivity(msg.from.id);
+
     try {
         const recentUsers = await getRecentUsers();
         const userCount = recentUsers.length;
@@ -179,6 +186,8 @@ async function handleAdminHelp(bot, msg) {
         return;
     }
     
+    reporter.reportActivity(msg.from.id);
+
     const helpMessage = `
 🔧 **פקודות מנהל זמינות:**
 
@@ -220,6 +229,8 @@ async function handleQuickReset(bot, msg) {
         return;
     }
     
+    reporter.reportActivity(msg.from.id);
+
     const targetUserId = 6865105071; // ה-ID שלך
     
     try {
@@ -252,6 +263,8 @@ async function handleResetUserQueries(bot, msg, targetUserId) {
         return;
     }
     
+    reporter.reportActivity(msg.from.id);
+
     if (!targetUserId) {
         await bot.sendMessage(chatId, '❌ נא לציין ID של המשתמש לאיפוס.\nדוגמה: /reset_queries 123456789');
         return;
